@@ -118,50 +118,50 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| INFRA-04 | — | Pending |
-| INFRA-05 | — | Pending |
-| INFRA-06 | — | Pending |
-| INFRA-07 | — | Pending |
-| CHKL-01 | — | Pending |
-| CHKL-02 | — | Pending |
-| CHKL-03 | — | Pending |
-| CHKL-04 | — | Pending |
-| CHKL-05 | — | Pending |
-| CHKL-06 | — | Pending |
-| CRM-01 | — | Pending |
-| CRM-02 | — | Pending |
-| CRM-03 | — | Pending |
-| CRM-04 | — | Pending |
-| CRM-05 | — | Pending |
-| EMAIL-01 | — | Pending |
-| EMAIL-02 | — | Pending |
-| EMAIL-03 | — | Pending |
-| EMAIL-04 | — | Pending |
-| INTAKE-01 | — | Pending |
-| INTAKE-02 | — | Pending |
-| INTAKE-03 | — | Pending |
-| INTAKE-04 | — | Pending |
-| FILE-01 | — | Pending |
-| FILE-02 | — | Pending |
-| FILE-03 | — | Pending |
-| FILE-04 | — | Pending |
-| FILE-05 | — | Pending |
-| TRACK-01 | — | Pending |
-| TRACK-02 | — | Pending |
-| TRACK-03 | — | Pending |
-| REMIND-01 | — | Pending |
-| REMIND-02 | — | Pending |
-| REMIND-03 | — | Pending |
-| REMIND-04 | — | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 5 | Pending |
+| INFRA-06 | Phase 1 | Pending |
+| INFRA-07 | Phase 1 | Pending |
+| CHKL-01 | Phase 3 | Pending |
+| CHKL-02 | Phase 3 | Pending |
+| CHKL-03 | Phase 3 | Pending |
+| CHKL-04 | Phase 3 | Pending |
+| CHKL-05 | Phase 3 | Pending |
+| CHKL-06 | Phase 3 | Pending |
+| CRM-01 | Phase 4 | Pending |
+| CRM-02 | Phase 4 | Pending |
+| CRM-03 | Phase 4 | Pending |
+| CRM-04 | Phase 2 | Pending |
+| CRM-05 | Phase 4 | Pending |
+| EMAIL-01 | Phase 5 | Pending |
+| EMAIL-02 | Phase 5 | Pending |
+| EMAIL-03 | Phase 5 | Pending |
+| EMAIL-04 | Phase 5 | Pending |
+| INTAKE-01 | Phase 6 | Pending |
+| INTAKE-02 | Phase 6 | Pending |
+| INTAKE-03 | Phase 6 | Pending |
+| INTAKE-04 | Phase 6 | Pending |
+| FILE-01 | Phase 7 | Pending |
+| FILE-02 | Phase 7 | Pending |
+| FILE-03 | Phase 7 | Pending |
+| FILE-04 | Phase 7 | Pending |
+| FILE-05 | Phase 7 | Pending |
+| TRACK-01 | Phase 8 | Pending |
+| TRACK-02 | Phase 8 | Pending |
+| TRACK-03 | Phase 8 | Pending |
+| REMIND-01 | Phase 9 | Pending |
+| REMIND-02 | Phase 9 | Pending |
+| REMIND-03 | Phase 9 | Pending |
+| REMIND-04 | Phase 9 | Pending |
 
 **Coverage:**
 - v1 requirements: 38 total
-- Mapped to phases: 0
-- Unmapped: 38
+- Mapped to phases: 38
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after initial definition*
+*Last updated: 2026-02-09 after roadmap creation*
