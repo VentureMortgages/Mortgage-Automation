@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 3 of 9 (Checklist Generation)
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Executing
-Last activity: 2026-02-13 — Completed 03-01 (TypeScript project bootstrap + type definitions)
+Last activity: 2026-02-13 — Completed 03-02 (Checklist rule definitions: 103 rules across 10 files)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 4 min
-- Total execution time: 0.07 hours
+- Total plans completed: 2
+- Average duration: 5 min
+- Total execution time: 0.17 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 03-checklist-generation | 1/4 | 4 min | 4 min |
+| 03-checklist-generation | 2/4 | 10 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (4 min)
-- Trend: N/A (first plan)
+- Last 5 plans: 03-01 (4 min), 03-02 (6 min)
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -43,6 +43,10 @@ Progress: [█░░░░░░░░░] 10%
 - Added FinmoAddress and FinmoAddressSituation types beyond plan spec (needed for property descriptions)
 - Type-only barrel exports to ensure no runtime code in type module
 - Extracted ChecklistStage and ChecklistScope as named type aliases for reuse
+- Getter displayName on rules for dynamic tax year rendering at evaluation time
+- Sole prop vs incorporated detection with safe fallback (request both if uncertain)
+- Dormant rules for non-detectable sections (maternity, probation, stated income, bankruptcy, residency)
+- 103 total rules faithful to every item in DOC_CHECKLIST_RULES_V2 (vs plan estimate of 80-90)
 
 ### Pending Todos
 
@@ -66,7 +70,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-13 (plan execution)
-Stopped at: Completed 03-01-PLAN.md, ready for 03-02-PLAN.md
+Stopped at: Completed 03-02-PLAN.md, ready for 03-03-PLAN.md
 Resume file: None
 
 ---
