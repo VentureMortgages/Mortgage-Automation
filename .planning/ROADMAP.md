@@ -65,10 +65,13 @@ Plans:
   4. Generated checklist excludes items Cat removed as unnecessary (signed credit consent, T2125 when T1 requested, bonus payment history when T4+LOE collected)
   5. Gift letter is flagged for internal tracking but NOT included in initial email to client
   6. All PRE and FULL documents are listed in single upfront request (no staged requests)
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] 03-01: TBD during planning
+- [ ] 03-01-PLAN.md — Project bootstrap + TypeScript type interfaces (Finmo types, rule engine types, checklist output types)
+- [ ] 03-02-PLAN.md — Rule definitions for all 17 sections of DOC_CHECKLIST_RULES_V2 (~80-90 rules)
+- [ ] 03-03-PLAN.md — Checklist generation engine (evaluates rules, builds per-borrower contexts, deduplicates, formats output)
+- [ ] 03-04-PLAN.md — Test suite with fixtures covering all 6 success criteria and all CHKL requirements
 
 ### Phase 4: CRM Integration
 **Goal**: System creates contacts, tasks, and tracks checklist status in MyBrokerPro for Cat's workflow
@@ -165,7 +168,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 |-------|----------------|--------|-----------|
 | 1. Webhook Foundation | 0/TBD | Not started | - |
 | 2. CRM Exploration | 0/TBD | Not started | - |
-| 3. Checklist Generation | 0/TBD | Not started | - |
+| 3. Checklist Generation | 0/4 | Planned | - |
 | 4. CRM Integration | 0/TBD | Not started | - |
 | 5. Email Drafting | 0/TBD | Not started | - |
 | 6. Document Intake | 0/TBD | Not started | - |
@@ -175,4 +178,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-09*
+*Last updated: 2026-02-13*
