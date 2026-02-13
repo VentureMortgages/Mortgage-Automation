@@ -141,6 +141,8 @@ export interface GeneratedChecklist {
   internalFlags: InternalFlag[];
   /** Warnings about unknown field values, ambiguous data, or rule evaluation issues */
   warnings: string[];
+  /** Summary statistics for downstream consumers (CRM, logging) */
+  stats: ChecklistStats;
 }
 
 /** Document checklist for a single borrower */
