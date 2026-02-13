@@ -83,10 +83,13 @@ Plans:
   3. Checklist status (received/missing per document) is visible in MyBrokerPro custom fields
   4. When all PRE documents are received, task is created for Taylor notifying PRE-readiness
   5. Cat can view per-client document status without leaving MyBrokerPro
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] 04-01: TBD during planning
+- [ ] 04-01-PLAN.md — CRM foundation: GHL SDK, types/constants, config, setup scripts for custom fields and ID fetching
+- [ ] 04-02-PLAN.md — CRM service modules: contact upsert, task creation, opportunity/pipeline management
+- [ ] 04-03-PLAN.md — Checklist-to-CRM field mapper (pure function) + barrel export
+- [ ] 04-04-PLAN.md — Orchestrator (syncChecklistToCrm) + test suite (mapper, utilities, orchestration)
 
 ### Phase 5: Email Drafting
 **Goal**: System generates professional doc request email and sends from admin@venturemortgages.com after Cat's review
