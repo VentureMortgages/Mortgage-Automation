@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 1 of 9 (Webhook Foundation)
-Plan: 1 of 3 complete
+Plan: 2 of 3 complete
 Status: In Progress
-Last activity: 2026-02-14 — Completed 01-01 (shared config, types, PII sanitization)
+Last activity: 2026-02-14 — Completed 01-02 (webhook receiver, BullMQ queue, health check)
 
-Progress: [████████░░] 85%
+Progress: [████████░░] 86%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: 4 min
-- Total execution time: 0.75 hours
+- Total execution time: 0.83 hours
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [████████░░] 85%
 | 03-checklist-generation | 4/4 | 21 min | 5 min |
 | 04-crm-integration | 4/4 | 14 min | 4 min |
 | 05-email-drafting | 2/2 | 7 min | 4 min |
-| 01-webhook-foundation | 1/3 | 3 min | 3 min |
+| 01-webhook-foundation | 2/3 | 8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-03 (2 min), 04-04 (4 min), 05-01 (4 min), 05-02 (3 min), 01-01 (3 min)
+- Last 5 plans: 04-04 (4 min), 05-01 (4 min), 05-02 (3 min), 01-01 (3 min), 01-02 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -82,6 +82,11 @@ Progress: [████████░░] 85%
 - firstName/lastName excluded from PII_FIELDS (needed for borrower identification in structured logs)
 - ReadonlySet for PII_FIELDS (immutable at runtime, prevents accidental modification)
 - Depth limit of 10 for sanitizer recursion guard
+- Redis URL parsed into config object instead of ioredis instance (avoids version mismatch with bullmq's bundled ioredis)
+- No top-level ioredis dependency — bullmq bundles its own internally
+- vi.hoisted() for mock variables in Vitest 4 (factory functions hoisted above const declarations)
+- extractApplicationId exported for direct unit testing of payload shape handling
+- createApp factory pattern for Express test isolation (fresh instance per test)
 
 ### Pending Todos
 
@@ -111,8 +116,9 @@ None yet.
 
 **Phase 1 (Webhook Foundation):** IN PROGRESS
 - 01-01 complete: shared config, webhook types, PII sanitizer (28 tests)
-- 152 total tests pass (28 webhook + 124 prior)
-- Next: 01-02 (webhook receiver), 01-03 (worker)
+- 01-02 complete: Express webhook receiver, BullMQ queue, health check (16 tests)
+- 169 total tests pass (44 webhook + 125 prior)
+- Next: 01-03 (worker)
 
 **Phase 7 (Classification & Filing):**
 - Decision needed: reuse existing mortgage.ai PDF classification code or build new classifier
@@ -120,10 +126,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14 (plan execution)
-Stopped at: Completed 01-01-PLAN.md — shared config, types, PII sanitization
+Stopped at: Completed 01-02-PLAN.md — webhook receiver, BullMQ queue, health check
 Resume file: None
-Next: 01-02-PLAN.md (webhook receiver with BullMQ queue)
+Next: 01-03-PLAN.md (worker)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-14 (01-01 complete, Phase 1 in progress)*
+*Last updated: 2026-02-14 (01-02 complete, Phase 1 in progress)*
