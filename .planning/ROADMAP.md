@@ -35,10 +35,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. System logs contain no sensitive data (SIN numbers, income amounts, addresses never appear in logs)
   5. Global kill switch can disable all automation via environment variable
   6. System runs on Railway or Render VPS with Redis for queue infrastructure
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 01-01: TBD during planning
+- [ ] 01-01-PLAN.md — Config, types, and PII sanitizer (TDD) — foundation for all webhook modules
+- [ ] 01-02-PLAN.md — Express server, BullMQ queue, webhook endpoint, health check + tests
+- [ ] 01-03-PLAN.md — Finmo client, worker orchestrator, application entry point + tests
 
 ### Phase 2: CRM Exploration
 **Goal**: Understand MyBrokerPro's existing pipelines, custom fields, and workflow automation before building integration
@@ -170,7 +172,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Webhook Foundation | 0/TBD | Not started | - |
+| 1. Webhook Foundation | 0/3 | Planned | - |
 | 2. CRM Exploration | 0/TBD | Not started | - |
 | 3. Checklist Generation | 4/4 | Complete | 2026-02-13 |
 | 4. CRM Integration | 4/4 | Complete | 2026-02-13 |
