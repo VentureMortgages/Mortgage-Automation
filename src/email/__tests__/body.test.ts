@@ -215,8 +215,9 @@ describe('generateEmailBody', () => {
       docInboxEmail: 'docs@venturemortgages.com',
     };
     const body = generateEmailBody(singleBorrower, singleContext);
-    expect(body).toMatch(/^Hey Megan!/);
-    expect(body).not.toContain('and');
+    const greetingLine = body.split('\n')[0];
+    expect(greetingLine).toBe('Hey Megan!');
+    expect(greetingLine).not.toContain(' and ');
   });
 
   // ---------------------------------------------------------------------------
