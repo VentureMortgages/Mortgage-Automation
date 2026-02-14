@@ -23,14 +23,15 @@ import type { EmailContext } from '../types.js';
 // ---------------------------------------------------------------------------
 
 function makeItem(overrides: Partial<ChecklistItem> & { displayName: string }): ChecklistItem {
+  const { displayName, ...rest } = overrides;
   return {
     ruleId: 'test_rule',
-    document: overrides.displayName,
-    displayName: overrides.displayName,
+    document: displayName,
+    displayName,
     stage: 'PRE',
     forEmail: true,
     section: 'test_section',
-    ...overrides,
+    ...rest,
   };
 }
 
