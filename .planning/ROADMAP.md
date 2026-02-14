@@ -101,10 +101,11 @@ Plans:
   3. After Cat approves via CRM task, email sends from admin@venturemortgages.com using Gmail API
   4. Email template is professional, on-brand, and matches tone Cat currently uses
   5. OAuth tokens for Gmail automatically refresh and system alerts on refresh failure
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 05-01: TBD during planning
+- [ ] 05-01-PLAN.md — Email types, config, body generator (pure function), MIME encoder + TDD tests
+- [ ] 05-02-PLAN.md — Gmail API client, draft orchestrator, send function, barrel export + tests
 
 ### Phase 6: Document Intake
 **Goal**: System monitors email and Finmo portal for incoming client documents and extracts attachments
