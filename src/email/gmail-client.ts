@@ -1,13 +1,12 @@
 /**
  * Gmail API Client
  *
- * Authenticated client using a Google service account with domain-wide delegation
- * to impersonate admin@venturemortgages.com for draft creation and sending.
+ * Supports two authentication modes:
+ * 1. OAuth2 refresh token (dev) — GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN
+ * 2. Service account with domain-wide delegation (production) — GOOGLE_SERVICE_ACCOUNT_KEY
  *
- * Authentication:
- * - Service account key read from GOOGLE_SERVICE_ACCOUNT_KEY env var (base64-encoded JSON)
- * - JWT auth with gmail.compose scope (minimum privilege)
- * - Domain-wide delegation impersonates senderAddress from emailConfig
+ * The client auto-detects which mode to use based on which env vars are set.
+ * OAuth2 is checked first (preferred for dev), then service account.
  *
  * Error handling:
  * - Auth errors (401, 403, "Delegation denied") throw GmailAuthError
@@ -18,7 +17,7 @@
  */
 
 import { google } from 'googleapis';
-import { JWT } from 'google-auth-library';
+import { JWT, OAuth2Client } from 'google-auth-library';
 import { emailConfig } from './config.js';
 
 // ---------------------------------------------------------------------------
@@ -40,20 +39,38 @@ export class GmailAuthError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// Service Account Key
+// OAuth2 Refresh Token Auth (dev mode)
 // ---------------------------------------------------------------------------
 
-/**
- * Reads and decodes the service account key from GOOGLE_SERVICE_ACCOUNT_KEY env var.
- * The env var must contain the base64-encoded contents of the JSON key file.
- */
-function loadServiceAccountKey(): { client_email: string; private_key: string } {
+function createOAuth2Auth(): OAuth2Client {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new GmailAuthError(
+      'OAuth2 credentials incomplete. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REFRESH_TOKEN. ' +
+        'Run: npx tsx src/email/setup/get-refresh-token.ts',
+      'GMAIL_AUTH_MISSING_OAUTH',
+    );
+  }
+
+  const oauth2Client = new OAuth2Client(clientId, clientSecret);
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  return oauth2Client;
+}
+
+// ---------------------------------------------------------------------------
+// Service Account Auth (production)
+// ---------------------------------------------------------------------------
+
+function createServiceAccountAuth(): JWT {
   const encoded = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   if (!encoded) {
     throw new GmailAuthError(
-      'GOOGLE_SERVICE_ACCOUNT_KEY environment variable is not set. ' +
-        'Generate a service account key JSON file in Google Cloud Console, ' +
-        'then base64 encode it and set the env var.',
+      'No Gmail credentials found. Set either:\n' +
+        '  - GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET + GOOGLE_REFRESH_TOKEN (OAuth2), or\n' +
+        '  - GOOGLE_SERVICE_ACCOUNT_KEY (service account with domain-wide delegation)',
       'GMAIL_AUTH_MISSING_KEY',
     );
   }
@@ -66,7 +83,12 @@ function loadServiceAccountKey(): { client_email: string; private_key: string } 
       throw new Error('Missing client_email or private_key fields');
     }
 
-    return { client_email: parsed.client_email, private_key: parsed.private_key };
+    return new JWT({
+      email: parsed.client_email,
+      key: parsed.private_key,
+      scopes: ['https://www.googleapis.com/auth/gmail.compose'],
+      subject: emailConfig.senderAddress,
+    });
   } catch (err) {
     if (err instanceof GmailAuthError) throw err;
     throw new GmailAuthError(
@@ -85,20 +107,17 @@ let gmailClient: ReturnType<typeof google.gmail> | null = null;
 
 /**
  * Returns an authenticated Gmail API client.
- * Uses JWT auth with domain-wide delegation to impersonate the sender address.
+ * Auto-detects auth mode: OAuth2 refresh token if GOOGLE_REFRESH_TOKEN is set,
+ * otherwise service account if GOOGLE_SERVICE_ACCOUNT_KEY is set.
  * Client is lazily initialized and cached for reuse.
  */
 export function getGmailClient(): ReturnType<typeof google.gmail> {
   if (gmailClient) return gmailClient;
 
-  const key = loadServiceAccountKey();
-
-  const auth = new JWT({
-    email: key.client_email,
-    key: key.private_key,
-    scopes: ['https://www.googleapis.com/auth/gmail.compose'],
-    subject: emailConfig.senderAddress,
-  });
+  // Prefer OAuth2 (dev-friendly), fall back to service account (production)
+  const auth = process.env.GOOGLE_REFRESH_TOKEN
+    ? createOAuth2Auth()
+    : createServiceAccountAuth();
 
   gmailClient = google.gmail({ version: 'v1', auth });
   return gmailClient;
@@ -123,10 +142,11 @@ function wrapAuthError(err: unknown): never {
     status === 403 ||
     message.includes('Delegation denied') ||
     message.includes('Not Authorized') ||
-    message.includes('unauthorized')
+    message.includes('unauthorized') ||
+    message.includes('invalid_grant')
   ) {
     throw new GmailAuthError(
-      `Gmail API auth error: ${message}. Check service account delegation in Google Workspace Admin.`,
+      `Gmail API auth error: ${message}. Check credentials and permissions.`,
       'GMAIL_AUTH_DELEGATION',
     );
   }
@@ -139,7 +159,7 @@ function wrapAuthError(err: unknown): never {
 // ---------------------------------------------------------------------------
 
 /**
- * Creates a draft in the impersonated user's Gmail.
+ * Creates a draft in the authenticated user's Gmail.
  *
  * @param rawMessage - base64url-encoded MIME message (from encodeMimeMessage)
  * @returns The draft ID (used for sending later)

@@ -93,15 +93,16 @@ export function generateEmailBody(
 // ---------------------------------------------------------------------------
 
 /**
- * Formats a section with a header and item list.
- * Each item is on its own line. Items with notes have the note indented below.
+ * Formats a section with a header and bulleted item list.
+ * Items use "- " bullet prefix. Notes appear inline in parentheses.
  */
 function formatItemSection(header: string, items: ChecklistItem[]): string {
   const lines: string[] = [header];
   for (const item of items) {
-    lines.push(item.displayName);
     if (item.notes) {
-      lines.push(`  ${item.notes}`);
+      lines.push(`- ${item.displayName} (${item.notes.charAt(0).toLowerCase()}${item.notes.slice(1)})`);
+    } else {
+      lines.push(`- ${item.displayName}`);
     }
   }
   return lines.join('\n');

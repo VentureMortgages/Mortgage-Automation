@@ -15,7 +15,7 @@ const isDev = (process.env.APP_ENV ?? 'development') === 'development';
 
 export const emailConfig: EmailConfig = {
   isDev,
-  senderAddress: 'admin@venturemortgages.com',
+  senderAddress: process.env.EMAIL_SENDER ?? (isDev ? 'dev@venturemortgages.com' : 'admin@venturemortgages.com'),
   recipientOverride: isDev ? 'dev@venturemortgages.com' : null,
   subjectPrefix: isDev ? '[TEST] ' : '',
   docInbox: process.env.DOC_INBOX ?? 'dev@venturemortgages.com',

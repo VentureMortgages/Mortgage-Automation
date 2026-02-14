@@ -83,25 +83,29 @@ describe('encodeMimeMessage', () => {
     expect(decoded).toContain('Content-Type: text/plain; charset=utf-8');
   });
 
-  test('decoded output contains body after blank line', () => {
+  test('decoded output contains base64-encoded body after blank line', () => {
     const encoded = encodeMimeMessage(standardInput);
     const decoded = decodeBase64url(encoded);
     // RFC 2822: headers and body separated by blank line (CRLF CRLF)
     const parts = decoded.split('\r\n\r\n');
     expect(parts.length).toBeGreaterThanOrEqual(2);
-    expect(parts[1]).toContain('Hello, this is the email body.');
+    // Body is base64-encoded for UTF-8 transport — decode it
+    const bodyDecoded = Buffer.from(parts[1], 'base64').toString('utf-8');
+    expect(bodyDecoded).toContain('Hello, this is the email body.');
   });
 
-  test('handles special characters in body', () => {
+  test('handles special characters in body via base64 encoding', () => {
     const specialInput: MimeMessageInput = {
       ...standardInput,
       body: 'Accented: cafe\u0301, Emoji: \u{1F680}, French: r\u00E9sum\u00E9',
     };
     const encoded = encodeMimeMessage(specialInput);
     const decoded = decodeBase64url(encoded);
-    expect(decoded).toContain('cafe\u0301');
-    expect(decoded).toContain('\u{1F680}');
-    expect(decoded).toContain('r\u00E9sum\u00E9');
+    const parts = decoded.split('\r\n\r\n');
+    const bodyDecoded = Buffer.from(parts[1], 'base64').toString('utf-8');
+    expect(bodyDecoded).toContain('cafe\u0301');
+    expect(bodyDecoded).toContain('\u{1F680}');
+    expect(bodyDecoded).toContain('r\u00E9sum\u00E9');
   });
 
   test('handles multi-line body', () => {
@@ -111,7 +115,21 @@ describe('encodeMimeMessage', () => {
     };
     const encoded = encodeMimeMessage(multiLineInput);
     const decoded = decodeBase64url(encoded);
-    // Body newlines should be converted to CRLF
-    expect(decoded).toContain('Line one\r\nLine two\r\nLine three');
+    const parts = decoded.split('\r\n\r\n');
+    const bodyDecoded = Buffer.from(parts[1], 'base64').toString('utf-8');
+    expect(bodyDecoded).toContain('Line one');
+    expect(bodyDecoded).toContain('Line two');
+    expect(bodyDecoded).toContain('Line three');
+  });
+
+  test('encodes non-ASCII subject with RFC 2047', () => {
+    const unicodeSubject: MimeMessageInput = {
+      ...standardInput,
+      subject: 'Documents Needed \u2014 John',
+    };
+    const encoded = encodeMimeMessage(unicodeSubject);
+    const decoded = decodeBase64url(encoded);
+    // Non-ASCII subject should use RFC 2047 encoded-word
+    expect(decoded).toContain('Subject: =?UTF-8?B?');
   });
 });

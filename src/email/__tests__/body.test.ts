@@ -147,19 +147,19 @@ describe('generateEmailBody', () => {
     expect(body).toContain('Thanks for filling out the application');
   });
 
-  test('has per-borrower section with first name header', () => {
+  test('has per-borrower section with first name header and bullet items', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
 
-    // Megan section: header followed by her items
+    // Megan section: header followed by bulleted items
     expect(body).toContain('Megan\n');
-    expect(body).toContain('Letter of Employment confirming back to work date');
-    expect(body).toContain('Last pay stub prior to your mat leave');
-    expect(body).toContain('2024 T4');
+    expect(body).toContain('- Letter of Employment confirming back to work date');
+    expect(body).toContain('- Last pay stub prior to your mat leave');
+    expect(body).toContain('- 2024 T4');
 
-    // Cory section: header followed by his items
+    // Cory section: header followed by bulleted items
     expect(body).toContain('Cory\n');
-    expect(body).toContain('2023/2024 T1s');
-    expect(body).toContain('2 years business financials for RunGuide Media');
+    expect(body).toContain('- 2023/2024 T1s');
+    expect(body).toContain('- 2 years business financials for RunGuide Media');
   });
 
   test('excludes forEmail=false items', () => {
@@ -168,32 +168,32 @@ describe('generateEmailBody', () => {
     expect(body).not.toContain('Check Schedule 50');
   });
 
-  test('has per-property sections with address headers', () => {
+  test('has per-property sections with address headers and bullet items', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
     expect(body).toContain('Smoke Bluff Rd, Squamish:');
     expect(body).toContain('Keefer Place, Vancouver:');
-    expect(body).toContain('Current Mortgage Statement');
-    expect(body).toContain('2025 Property Tax Bill');
+    expect(body).toContain('- Current Mortgage Statement');
+    expect(body).toContain('- 2025 Property Tax Bill');
   });
 
-  test('has shared Other section', () => {
+  test('has shared Other section with bullet items', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
     expect(body).toContain('Other\n');
-    expect(body).toContain('Void Cheque');
-    expect(body).toContain('3 months bank statements for the account(s) holding your down payment funds');
+    expect(body).toContain('- Void Cheque');
+    expect(body).toContain('- 3 months bank statements for the account(s) holding your down payment funds');
   });
 
-  test('includes notes inline under items', () => {
+  test('includes notes inline in parentheses', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
 
-    // NOA notes should appear indented under the item
-    expect(body).toContain('2023/2024 Notice of Assessments\n  if your 2024 NOA shows an amount owing');
+    // NOA notes should appear inline in parentheses
+    expect(body).toContain('- 2023/2024 Notice of Assessments (if your 2024 NOA shows an amount owing');
 
     // Void cheque notes
-    expect(body).toContain('Void Cheque\n  for the account you anticipate your payments');
+    expect(body).toContain('- Void Cheque (for the account you anticipate your payments');
 
     // Condo fees notes
-    expect(body).toContain('Confirmation of Condo Fees\n  via Annual Strata Statement');
+    expect(body).toContain('- Confirmation of Condo Fees (via Annual Strata Statement');
   });
 
   test('ends with closing referencing doc inbox email', () => {

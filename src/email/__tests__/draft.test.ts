@@ -149,12 +149,14 @@ describe('createEmailDraft', () => {
   test('MIME content contains borrower doc items', async () => {
     await createEmailDraft(input);
     const rawArg = mockedCreateGmailDraft.mock.calls[0][0];
-    // Decode base64url -> utf-8
-    const decoded = Buffer.from(rawArg, 'base64url').toString('utf-8');
-    expect(decoded).toContain('Most recent pay stub');
-    expect(decoded).toContain('2024 T4');
-    expect(decoded).toContain('Current Mortgage Statement');
-    expect(decoded).toContain('Void Cheque');
+    // Decode outer base64url -> MIME message, then extract base64-encoded body
+    const mime = Buffer.from(rawArg, 'base64url').toString('utf-8');
+    const parts = mime.split('\r\n\r\n');
+    const bodyDecoded = Buffer.from(parts[1], 'base64').toString('utf-8');
+    expect(bodyDecoded).toContain('Most recent pay stub');
+    expect(bodyDecoded).toContain('2024 T4');
+    expect(bodyDecoded).toContain('Current Mortgage Statement');
+    expect(bodyDecoded).toContain('Void Cheque');
   });
 
   test('subject joins multiple borrower names with &', async () => {

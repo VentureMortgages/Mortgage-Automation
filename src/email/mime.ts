@@ -21,20 +21,22 @@ import type { MimeMessageInput } from './types.js';
  */
 export function encodeMimeMessage(input: MimeMessageInput): string {
   // Build MIME headers (joined with CRLF)
+  // Subject uses RFC 2047 encoded-word for non-ASCII characters (e.g., em dash)
+  const encodedSubject = encodeSubject(input.subject);
   const headers = [
     `From: ${input.from}`,
     `To: ${input.to}`,
-    `Subject: ${input.subject}`,
+    `Subject: ${encodedSubject}`,
     'MIME-Version: 1.0',
     'Content-Type: text/plain; charset=utf-8',
-    'Content-Transfer-Encoding: 7bit',
+    'Content-Transfer-Encoding: base64',
   ].join('\r\n');
 
-  // Convert body newlines to CRLF for RFC 2822 compliance
-  const body = input.body.replace(/\r?\n/g, '\r\n');
+  // Base64-encode the body for safe UTF-8 transport
+  const bodyBase64 = Buffer.from(input.body, 'utf-8').toString('base64');
 
-  // Combine: headers + blank line + body
-  const mimeMessage = `${headers}\r\n\r\n${body}`;
+  // Combine: headers + blank line + base64-encoded body
+  const mimeMessage = `${headers}\r\n\r\n${bodyBase64}`;
 
   // Base64url encode (Gmail API format)
   return Buffer.from(mimeMessage)
@@ -42,4 +44,15 @@ export function encodeMimeMessage(input: MimeMessageInput): string {
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
+}
+
+/**
+ * Encodes a subject line using RFC 2047 encoded-word syntax if it contains
+ * non-ASCII characters (e.g., em dash —). ASCII-only subjects pass through unchanged.
+ */
+function encodeSubject(subject: string): string {
+  // eslint-disable-next-line no-control-regex
+  if (/^[\x00-\x7F]*$/.test(subject)) return subject;
+  const encoded = Buffer.from(subject, 'utf-8').toString('base64');
+  return `=?UTF-8?B?${encoded}?=`;
 }
