@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 4 of 9 (CRM Integration)
-Plan: 2 of 4 complete
+Plan: 3 of 4 complete
 Status: In Progress
-Last activity: 2026-02-14 — Completed 04-02 (CRM service modules: contacts, tasks, opportunities)
+Last activity: 2026-02-14 — Completed 04-03 (checklist-to-CRM field mapper + barrel export)
 
-Progress: [██████░░░░] 55%
+Progress: [███████░░░] 64%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 5 min
-- Total execution time: 0.48 hours
+- Total plans completed: 7
+- Average duration: 4 min
+- Total execution time: 0.52 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 03-checklist-generation | 4/4 | 21 min | 5 min |
-| 04-crm-integration | 2/4 | 8 min | 4 min |
+| 04-crm-integration | 3/4 | 10 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (6 min), 03-03 (3 min), 03-04 (8 min), 04-01 (5 min), 04-02 (3 min)
+- Last 5 plans: 03-03 (3 min), 03-04 (8 min), 04-01 (5 min), 04-02 (3 min), 04-03 (2 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -62,6 +62,9 @@ Progress: [██████░░░░] 55%
 - Created shared errors.ts module for CRM error types (reused by contacts, tasks, opportunities modules)
 - Raw fetch for all CRM operations (consistent with setup scripts; SDK types incomplete for some endpoints)
 - Finmo-managed fields stripped via ReadonlySet filter in contacts.ts (programmatic guard, not docs-only)
+- Config-as-parameter pattern for mapper functions (pure, no module-level config imports)
+- CrmConfig imported from config.js not types/index.js (corrected plan's import path)
+- Eager dotenv loading in barrel export acceptable for server-side Node.js runtime
 
 ### Pending Todos
 
@@ -86,10 +89,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14 (plan execution)
-Stopped at: Completed 04-02-PLAN.md — CRM service modules (contacts, tasks, opportunities)
+Stopped at: Completed 04-03-PLAN.md — checklist-to-CRM field mapper + barrel export
 Resume file: None
-Next: 04-03-PLAN.md (checklist-to-CRM field mapper)
+Next: 04-04-PLAN.md (CRM orchestrator)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-14 (04-02 complete)*
+*Last updated: 2026-02-14 (04-03 complete)*
