@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 5 - Email Drafting (IN PROGRESS)
+**Current focus:** Phase 5 - Email Drafting (COMPLETE)
 
 ## Current Position
 
 Phase: 5 of 9 (Email Drafting)
-Plan: 1 of 2 complete
-Status: In Progress
-Last activity: 2026-02-13 — Completed 05-01 (email body generator + MIME encoder)
+Plan: 2 of 2 complete
+Status: Complete
+Last activity: 2026-02-14 — Completed 05-02 (Gmail API integration + barrel export)
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 10
 - Average duration: 4 min
-- Total execution time: 0.65 hours
+- Total execution time: 0.70 hours
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [████████░░] 77%
 |-------|-------|-------|----------|
 | 03-checklist-generation | 4/4 | 21 min | 5 min |
 | 04-crm-integration | 4/4 | 14 min | 4 min |
-| 05-email-drafting | 1/2 | 4 min | 4 min |
+| 05-email-drafting | 2/2 | 7 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (5 min), 04-02 (3 min), 04-03 (2 min), 04-04 (4 min), 05-01 (4 min)
+- Last 5 plans: 04-02 (3 min), 04-03 (2 min), 04-04 (4 min), 05-01 (4 min), 05-02 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -73,6 +73,10 @@ Progress: [████████░░] 77%
 - Named constants for intro and closing paragraphs (easy for Cat to edit wording)
 - Body uses \n internally; MIME encoder converts to CRLF (separation of concerns)
 - Test greeting assertion checks greeting line only, not full body (avoids false positives)
+- Lazy singleton for Gmail client (cached after first init, same pattern as CRM client)
+- GmailAuthError with code property for typed auth error detection in INFRA-05 alerting
+- Internal Gmail client functions not exported from barrel (implementation detail encapsulation)
+- loadServiceAccountKey validates client_email and private_key after base64 decode
 
 ### Pending Todos
 
@@ -94,21 +98,22 @@ None yet.
 - syncChecklistToCrm ready for Phase 1 webhook handler
 - CRM setup scripts must be run against live CRM before runtime operations work
 
-**Phase 5 (Email Drafting):** IN PROGRESS
-- Plan 01 complete: email body generator + MIME encoder (21 tests, 114 total)
-- Plan 02 remaining: Gmail API integration (draft creation, sending)
-- OAuth delegation setup for Gmail/Drive needs confirmation (service account vs user OAuth)
+**Phase 5 (Email Drafting):** COMPLETE
+- All 2 plans executed: email body/MIME + Gmail API integration
+- 124 total tests pass (31 email + 93 CRM/checklist)
+- createEmailDraft and sendEmailDraft ready for Phase 1 webhook handler
+- Gmail API requires service account setup before live testing (GCP project, delegation, env var)
 
 **Phase 7 (Classification & Filing):**
 - Decision needed: reuse existing mortgage.ai PDF classification code or build new classifier
 
 ## Session Continuity
 
-Last session: 2026-02-13 (plan execution)
-Stopped at: Completed 05-01-PLAN.md — email body generator + MIME encoder
+Last session: 2026-02-14 (plan execution)
+Stopped at: Completed 05-02-PLAN.md — Gmail API integration + barrel export (Phase 5 complete)
 Resume file: None
-Next: 05-02-PLAN.md (Gmail API draft creation + sending)
+Next: Phase 6 or Phase 1 webhook handler (depends on roadmap sequencing)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-13 (05-01 complete)*
+*Last updated: 2026-02-14 (05-02 complete, Phase 5 complete)*
