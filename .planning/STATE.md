@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 6 - Document Intake (IN PROGRESS)
+**Current focus:** Phase 6 - Document Intake (COMPLETE)
 
 ## Current Position
 
 Phase: 6 of 9 (Document Intake)
-Plan: 3 of 4 complete
-Status: In Progress
-Last activity: 2026-02-14 — Completed 06-03 (Gmail reader & attachment extractor)
+Plan: 4 of 4 complete
+Status: Phase Complete
+Last activity: 2026-02-14 — Completed 06-04 (Intake monitor, worker & barrel)
 
-Progress: [███████░░░] 75%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
+- Total plans completed: 17
 - Average duration: 4 min
-- Total execution time: 1.08 hours
+- Total execution time: 1.18 hours
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████░░░] 75%
 | 04-crm-integration | 4/4 | 14 min | 4 min |
 | 05-email-drafting | 2/2 | 7 min | 4 min |
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
-| 06-document-intake | 3/4 | 11 min | 4 min |
+| 06-document-intake | 4/4 | 17 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (5 min), 01-03 (4 min), 06-01 (3 min), 06-02 (5 min), 06-03 (3 min)
+- Last 5 plans: 01-03 (4 min), 06-01 (3 min), 06-02 (5 min), 06-03 (3 min), 06-04 (6 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -105,6 +105,11 @@ Progress: [███████░░░] 75%
 - Parallel fallback: messages.list + getProfile called with Promise.all on stale historyId
 - Parts without filename skipped in attachment extraction (inline text/HTML are not file attachments)
 - Default mimeType to application/octet-stream when MIME part has no mimeType field
+- ioredis added as direct dependency for Redis key-value access (historyId persistence, overriding earlier "no top-level ioredis" decision)
+- Named import { Redis as IORedis } for NodeNext module compat (default export not constructable)
+- Finmo handler uses fire-and-forget queue.add with .then/.catch (respond 202 immediately)
+- processIntakeJob catches ConversionError per-attachment without failing the whole job
+- IntakeDocument objects logged then discarded (Phase 7 will consume them via classification queue)
 
 ### Pending Todos
 
@@ -139,15 +144,14 @@ None yet.
 - 183 total tests pass (58 webhook + 125 prior)
 - Full pipeline: webhook POST -> BullMQ -> worker -> Finmo API -> checklist -> CRM -> email draft
 
-**Phase 6 (Document Intake):** IN PROGRESS
+**Phase 6 (Document Intake):** COMPLETE
 - 06-01 complete: intake types, config, Gmail readonly client (0 new tests, 183 existing pass)
 - 06-02 complete: PDF converter with pdf-lib, TDD (15 new tests, 198 total pass)
 - 06-03 complete: Gmail reader & attachment extractor (25 new tests, 223 total pass)
-- Type contracts established for all Phase 6 plans
-- getGmailReadonlyClient ready for inbox monitoring
-- SUPPORTED_MIME_TYPES covers PDF, images, Word docs
-- convertToPdf ready for intake-worker integration (Plan 04)
-- Full Gmail reading pipeline: pollForNewMessages + getMessageDetails + extractAttachments + downloadAttachment
+- 06-04 complete: Gmail monitor, Finmo handler, intake worker, barrel (18 new tests, 241 total pass)
+- Full intake pipeline: Gmail polling -> message processing -> attachment download -> PDF conversion -> IntakeDocument
+- Finmo document webhook handler with dedup; actual file download deferred (API undocumented)
+- Barrel export at src/intake/index.ts provides clean import surface for Phase 7
 
 **Phase 7 (Classification & Filing):**
 - Decision needed: reuse existing mortgage.ai PDF classification code or build new classifier
@@ -155,10 +159,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14 (plan execution)
-Stopped at: Completed 06-03-PLAN.md — Gmail reader & attachment extractor
+Stopped at: Completed 06-04-PLAN.md — Phase 6 Document Intake COMPLETE
 Resume file: None
-Next: 06-04-PLAN.md (Intake monitor/worker)
+Next: Phase 7 (Classification & Filing) planning
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-14 (06-03 complete, Phase 6 75%)*
+*Last updated: 2026-02-14 (06-04 complete, Phase 6 100%)*
