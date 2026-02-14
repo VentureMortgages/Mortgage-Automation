@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 4 of 9 (CRM Integration)
-Plan: 1 of 4 complete
+Plan: 2 of 4 complete
 Status: In Progress
-Last activity: 2026-02-14 — Completed 04-01 (CRM foundation: SDK, types, config, setup scripts)
+Last activity: 2026-02-14 — Completed 04-02 (CRM service modules: contacts, tasks, opportunities)
 
-Progress: [█████░░░░░] 45%
+Progress: [██████░░░░] 55%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 5 min
-- Total execution time: 0.43 hours
+- Total execution time: 0.48 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 03-checklist-generation | 4/4 | 21 min | 5 min |
-| 04-crm-integration | 1/4 | 5 min | 5 min |
+| 04-crm-integration | 2/4 | 8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (4 min), 03-02 (6 min), 03-03 (3 min), 03-04 (8 min), 04-01 (5 min)
+- Last 5 plans: 03-02 (6 min), 03-03 (3 min), 03-04 (8 min), 04-01 (5 min), 04-02 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -59,6 +59,9 @@ Progress: [█████░░░░░] 45%
 - Used named import { HighLevel } instead of default import (CJS module compat with NodeNext)
 - Raw fetch for setup scripts instead of SDK (SDK CreateCustomFieldsDTO missing parentId/picklistOptions)
 - Config allows empty strings for IDs populated by setup scripts (validates at runtime, not config load)
+- Created shared errors.ts module for CRM error types (reused by contacts, tasks, opportunities modules)
+- Raw fetch for all CRM operations (consistent with setup scripts; SDK types incomplete for some endpoints)
+- Finmo-managed fields stripped via ReadonlySet filter in contacts.ts (programmatic guard, not docs-only)
 
 ### Pending Todos
 
@@ -83,10 +86,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14 (plan execution)
-Stopped at: Completed 04-01-PLAN.md — CRM foundation (SDK, types, config, setup scripts)
+Stopped at: Completed 04-02-PLAN.md — CRM service modules (contacts, tasks, opportunities)
 Resume file: None
-Next: 04-02-PLAN.md (contacts module)
+Next: 04-03-PLAN.md (checklist-to-CRM field mapper)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-14 (04-01 complete)*
+*Last updated: 2026-02-14 (04-02 complete)*
