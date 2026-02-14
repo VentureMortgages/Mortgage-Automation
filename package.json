@@ -5,6 +5,8 @@
   "description": "Taylor Atkinson mortgage automation - checklist generation system",
   "scripts": {
     "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
