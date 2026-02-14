@@ -19,29 +19,34 @@ import { convertToPdf, ConversionError } from '../pdf-converter.js';
 // ---------------------------------------------------------------------------
 
 /**
- * Smallest valid JPEG: 1x1 white pixel.
- * Hex-encoded minimal JFIF JPEG (107 bytes).
+ * Minimal valid JPEG: 1x1 white pixel (333 bytes).
+ * Contains all required JPEG segments: SOI, APP0 (JFIF), DQT, SOF0, DHT (DC+AC), SOS, EOI.
+ * Validated against pdf-lib's embedJpg parser.
  */
 const MINIMAL_JPEG_HEX =
   'ffd8ffe000104a46494600010100000100010000' +
-  'ffdb004300080606070605080707070909080a0c' +
-  '140d0c0b0b0c1912130f141d1a1f1e1d1a1c1c' +
-  '20242e2720222c231c1c2837292c30313434341f' +
-  '27393d38323c2e333432ffc0000b080001000101' +
-  '011100ffc4001f00000105010101010101000000' +
-  '00000000000102030405060708090a0bffc40000' +
-  'ffda00080101000003100002000000037f54ffd9';
+  'ffdb004300080606070605080707070909080a0c140d0c0b0b0c1912130f141d1a1f1e1d1a1c1c' +
+  '20242e2720222c231c1c2837292c30313434341f27393d38323c2e333432' +
+  'ffc0000b080001000101011100' +
+  'ffc4001f0000010501010101010100000000000000000102030405060708090a0b' +
+  'ffc400b5100002010303020403050504040000017d01020300041105122131410613516107' +
+  '227114328191a1082342b1c11552d1f024336272820' +
+  '90a161718191a25262728292a3435363738393a434445464748494a535455565758595a' +
+  '636465666768696a737475767778797a838485868788898a92939495969798999a' +
+  'a2a3a4a5a6a7a8a9aab2b3b4b5b6b7b8b9bac2c3c4c5c6c7c8c9ca' +
+  'd2d3d4d5d6d7d8d9dae1e2e3e4e5e6e7e8e9eaf1f2f3f4f5f6f7f8f9fa' +
+  'ffda0008010100003f007b401bffd9';
 
 /**
- * Smallest valid PNG: 1x1 white pixel (67 bytes).
+ * Minimal valid PNG: 1x1 white pixel (69 bytes).
+ * Contains: PNG signature, IHDR (1x1 RGB 8-bit), IDAT (zlib-compressed), IEND.
+ * Validated against pdf-lib's embedPng parser.
  */
 const MINIMAL_PNG_HEX =
-  '89504e470d0a1a0a' +                         // PNG signature
-  '0000000d49484452000000010000000108020000009001' + // IHDR
-  '2e00' +
-  '0000000c4944415478' +                       // IDAT start
-  '9c6260f8cf0000000200' +                     // compressed data
-  '01e221bc330000000049454e44ae426082';         // IEND
+  '89504e470d0a1a0a' +
+  '0000000d4948445200000001000000010802000000907753de' +
+  '0000000c49444154789c63f8ffff3f0005fe02fe0def46b8' +
+  '0000000049454e44ae426082';
 
 const validJpegBuffer = Buffer.from(MINIMAL_JPEG_HEX, 'hex');
 const validPngBuffer = Buffer.from(MINIMAL_PNG_HEX, 'hex');
