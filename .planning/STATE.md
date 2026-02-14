@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 5 - Email Drafting (COMPLETE)
+**Current focus:** Phase 1 - Webhook Foundation (IN PROGRESS)
 
 ## Current Position
 
-Phase: 5 of 9 (Email Drafting)
-Plan: 2 of 2 complete
-Status: Complete
-Last activity: 2026-02-14 — Completed 05-02 (Gmail API integration + barrel export)
+Phase: 1 of 9 (Webhook Foundation)
+Plan: 1 of 3 complete
+Status: In Progress
+Last activity: 2026-02-14 — Completed 01-01 (shared config, types, PII sanitization)
 
-Progress: [████████░░] 83%
+Progress: [████████░░] 85%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 4 min
-- Total execution time: 0.70 hours
+- Total execution time: 0.75 hours
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [████████░░] 83%
 | 03-checklist-generation | 4/4 | 21 min | 5 min |
 | 04-crm-integration | 4/4 | 14 min | 4 min |
 | 05-email-drafting | 2/2 | 7 min | 4 min |
+| 01-webhook-foundation | 1/3 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-02 (3 min), 04-03 (2 min), 04-04 (4 min), 05-01 (4 min), 05-02 (3 min)
+- Last 5 plans: 04-03 (2 min), 04-04 (4 min), 05-01 (4 min), 05-02 (3 min), 01-01 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -77,6 +78,10 @@ Progress: [████████░░] 83%
 - GmailAuthError with code property for typed auth error detection in INFRA-05 alerting
 - Internal Gmail client functions not exported from barrel (implementation detail encapsulation)
 - loadServiceAccountKey validates client_email and private_key after base64 decode
+- Arrays replaced with [Array(N)] summaries in sanitizer (security: arrays may contain PII objects)
+- firstName/lastName excluded from PII_FIELDS (needed for borrower identification in structured logs)
+- ReadonlySet for PII_FIELDS (immutable at runtime, prevents accidental modification)
+- Depth limit of 10 for sanitizer recursion guard
 
 ### Pending Todos
 
@@ -104,16 +109,21 @@ None yet.
 - createEmailDraft and sendEmailDraft ready for Phase 1 webhook handler
 - Gmail API requires service account setup before live testing (GCP project, delegation, env var)
 
+**Phase 1 (Webhook Foundation):** IN PROGRESS
+- 01-01 complete: shared config, webhook types, PII sanitizer (28 tests)
+- 152 total tests pass (28 webhook + 124 prior)
+- Next: 01-02 (webhook receiver), 01-03 (worker)
+
 **Phase 7 (Classification & Filing):**
 - Decision needed: reuse existing mortgage.ai PDF classification code or build new classifier
 
 ## Session Continuity
 
 Last session: 2026-02-14 (plan execution)
-Stopped at: Completed 05-02-PLAN.md — Gmail API integration + barrel export (Phase 5 complete)
+Stopped at: Completed 01-01-PLAN.md — shared config, types, PII sanitization
 Resume file: None
-Next: Phase 6 or Phase 1 webhook handler (depends on roadmap sequencing)
+Next: 01-02-PLAN.md (webhook receiver with BullMQ queue)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-14 (05-02 complete, Phase 5 complete)*
+*Last updated: 2026-02-14 (01-01 complete, Phase 1 in progress)*
