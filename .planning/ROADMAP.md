@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Checklist Generation** - Auto-generate personalized doc request from Finmo application
 - [x] **Phase 4: CRM Integration** - Create contacts, tasks, and track checklist status in MyBrokerPro
 - [x] **Phase 5: Email Drafting** - Generate and send doc request emails from admin@venturemortgages.com
-- [ ] **Phase 6: Document Intake** - Monitor email and Finmo for incoming client documents
+- [x] **Phase 6: Document Intake** - Monitor email and Finmo for incoming client documents
 - [ ] **Phase 7: Classification & Filing** - Classify, rename, convert, and file docs to Google Drive
 - [ ] **Phase 8: Tracking Integration** - Update checklist status and notify on PRE-readiness
 - [ ] **Phase 9: Automated Reminders** - Context-aware follow-ups for missing documents (disabled by default)
@@ -180,11 +180,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 3. Checklist Generation | 4/4 | Complete | 2026-02-13 |
 | 4. CRM Integration | 4/4 | Complete | 2026-02-13 |
 | 5. Email Drafting | 2/2 | Complete | 2026-02-14 |
-| 6. Document Intake | 0/TBD | Not started | - |
+| 6. Document Intake | 4/4 | Complete | 2026-02-14 |
 | 7. Classification & Filing | 0/TBD | Not started | - |
 | 8. Tracking Integration | 0/TBD | Not started | - |
 | 9. Automated Reminders | 0/TBD | Not started | - |
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-13 (Phase 1 complete)*
+*Last updated: 2026-02-14 (Phase 6 complete)*
