@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 1 - Webhook Foundation (COMPLETE)
+**Current focus:** Phase 6 - Document Intake (IN PROGRESS)
 
 ## Current Position
 
-Phase: 1 of 9 (Webhook Foundation)
-Plan: 3 of 3 complete
-Status: Phase Complete
-Last activity: 2026-02-13 — Completed 01-03 (worker pipeline orchestrator, entry point)
+Phase: 6 of 9 (Document Intake)
+Plan: 1 of 4 complete
+Status: In Progress
+Last activity: 2026-02-13 — Completed 06-01 (intake types, config, Gmail readonly client)
 
-Progress: [██████████] 100%
+Progress: [██░░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: 4 min
-- Total execution time: 0.90 hours
+- Total execution time: 0.95 hours
 
 **By Phase:**
 
@@ -31,9 +31,10 @@ Progress: [██████████] 100%
 | 04-crm-integration | 4/4 | 14 min | 4 min |
 | 05-email-drafting | 2/2 | 7 min | 4 min |
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
+| 06-document-intake | 1/4 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 05-01 (4 min), 05-02 (3 min), 01-01 (3 min), 01-02 (5 min), 01-03 (4 min)
+- Last 5 plans: 05-02 (3 min), 01-01 (3 min), 01-02 (5 min), 01-03 (4 min), 06-01 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -92,6 +93,10 @@ Progress: [██████████] 100%
 - Shutdown order: HTTP server -> worker -> queue (prevents orphan connections)
 - Worker concurrency 1 (sequential processing, sufficient for current volume)
 - Kill switch checked at both webhook and worker layers (belt-and-suspenders defense)
+- Map-based client cache replacing single-variable singleton for multi-scope/multi-user Gmail clients
+- loadServiceAccountKey extracted as shared helper for both compose and readonly client creation
+- OAuth2 mode warning (not error) when impersonateAs differs from token user — fails at API call time
+- ConversionStrategy as union type (not enum) for consistency with project's type patterns
 
 ### Pending Todos
 
@@ -126,16 +131,22 @@ None yet.
 - 183 total tests pass (58 webhook + 125 prior)
 - Full pipeline: webhook POST -> BullMQ -> worker -> Finmo API -> checklist -> CRM -> email draft
 
+**Phase 6 (Document Intake):** IN PROGRESS
+- 06-01 complete: intake types, config, Gmail readonly client (0 new tests, 183 existing pass)
+- Type contracts established for all Phase 6 plans
+- getGmailReadonlyClient ready for inbox monitoring
+- SUPPORTED_MIME_TYPES covers PDF, images, Word docs
+
 **Phase 7 (Classification & Filing):**
 - Decision needed: reuse existing mortgage.ai PDF classification code or build new classifier
 
 ## Session Continuity
 
 Last session: 2026-02-13 (plan execution)
-Stopped at: Completed 01-03-PLAN.md — Phase 1 complete (worker, entry point)
+Stopped at: Completed 06-01-PLAN.md — intake types, config, Gmail readonly client
 Resume file: None
-Next: Phase 1 complete. Next phase TBD (deployment/infrastructure or Phase 6+)
+Next: 06-02-PLAN.md (Gmail monitor, attachment extraction)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-13 (01-03 complete, Phase 1 COMPLETE)*
+*Last updated: 2026-02-13 (06-01 complete, Phase 6 IN PROGRESS)*
