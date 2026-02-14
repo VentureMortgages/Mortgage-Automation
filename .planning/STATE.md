@@ -5,32 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 3 - Checklist Generation
+**Current focus:** Phase 4 - CRM Integration
 
 ## Current Position
 
-Phase: 3 of 9 (Checklist Generation) -- COMPLETE
-Plan: 4 of 4 -- ALL COMPLETE
-Status: Phase Complete
-Last activity: 2026-02-13 — Completed 03-04 (Integration tests and fixtures: 58 tests, all passing)
+Phase: 4 of 9 (CRM Integration)
+Plan: 1 of 4 complete
+Status: In Progress
+Last activity: 2026-02-14 — Completed 04-01 (CRM foundation: SDK, types, config, setup scripts)
 
-Progress: [████░░░░░░] 40%
+Progress: [█████░░░░░] 45%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 5 min
-- Total execution time: 0.35 hours
+- Total execution time: 0.43 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 03-checklist-generation | 4/4 | 21 min | 5 min |
+| 04-crm-integration | 1/4 | 5 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (4 min), 03-02 (6 min), 03-03 (3 min), 03-04 (8 min)
+- Last 5 plans: 03-01 (4 min), 03-02 (6 min), 03-03 (3 min), 03-04 (8 min), 04-01 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -55,6 +56,9 @@ Progress: [████░░░░░░] 40%
 - Vite resolver plugin for .js-to-.ts resolution in Vitest 4 (NodeNext compat)
 - getTaxYears tested directly for dynamic behavior (displayName getters use new Date(), not context date)
 - Inline fixture modification pattern (spread + override) for edge case test variants
+- Used named import { HighLevel } instead of default import (CJS module compat with NodeNext)
+- Raw fetch for setup scripts instead of SDK (SDK CreateCustomFieldsDTO missing parentId/picklistOptions)
+- Config allows empty strings for IDs populated by setup scripts (validates at runtime, not config load)
 
 ### Pending Todos
 
@@ -78,11 +82,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-13 (plan execution)
-Stopped at: Completed 03-04-PLAN.md — Phase 3 (Checklist Generation) fully complete
+Last session: 2026-02-14 (plan execution)
+Stopped at: Completed 04-01-PLAN.md — CRM foundation (SDK, types, config, setup scripts)
 Resume file: None
-Next: Phase 4 (CRM Integration) or Phase 5 (Email Drafting)
+Next: 04-02-PLAN.md (contacts module)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-13 (Phase 3 complete)*
+*Last updated: 2026-02-14 (04-01 complete)*
