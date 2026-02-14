@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 1 - Webhook Foundation (IN PROGRESS)
+**Current focus:** Phase 1 - Webhook Foundation (COMPLETE)
 
 ## Current Position
 
 Phase: 1 of 9 (Webhook Foundation)
-Plan: 2 of 3 complete
-Status: In Progress
-Last activity: 2026-02-14 — Completed 01-02 (webhook receiver, BullMQ queue, health check)
+Plan: 3 of 3 complete
+Status: Phase Complete
+Last activity: 2026-02-13 — Completed 01-03 (worker pipeline orchestrator, entry point)
 
-Progress: [████████░░] 86%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 4 min
-- Total execution time: 0.83 hours
+- Total execution time: 0.90 hours
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [████████░░] 86%
 | 03-checklist-generation | 4/4 | 21 min | 5 min |
 | 04-crm-integration | 4/4 | 14 min | 4 min |
 | 05-email-drafting | 2/2 | 7 min | 4 min |
-| 01-webhook-foundation | 2/3 | 8 min | 4 min |
+| 01-webhook-foundation | 3/3 | 12 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-04 (4 min), 05-01 (4 min), 05-02 (3 min), 01-01 (3 min), 01-02 (5 min)
+- Last 5 plans: 05-01 (4 min), 05-02 (3 min), 01-01 (3 min), 01-02 (5 min), 01-03 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -87,6 +87,11 @@ Progress: [████████░░] 86%
 - vi.hoisted() for mock variables in Vitest 4 (factory functions hoisted above const declarations)
 - extractApplicationId exported for direct unit testing of payload shape handling
 - createApp factory pattern for Express test isolation (fresh instance per test)
+- processJob exported directly for unit testing without BullMQ Worker infrastructure
+- Single process for server + worker (appropriate for <10 webhooks/day scale)
+- Shutdown order: HTTP server -> worker -> queue (prevents orphan connections)
+- Worker concurrency 1 (sequential processing, sufficient for current volume)
+- Kill switch checked at both webhook and worker layers (belt-and-suspenders defense)
 
 ### Pending Todos
 
@@ -114,22 +119,23 @@ None yet.
 - createEmailDraft and sendEmailDraft ready for Phase 1 webhook handler
 - Gmail API requires service account setup before live testing (GCP project, delegation, env var)
 
-**Phase 1 (Webhook Foundation):** IN PROGRESS
+**Phase 1 (Webhook Foundation):** COMPLETE
 - 01-01 complete: shared config, webhook types, PII sanitizer (28 tests)
 - 01-02 complete: Express webhook receiver, BullMQ queue, health check (16 tests)
-- 169 total tests pass (44 webhook + 125 prior)
-- Next: 01-03 (worker)
+- 01-03 complete: Finmo client, worker pipeline orchestrator, entry point (14 tests)
+- 183 total tests pass (58 webhook + 125 prior)
+- Full pipeline: webhook POST -> BullMQ -> worker -> Finmo API -> checklist -> CRM -> email draft
 
 **Phase 7 (Classification & Filing):**
 - Decision needed: reuse existing mortgage.ai PDF classification code or build new classifier
 
 ## Session Continuity
 
-Last session: 2026-02-14 (plan execution)
-Stopped at: Completed 01-02-PLAN.md — webhook receiver, BullMQ queue, health check
+Last session: 2026-02-13 (plan execution)
+Stopped at: Completed 01-03-PLAN.md — Phase 1 complete (worker, entry point)
 Resume file: None
-Next: 01-03-PLAN.md (worker)
+Next: Phase 1 complete. Next phase TBD (deployment/infrastructure or Phase 6+)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-14 (01-02 complete, Phase 1 in progress)*
+*Last updated: 2026-02-13 (01-03 complete, Phase 1 COMPLETE)*
