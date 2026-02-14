@@ -37,7 +37,7 @@ export const DOC_TRACKING_FIELD_DEFS = [
     envKey: 'GHL_FIELD_DOC_STATUS_ID',
     name: 'Doc Collection Status',
     dataType: 'SINGLE_OPTIONS' as const,
-    picklistOptions: ['Not Started', 'In Progress', 'PRE Complete', 'All Complete'],
+    options: ['Not Started', 'In Progress', 'PRE Complete', 'All Complete'],
   },
   {
     envKey: 'GHL_FIELD_DOC_REQUEST_SENT_ID',
@@ -47,12 +47,12 @@ export const DOC_TRACKING_FIELD_DEFS = [
   {
     envKey: 'GHL_FIELD_MISSING_DOCS_ID',
     name: 'Missing Docs',
-    dataType: 'LONG_TEXT' as const,
+    dataType: 'LARGE_TEXT' as const,
   },
   {
     envKey: 'GHL_FIELD_RECEIVED_DOCS_ID',
     name: 'Received Docs',
-    dataType: 'LONG_TEXT' as const,
+    dataType: 'LARGE_TEXT' as const,
   },
   {
     envKey: 'GHL_FIELD_PRE_TOTAL_ID',

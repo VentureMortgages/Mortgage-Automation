@@ -43,7 +43,7 @@ interface CreateFieldPayload {
   dataType: string;
   model: string;
   parentId: string;
-  picklistOptions?: readonly string[];
+  options?: string[];
 }
 
 interface CreateFieldResponse {
@@ -71,8 +71,8 @@ async function createField(
     parentId: payload.parentId,
   };
 
-  if (payload.picklistOptions && payload.picklistOptions.length > 0) {
-    body.picklistOptions = [...payload.picklistOptions];
+  if (payload.options && payload.options.length > 0) {
+    body.options = [...payload.options];
   }
 
   const response = await fetch(url, {
@@ -132,11 +132,10 @@ async function main(): Promise<void> {
       dataType: fieldDef.dataType,
       model: 'contact',
       parentId: FIELD_GROUP_ID,
+      ...('options' in fieldDef && fieldDef.options
+        ? { options: [...fieldDef.options] }
+        : {}),
     };
-
-    if ('picklistOptions' in fieldDef && fieldDef.picklistOptions) {
-      payload.picklistOptions = fieldDef.picklistOptions;
-    }
 
     const result = await createField(payload);
 

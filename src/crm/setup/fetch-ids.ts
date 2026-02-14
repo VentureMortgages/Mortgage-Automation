@@ -65,8 +65,9 @@ async function fetchPipelines(): Promise<Pipeline[]> {
 }
 
 function findStage(pipeline: Pipeline, stageName: string): PipelineStage | undefined {
+  // GHL stage names may have a leading '*' prefix — strip it for comparison
   return pipeline.stages.find(
-    (s) => s.name.toLowerCase() === stageName.toLowerCase()
+    (s) => s.name.replace(/^\*/, '').trim().toLowerCase() === stageName.toLowerCase()
   );
 }
 
