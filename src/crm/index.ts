@@ -42,3 +42,7 @@ export {
   computeDocStatus,
   buildChecklistSummary,
 } from './checklist-mapper.js';
+
+// Orchestrator — main entry point for webhook handler
+export { syncChecklistToCrm } from './checklist-sync.js';
+export type { SyncChecklistInput, SyncChecklistResult } from './checklist-sync.js';

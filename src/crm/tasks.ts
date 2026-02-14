@@ -17,16 +17,27 @@ import { CrmApiError, CrmAuthError, CrmRateLimitError } from './errors.js';
  *
  * @param contactId - The CRM contact ID to attach the task to
  * @param borrowerName - Display name for the task title (visible in CRM, not a log)
+ * @param checklistSummary - Optional checklist summary to include in the task body
  * @returns The created task ID
  */
-export async function createReviewTask(contactId: string, borrowerName: string): Promise<string> {
+export async function createReviewTask(
+  contactId: string,
+  borrowerName: string,
+  checklistSummary?: string,
+): Promise<string> {
   if (!crmConfig.userIds.cat) {
     throw new Error('Cat user ID not configured — run setup/fetch-ids.ts first');
   }
 
+  const defaultBody =
+    'Generated checklist ready for review. Check custom fields for document list. Edit and send email when ready.';
+  const taskBody = checklistSummary
+    ? `${defaultBody}\n\n--- Checklist Summary ---\n${checklistSummary}`
+    : defaultBody;
+
   const body = {
     title: devPrefix(`Review doc request — ${borrowerName}`),
-    body: 'Generated checklist ready for review. Check custom fields for document list. Edit and send email when ready.',
+    body: taskBody,
     assignedTo: crmConfig.userIds.cat,
     dueDate: addBusinessDays(new Date(), 1).toISOString(),
     completed: false,
