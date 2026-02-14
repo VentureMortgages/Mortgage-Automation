@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 4 - CRM Integration (COMPLETE)
+**Current focus:** Phase 5 - Email Drafting (IN PROGRESS)
 
 ## Current Position
 
-Phase: 4 of 9 (CRM Integration)
-Plan: 4 of 4 complete
-Status: Phase Complete
-Last activity: 2026-02-14 — Completed 04-04 (CRM orchestrator + test suite)
+Phase: 5 of 9 (Email Drafting)
+Plan: 1 of 2 complete
+Status: In Progress
+Last activity: 2026-02-13 — Completed 05-01 (email body generator + MIME encoder)
 
-Progress: [████████░░] 73%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: 4 min
-- Total execution time: 0.58 hours
+- Total execution time: 0.65 hours
 
 **By Phase:**
 
@@ -29,9 +29,10 @@ Progress: [████████░░] 73%
 |-------|-------|-------|----------|
 | 03-checklist-generation | 4/4 | 21 min | 5 min |
 | 04-crm-integration | 4/4 | 14 min | 4 min |
+| 05-email-drafting | 1/2 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-04 (8 min), 04-01 (5 min), 04-02 (3 min), 04-03 (2 min), 04-04 (4 min)
+- Last 5 plans: 04-01 (5 min), 04-02 (3 min), 04-03 (2 min), 04-04 (4 min), 05-01 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -68,6 +69,10 @@ Progress: [████████░░] 73%
 - Optional checklistSummary parameter added to createReviewTask (backward-compatible extension)
 - SyncChecklistResult uses optional fields + errors array for partial failure reporting
 - Noon UTC timestamps (T12:00:00Z) in date tests to prevent timezone-related day-of-week shifts
+- Section-based body generation (array of sections joined by blank lines) for clean email formatting
+- Named constants for intro and closing paragraphs (easy for Cat to edit wording)
+- Body uses \n internally; MIME encoder converts to CRLF (separation of concerns)
+- Test greeting assertion checks greeting line only, not full body (avoids false positives)
 
 ### Pending Todos
 
@@ -89,7 +94,9 @@ None yet.
 - syncChecklistToCrm ready for Phase 1 webhook handler
 - CRM setup scripts must be run against live CRM before runtime operations work
 
-**Phase 5 (Email Drafting):**
+**Phase 5 (Email Drafting):** IN PROGRESS
+- Plan 01 complete: email body generator + MIME encoder (21 tests, 114 total)
+- Plan 02 remaining: Gmail API integration (draft creation, sending)
 - OAuth delegation setup for Gmail/Drive needs confirmation (service account vs user OAuth)
 
 **Phase 7 (Classification & Filing):**
@@ -97,11 +104,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-14 (plan execution)
-Stopped at: Completed 04-04-PLAN.md — CRM orchestrator + test suite (Phase 4 complete)
+Last session: 2026-02-13 (plan execution)
+Stopped at: Completed 05-01-PLAN.md — email body generator + MIME encoder
 Resume file: None
-Next: Phase 5 (Email Drafting) or next priority phase
+Next: 05-02-PLAN.md (Gmail API draft creation + sending)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-14 (04-04 complete, Phase 4 complete)*
+*Last updated: 2026-02-13 (05-01 complete)*
