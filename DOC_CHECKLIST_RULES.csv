@@ -1,0 +1,132 @@
+Category,Document,Condition,Required,Notes
+ALWAYS REQUIRED,Government-issued photo ID,All applications,REQUIRED,"Driver's license OR passport (front + back). Health cards NOT accepted."
+ALWAYS REQUIRED,Second form of ID,All applications,REQUIRED,"Passport, credit card, PR card, SIN card, birth certificate, firearms license"
+ALWAYS REQUIRED,Void cheque OR direct deposit form,All applications,REQUIRED,For mortgage payment setup
+ALWAYS REQUIRED,Signed authorization/consent,All applications,REQUIRED,"For credit check, employment verification, document collection"
+INCOME - EMPLOYED,Recent paystub (within 30 days),Employment Type = Employed,REQUIRED,Must show YTD earnings
+INCOME - EMPLOYED,Letter of Employment (LOE),Employment Type = Employed,REQUIRED,"Must include: position, start date, salary, full-time/part-time, guaranteed hours"
+INCOME - EMPLOYED,T4 - Current year,Employment Type = Employed,REQUIRED,If available (may not be available early in year)
+INCOME - EMPLOYED,T4 - Previous year,Employment Type = Employed,REQUIRED,For 2-year income history
+INCOME - EMPLOYED,Notice of Assessment (NOA) - Current,Employment Type = Employed,IF REQUESTED,Some lenders require to verify no taxes owing
+INCOME - EMPLOYED,Notice of Assessment (NOA) - Previous,Employment Type = Employed,IF REQUESTED,For income verification
+INCOME - EMPLOYED (CONTRACT),Employment contract,Employment Type = Contract/Seasonal,REQUIRED,"Showing term, rate, renewal likelihood"
+INCOME - EMPLOYED (CONTRACT),2 years of T4s,Employment Type = Contract/Seasonal,REQUIRED,To establish income history
+INCOME - SELF-EMPLOYED,T1 General (full tax return) - Current year,Employment Type = Self-Employed,REQUIRED,Complete return with all schedules
+INCOME - SELF-EMPLOYED,T1 General (full tax return) - Previous year,Employment Type = Self-Employed,REQUIRED,2-year history required
+INCOME - SELF-EMPLOYED,Notice of Assessment (NOA) - Current year,Employment Type = Self-Employed,REQUIRED,Confirms income reported to CRA
+INCOME - SELF-EMPLOYED,Notice of Assessment (NOA) - Previous year,Employment Type = Self-Employed,REQUIRED,2-year history
+INCOME - SELF-EMPLOYED,Business license/registration,Employment Type = Self-Employed,REQUIRED,Proof business is active
+INCOME - SELF-EMPLOYED,T4 (if paying self a salary),Employment Type = Self-Employed + Incorporated,IF APPLICABLE,For incorporated individuals
+INCOME - SELF-EMPLOYED (SOLE PROP),T2125 (Statement of Business Activities),Business Structure = Sole Proprietor,REQUIRED,Shows business income/expenses
+INCOME - SELF-EMPLOYED (INCORPORATED),Articles of Incorporation,Business Structure = Incorporated,REQUIRED,Proof of corporate structure
+INCOME - SELF-EMPLOYED (INCORPORATED),T2 Corporate Tax Return (2 years),Business Structure = Incorporated,REQUIRED,Corporate financials
+INCOME - SELF-EMPLOYED (INCORPORATED),Accountant-prepared financial statements,Business Structure = Incorporated,REQUIRED,"Balance sheet, income statement"
+INCOME - SELF-EMPLOYED (INCORPORATED),Business bank statements (6-12 months),Business Structure = Incorporated,IF REQUESTED,Shows cash flow
+INCOME - SELF-EMPLOYED (STATED INCOME),Business bank statements (6-12 months),B Lender / Stated Income Program,REQUIRED,Shows consistent deposits
+INCOME - SELF-EMPLOYED (STATED INCOME),Personal bank statements (3 months),B Lender / Stated Income Program,REQUIRED,Shows personal cash flow
+INCOME - SELF-EMPLOYED (STATED INCOME),Business registration,B Lender / Stated Income Program,REQUIRED,Proof of active business
+INCOME - SELF-EMPLOYED (STATED INCOME),Signed income declaration,B Lender / Stated Income Program,REQUIRED,Borrower declares income (must be reasonable for industry)
+INCOME - RETIRED,Pension statement (government or private),Employment Type = Retired,REQUIRED,Most recent statement
+INCOME - RETIRED,CPP/OAS statement,Employment Type = Retired + Receiving CPP/OAS,IF APPLICABLE,If receiving Canada Pension
+INCOME - RETIRED,Notice of Assessment (NOA),Employment Type = Retired,REQUIRED,Confirms income
+INCOME - RETIRED,RRIF/Annuity statement,Employment Type = Retired + Has RRIF/Annuity,IF APPLICABLE,If receiving payments
+INCOME - RETIRED,Investment/dividend income statements,Employment Type = Retired + Investment Income,IF APPLICABLE,If using as qualifying income
+INCOME - MATERNITY,LOE confirming return date,On Maternity/Parental Leave,REQUIRED,Must show guaranteed return to work
+INCOME - MATERNITY,Pre-leave paystub,On Maternity/Parental Leave,REQUIRED,Shows regular income
+INCOME - MATERNITY,EI statement,On Maternity/Parental Leave,IF APPLICABLE,Shows current maternity benefits
+INCOME - PROBATION,LOE with probation details,In Probationary Period,REQUIRED,Some lenders decline if in probation
+INCOME - PROBATION,Previous employment history,In Probationary Period,REQUIRED,Shows stability
+VARIABLE INCOME - COMMISSION,T4 history (2 years) showing commission,Has Commission Income,REQUIRED,Commission is part of compensation
+VARIABLE INCOME - COMMISSION,Letter from employer confirming commission structure,Commission > 20% of total income,REQUIRED,Commission structure confirmation
+VARIABLE INCOME - COMMISSION,Commission statements (YTD + previous year),Has Commission Income,REQUIRED,To verify current earnings
+VARIABLE INCOME - BONUS,T4 history (2 years) showing bonus,Has Bonus Income,REQUIRED,Bonus claimed as qualifying income
+VARIABLE INCOME - BONUS,Letter confirming bonus structure,Has Bonus Income,IF APPLICABLE,If discretionary vs guaranteed
+VARIABLE INCOME - BONUS,Bonus payment history,Has Bonus Income,REQUIRED,To show consistency
+VARIABLE INCOME - RENTAL,T776 (Statement of Real Estate Rentals),Has Rental Income,REQUIRED,Rental income on tax return
+VARIABLE INCOME - RENTAL,Current lease agreement(s),Has Rental Income,REQUIRED,All rental properties
+VARIABLE INCOME - RENTAL,T1 General showing rental income,Has Rental Income,REQUIRED,2-year history preferred
+VARIABLE INCOME - RENTAL,Rental property mortgage statement,Has Rental Income + Mortgaged Property,IF APPLICABLE,If mortgaged
+VARIABLE INCOME - RENTAL,Property tax bills for rental,Has Rental Income,REQUIRED,To calculate net rental income
+VARIABLE INCOME - SUPPORT (RECEIVING),Separation agreement OR court order,Receiving Child/Spousal Support,REQUIRED,Using support as income
+VARIABLE INCOME - SUPPORT (RECEIVING),Proof of receipt (bank statements 12 months),Receiving Child/Spousal Support,REQUIRED,Must show consistent payments received
+VARIABLE INCOME - SUPPORT (RECEIVING),Divorce decree (if applicable),Divorced,IF APPLICABLE,Final divorce documentation
+VARIABLE INCOME - OTHER,Disability income - Award letter + payment statement,Has Disability Income,REQUIRED,Award letter and recent payment statement
+VARIABLE INCOME - OTHER,Social assistance - Current benefit statement,Has Social Assistance Income,REQUIRED,Current benefit statement
+VARIABLE INCOME - OTHER,Trust income - Trust documents + payment history,Has Trust Income,REQUIRED,"Trust documents, payment history"
+VARIABLE INCOME - OTHER,Investment/dividend income - Statements + T5 slips,Has Investment/Dividend Income,REQUIRED,"Investment statements, T5 slips, 2-year history"
+LIABILITIES,Current mortgage statement(s),Owns Other Properties,REQUIRED,If owning other properties
+LIABILITIES,Line of credit statements,Has LOC,REQUIRED,All LOCs
+LIABILITIES,Credit card statements,Has Credit Card Balances,REQUIRED,If balances > $0
+LIABILITIES,Car loan/lease statements,Has Auto Financing,REQUIRED,Active auto financing
+LIABILITIES,Student loan statements,Has Student Debt,REQUIRED,Outstanding student debt
+LIABILITIES,Personal loan statements,Has Personal Loans,REQUIRED,Any personal loans
+LIABILITIES - SUPPORT (PAYING),Separation agreement OR court order,Paying Child/Spousal Support,REQUIRED,Paying child/spousal support
+LIABILITIES - SUPPORT (PAYING),Proof of payments made (12 months),Paying Child/Spousal Support,REQUIRED,Bank statements showing transfers
+DIVORCE/SEPARATION,Separation agreement (signed),Separated or Divorced,REQUIRED,Separated or divorced
+DIVORCE/SEPARATION,Divorce decree/certificate,Divorced,IF APPLICABLE,If divorce finalized
+DIVORCE/SEPARATION,Property settlement documentation,Dividing Assets,IF APPLICABLE,If dividing assets
+DIVORCE/SEPARATION,Spousal buyout agreement,Buying Out Ex-Spouse,IF APPLICABLE,If buying out ex-spouse
+BANKRUPTCY/CONSUMER PROPOSAL,Certificate of discharge (bankruptcy),Prior Bankruptcy,REQUIRED,Prior bankruptcy
+BANKRUPTCY/CONSUMER PROPOSAL,Certificate of full performance (consumer proposal),Prior Consumer Proposal,REQUIRED,Completed consumer proposal
+BANKRUPTCY/CONSUMER PROPOSAL,Equifax AND TransUnion credit reports,Prior Bankruptcy or Consumer Proposal,REQUIRED,To verify clean since discharge
+BANKRUPTCY/CONSUMER PROPOSAL,Explanation letter,Prior Bankruptcy or Consumer Proposal,REQUIRED,"What caused it, how improved"
+DOWN PAYMENT - SAVINGS,90-day bank statement history,Down Payment Source = Savings,REQUIRED,Savings or chequing account
+DOWN PAYMENT - SAVINGS,Large deposit explanations,Down Payment Source = Savings + Large Deposits,IF APPLICABLE,If any deposits > regular income pattern
+DOWN PAYMENT - RRSP,RRSP statement (90 days),Down Payment Source = RRSP (HBP),REQUIRED,Home Buyers Plan
+DOWN PAYMENT - RRSP,Form T1036 (HBP Withdrawal Request),Down Payment Source = RRSP (HBP),REQUIRED,HBP withdrawal form
+DOWN PAYMENT - RRSP,Proof of first-time buyer status,Down Payment Source = RRSP (HBP),REQUIRED,See CMHC definition
+DOWN PAYMENT - TFSA,TFSA statement (90 days),Down Payment Source = TFSA,REQUIRED,TFSA statement
+DOWN PAYMENT - FHSA,FHSA statement,Down Payment Source = FHSA,REQUIRED,First Home Savings Account
+DOWN PAYMENT - FHSA,Withdrawal confirmation,Down Payment Source = FHSA,REQUIRED,FHSA withdrawal
+DOWN PAYMENT - GIFT,Gift letter (signed by donor),Down Payment Source = Gift,REQUIRED,Must state gift is non-repayable
+DOWN PAYMENT - GIFT,Donor's proof of funds,Down Payment Source = Gift,REQUIRED,Bank statement showing they have funds
+DOWN PAYMENT - GIFT,Wire transfer confirmation OR bank draft,Down Payment Source = Gift,REQUIRED,Proof gift was transferred
+DOWN PAYMENT - GIFT,Relationship declaration,Down Payment Source = Gift,REQUIRED,Must be from immediate family
+DOWN PAYMENT - SALE OF PROPERTY,Accepted offer / sale agreement,Down Payment Source = Sale of Property,REQUIRED,Sale of existing property
+DOWN PAYMENT - SALE OF PROPERTY,MLS listing,Down Payment Source = Sale of Property,IF APPLICABLE,If applicable
+DOWN PAYMENT - SALE OF PROPERTY,Lawyer's statement of adjustments,Down Payment Source = Sale of Property,REQUIRED,Shows net proceeds
+DOWN PAYMENT - INHERITANCE,Estate documents / will,Down Payment Source = Inheritance,REQUIRED,Inheritance
+DOWN PAYMENT - INHERITANCE,Executor letter,Down Payment Source = Inheritance,REQUIRED,From executor
+DOWN PAYMENT - INHERITANCE,Bank statement showing receipt,Down Payment Source = Inheritance,REQUIRED,Proof of receipt
+DOWN PAYMENT - NON-TRADITIONAL,Unsecured LOC or personal loan statement,Down Payment Source = Borrowed (High-Ratio),REQUIRED,If using borrowed funds
+DOWN PAYMENT - NON-TRADITIONAL,Strong credit history evidence,Down Payment Source = Borrowed (High-Ratio),REQUIRED,Required for approval
+PROPERTY - PURCHASE,Accepted Offer to Purchase / Agreement of Purchase and Sale,Application Type = Purchase,REQUIRED,Signed by all parties
+PROPERTY - PURCHASE,MLS listing,Application Type = Purchase,IF AVAILABLE,If available
+PROPERTY - PURCHASE,Feature sheet,Application Type = Purchase,IF AVAILABLE,If available
+PROPERTY - PURCHASE,Home inspection report,Application Type = Purchase,RECOMMENDED,Not always required by lender
+PROPERTY - REFINANCE,Current mortgage statement,Application Type = Refinance,REQUIRED,"Shows balance, rate, maturity, lender"
+PROPERTY - REFINANCE,Property tax bill (most recent),Application Type = Refinance,REQUIRED,Most recent
+PROPERTY - REFINANCE,Home insurance declaration page,Application Type = Refinance,REQUIRED,Current insurance
+PROPERTY - REFINANCE,Payout statement (from current lender),Application Type = Refinance,AT CLOSING,At closing
+PROPERTY - CONDO,Status Certificate (Ontario) / Strata Form B (BC),Property Type = Condo,REQUIRED,Must be dated within 30 days of closing
+PROPERTY - CONDO,Condo corporation financial statements,Property Type = Condo,INCLUDED,Included in status cert
+PROPERTY - CONDO,Reserve fund study,Property Type = Condo,INCLUDED,Included in status cert
+PROPERTY - CONDO,Declaration + by-laws + rules,Property Type = Condo,INCLUDED,Included in status cert
+PROPERTY - CONDO,Insurance certificate,Property Type = Condo,INCLUDED,Included in status cert
+PROPERTY - MULTI-UNIT,All current lease agreements,Property Type = Multi-unit (Duplex/Triplex/Fourplex),REQUIRED,All units
+PROPERTY - MULTI-UNIT,Rent roll (list of units + tenants + rents),Property Type = Multi-unit,REQUIRED,List of units
+PROPERTY - MULTI-UNIT,T776 if currently renting,Property Type = Multi-unit + Currently Renting,REQUIRED,If currently renting
+PROPERTY - MULTI-UNIT,Appraisal (lender ordered),Property Type = Multi-unit,REQUIRED,Lender ordered
+PROPERTY - INVESTMENT,All documents from Multi-unit above,Property Type = Investment (Non-Owner-Occupied),REQUIRED,Same as multi-unit
+PROPERTY - INVESTMENT,Proof of other income (not just rental),Property Type = Investment,REQUIRED,Must qualify without full rental income
+PROPERTY - INVESTMENT,Appraisal,Property Type = Investment,REQUIRED,Lender ordered
+NEWCOMER (PR < 5 YEARS),Permanent Resident Card,Residency = Newcomer (PR < 5 years),REQUIRED,PR card
+NEWCOMER (PR < 5 YEARS),Landing papers (IMM form),Residency = Newcomer,REQUIRED,Landing papers
+NEWCOMER (PR < 5 YEARS),Passport,Residency = Newcomer,REQUIRED,Passport
+NEWCOMER (PR < 5 YEARS),Proof of entry date to Canada,Residency = Newcomer,REQUIRED,Entry date
+NEWCOMER (PR < 5 YEARS),Canadian employment (3+ months),Residency = Newcomer,REQUIRED,3+ months Canadian employment
+NEWCOMER (PR < 5 YEARS),International credit report OR 12 months Canadian payment history,Residency = Newcomer,REQUIRED,Credit history
+NEWCOMER (PR < 5 YEARS),Down payment source verification (may need foreign bank statements),Residency = Newcomer,REQUIRED,May need foreign statements
+WORK PERMIT,Valid work permit (12+ months remaining),Residency = Work Permit,REQUIRED,Must have 12+ months remaining
+WORK PERMIT,SIN card (starting with 9),Residency = Work Permit,REQUIRED,SIN starting with 9
+WORK PERMIT,Passport,Residency = Work Permit,REQUIRED,Passport
+WORK PERMIT,Canadian employment letter,Residency = Work Permit,REQUIRED,Canadian employment
+WORK PERMIT,International credit report or reference letter from home country bank,Residency = Work Permit,REQUIRED,Credit reference
+NON-RESIDENT (FOREIGN BUYER),Passport,Residency = Non-Resident,REQUIRED,BANNED UNTIL 2027 (with exceptions)
+NON-RESIDENT (FOREIGN BUYER),Proof of foreign income (pay stubs + tax returns + employer letter),Residency = Non-Resident,REQUIRED,Foreign income proof
+NON-RESIDENT (FOREIGN BUYER),International credit report,Residency = Non-Resident,REQUIRED,International credit
+NON-RESIDENT (FOREIGN BUYER),Letter from foreign bank (good standing),Residency = Non-Resident,REQUIRED,Bank reference
+NON-RESIDENT (FOREIGN BUYER),Down payment proof (foreign bank statements),Residency = Non-Resident,REQUIRED,Foreign bank statements
+NON-RESIDENT (FOREIGN BUYER),Canadian lawyer for ILA,Residency = Non-Resident,REQUIRED,Independent Legal Advice
+FIRST-TIME BUYER,Declaration of first-time buyer status,First-Time Buyer = Yes,REQUIRED,Declaration
+FIRST-TIME BUYER,No property ownership in past 4 years (self or spouse),First-Time Buyer = Yes,MUST CONFIRM,Confirmation required

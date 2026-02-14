@@ -1,8 +1,20 @@
 node_modules/
 dist/
 
+# Secrets and credentials
 .env
 .env.*
 !.env.example
+SESSION_CONTEXT*.md
+
+# Local Claude config
+.claude/
+
+# Large/binary files
+Recordings/
+*.pdf
+
+# Test artifacts
 *.sample.json
 finmo_app_sample.json
+tests/e2e/form-screenshot.png
