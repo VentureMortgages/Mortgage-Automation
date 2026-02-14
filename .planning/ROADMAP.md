@@ -13,7 +13,7 @@ This roadmap transforms Venture Mortgages' manual document collection workflow i
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Webhook Foundation** - Reliable webhook receiver with async queue processing and idempotency
-- [ ] **Phase 2: CRM Exploration** - Understand MyBrokerPro setup and design integration strategy
+- [x] **Phase 2: CRM Exploration** - Understand MyBrokerPro setup and design integration strategy
 - [x] **Phase 3: Checklist Generation** - Auto-generate personalized doc request from Finmo application
 - [x] **Phase 4: CRM Integration** - Create contacts, tasks, and track checklist status in MyBrokerPro
 - [x] **Phase 5: Email Drafting** - Generate and send doc request emails from admin@venturemortgages.com
@@ -118,10 +118,13 @@ Plans:
   2. Documents uploaded via Finmo portal by client are detected via webhook or API polling
   3. PDF, image, and Word document attachments are successfully extracted from emails
   4. Non-PDF documents (images, Word) are automatically converted to PDF before processing
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] 06-01: TBD during planning
+- [ ] 06-01-PLAN.md — Intake types, config, and Gmail client refactor (readonly scope + impersonation)
+- [ ] 06-02-PLAN.md — PDF converter TDD (image-to-PDF via pdf-lib, Word flagged for manual review)
+- [ ] 06-03-PLAN.md — Gmail reader (history-based polling) and attachment extractor (MIME walking)
+- [ ] 06-04-PLAN.md — Gmail monitor scheduler, Finmo doc handler, intake worker, barrel export
 
 ### Phase 7: Classification & Filing
 **Goal**: System classifies documents by type, renames using Cat's convention, and files to correct Google Drive folder
@@ -173,7 +176,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Webhook Foundation | 3/3 | Complete | 2026-02-13 |
-| 2. CRM Exploration | 0/TBD | Not started | - |
+| 2. CRM Exploration | N/A | Complete (via Phase 4) | 2026-02-13 |
 | 3. Checklist Generation | 4/4 | Complete | 2026-02-13 |
 | 4. CRM Integration | 4/4 | Complete | 2026-02-13 |
 | 5. Email Drafting | 2/2 | Complete | 2026-02-14 |
