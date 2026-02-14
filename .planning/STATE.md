@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 6 of 9 (Document Intake)
-Plan: 2 of 4 complete
+Plan: 3 of 4 complete
 Status: In Progress
-Last activity: 2026-02-14 — Completed 06-02 (PDF converter with pdf-lib, TDD)
+Last activity: 2026-02-14 — Completed 06-03 (Gmail reader & attachment extractor)
 
-Progress: [█████░░░░░] 50%
+Progress: [███████░░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: 4 min
-- Total execution time: 1.03 hours
+- Total execution time: 1.08 hours
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [█████░░░░░] 50%
 | 04-crm-integration | 4/4 | 14 min | 4 min |
 | 05-email-drafting | 2/2 | 7 min | 4 min |
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
-| 06-document-intake | 2/4 | 8 min | 4 min |
+| 06-document-intake | 3/4 | 11 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (3 min), 01-02 (5 min), 01-03 (4 min), 06-01 (3 min), 06-02 (5 min)
+- Last 5 plans: 01-02 (5 min), 01-03 (4 min), 06-01 (3 min), 06-02 (5 min), 06-03 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -100,6 +100,11 @@ Progress: [█████░░░░░] 50%
 - Buffer-to-Uint8Array conversion before pdf-lib embed calls (pdf-lib marker scanning fails on Node.js Buffer)
 - Word documents throw ConversionError instead of auto-converting (LibreOffice system dep deferred)
 - Minimal valid JPEG/PNG hex fixtures for deterministic tests (no external test image files)
+- Gmail client passed as parameter to reader functions (pure, testable without module mocking)
+- Stale historyId detected by HTTP 404 or 'notFound' in error message (Gmail returns either)
+- Parallel fallback: messages.list + getProfile called with Promise.all on stale historyId
+- Parts without filename skipped in attachment extraction (inline text/HTML are not file attachments)
+- Default mimeType to application/octet-stream when MIME part has no mimeType field
 
 ### Pending Todos
 
@@ -137,10 +142,12 @@ None yet.
 **Phase 6 (Document Intake):** IN PROGRESS
 - 06-01 complete: intake types, config, Gmail readonly client (0 new tests, 183 existing pass)
 - 06-02 complete: PDF converter with pdf-lib, TDD (15 new tests, 198 total pass)
+- 06-03 complete: Gmail reader & attachment extractor (25 new tests, 223 total pass)
 - Type contracts established for all Phase 6 plans
 - getGmailReadonlyClient ready for inbox monitoring
 - SUPPORTED_MIME_TYPES covers PDF, images, Word docs
 - convertToPdf ready for intake-worker integration (Plan 04)
+- Full Gmail reading pipeline: pollForNewMessages + getMessageDetails + extractAttachments + downloadAttachment
 
 **Phase 7 (Classification & Filing):**
 - Decision needed: reuse existing mortgage.ai PDF classification code or build new classifier
@@ -148,10 +155,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-14 (plan execution)
-Stopped at: Completed 06-02-PLAN.md — PDF converter with pdf-lib (TDD)
+Stopped at: Completed 06-03-PLAN.md — Gmail reader & attachment extractor
 Resume file: None
-Next: 06-03-PLAN.md (Gmail monitor, attachment extraction)
+Next: 06-04-PLAN.md (Intake monitor/worker)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-14 (06-02 complete, Phase 6 50%)*
+*Last updated: 2026-02-14 (06-03 complete, Phase 6 75%)*
