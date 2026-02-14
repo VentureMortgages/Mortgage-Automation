@@ -8,17 +8,28 @@
  * The client auto-detects which mode to use based on which env vars are set.
  * OAuth2 is checked first (preferred for dev), then service account.
  *
+ * Provides two client types:
+ * - getGmailClient(): compose-scoped client for draft creation/sending (Phase 5)
+ * - getGmailReadonlyClient(impersonateAs): readonly-scoped client for inbox monitoring (Phase 6)
+ *
  * Error handling:
  * - Auth errors (401, 403, "Delegation denied") throw GmailAuthError
  *   for downstream INFRA-05 alerting
  * - Other API errors propagate as-is
  *
- * Internal module — not exported from barrel. Consumers use draft.ts and send.ts.
+ * Internal module — not exported from barrel. Consumers use draft.ts, send.ts,
+ * and intake modules.
  */
 
 import { google } from 'googleapis';
 import { JWT, OAuth2Client } from 'google-auth-library';
 import { emailConfig } from './config.js';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type GmailClient = ReturnType<typeof google.gmail>;
 
 // ---------------------------------------------------------------------------
 // Error Types
@@ -64,7 +75,11 @@ function createOAuth2Auth(): OAuth2Client {
 // Service Account Auth (production)
 // ---------------------------------------------------------------------------
 
-function createServiceAccountAuth(): JWT {
+/**
+ * Loads and validates the service account key from GOOGLE_SERVICE_ACCOUNT_KEY env var.
+ * Returns the parsed key fields needed for JWT creation.
+ */
+function loadServiceAccountKey(): { client_email: string; private_key: string } {
   const encoded = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   if (!encoded) {
     throw new GmailAuthError(
@@ -83,12 +98,7 @@ function createServiceAccountAuth(): JWT {
       throw new Error('Missing client_email or private_key fields');
     }
 
-    return new JWT({
-      email: parsed.client_email,
-      key: parsed.private_key,
-      scopes: ['https://www.googleapis.com/auth/gmail.compose'],
-      subject: emailConfig.senderAddress,
-    });
+    return { client_email: parsed.client_email, private_key: parsed.private_key };
   } catch (err) {
     if (err instanceof GmailAuthError) throw err;
     throw new GmailAuthError(
@@ -99,28 +109,101 @@ function createServiceAccountAuth(): JWT {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Gmail Client (Lazy Singleton)
-// ---------------------------------------------------------------------------
+function createServiceAccountAuth(scopes: string[], subject: string): JWT {
+  const key = loadServiceAccountKey();
+  return new JWT({
+    email: key.client_email,
+    key: key.private_key,
+    scopes,
+    subject,
+  });
+}
 
-let gmailClient: ReturnType<typeof google.gmail> | null = null;
+// ---------------------------------------------------------------------------
+// Generic Gmail Client Factory (internal)
+// ---------------------------------------------------------------------------
 
 /**
- * Returns an authenticated Gmail API client.
+ * Creates a Gmail API client with the specified scopes and impersonation target.
+ * Used internally by getGmailClient and getGmailReadonlyClient.
+ */
+function createGmailClientForScope(scopes: string[], impersonateAs: string): GmailClient {
+  let auth: OAuth2Client | JWT;
+
+  if (process.env.GOOGLE_REFRESH_TOKEN) {
+    // OAuth2 mode: use refresh token credentials
+    // Note: OAuth2 refresh token is tied to the authorizing user's mailbox.
+    // The impersonateAs parameter is ignored for OAuth2 — the token determines the user.
+    auth = createOAuth2Auth();
+  } else {
+    // Service account mode: create JWT with specified scopes and subject
+    auth = createServiceAccountAuth(scopes, impersonateAs);
+  }
+
+  return google.gmail({ version: 'v1', auth });
+}
+
+// ---------------------------------------------------------------------------
+// Gmail Client Cache (Lazy Singletons)
+// ---------------------------------------------------------------------------
+
+/** Cache key format: "{scope}:{impersonateAs}" */
+const clientCache = new Map<string, GmailClient>();
+
+function getCacheKey(scope: string, impersonateAs: string): string {
+  return `${scope}:${impersonateAs}`;
+}
+
+/**
+ * Returns an authenticated Gmail API client with compose scope.
  * Auto-detects auth mode: OAuth2 refresh token if GOOGLE_REFRESH_TOKEN is set,
  * otherwise service account if GOOGLE_SERVICE_ACCOUNT_KEY is set.
  * Client is lazily initialized and cached for reuse.
+ *
+ * Impersonates emailConfig.senderAddress (admin@/dev@ depending on environment).
  */
-export function getGmailClient(): ReturnType<typeof google.gmail> {
-  if (gmailClient) return gmailClient;
+export function getGmailClient(): GmailClient {
+  const scope = 'https://www.googleapis.com/auth/gmail.compose';
+  const key = getCacheKey(scope, emailConfig.senderAddress);
 
-  // Prefer OAuth2 (dev-friendly), fall back to service account (production)
-  const auth = process.env.GOOGLE_REFRESH_TOKEN
-    ? createOAuth2Auth()
-    : createServiceAccountAuth();
+  const cached = clientCache.get(key);
+  if (cached) return cached;
 
-  gmailClient = google.gmail({ version: 'v1', auth });
-  return gmailClient;
+  const client = createGmailClientForScope([scope], emailConfig.senderAddress);
+  clientCache.set(key, client);
+  return client;
+}
+
+/**
+ * Returns an authenticated Gmail API client with readonly scope.
+ * Used for monitoring inboxes (e.g., docs@venturemortgages.co) in Phase 6.
+ *
+ * @param impersonateAs - Email address of the mailbox to read
+ *   - Service account mode: creates JWT with gmail.readonly scope impersonating this address
+ *   - OAuth2 mode: uses the existing refresh token credentials. If impersonateAs differs
+ *     from the token's authorized user, a warning is logged (API call will fail at runtime)
+ *
+ * Client is lazily initialized and cached per impersonateAs address.
+ */
+export function getGmailReadonlyClient(impersonateAs: string): GmailClient {
+  const scope = 'https://www.googleapis.com/auth/gmail.readonly';
+  const key = getCacheKey(scope, impersonateAs);
+
+  const cached = clientCache.get(key);
+  if (cached) return cached;
+
+  // OAuth2 mode warning: refresh token may not match impersonateAs
+  if (process.env.GOOGLE_REFRESH_TOKEN && impersonateAs !== emailConfig.senderAddress) {
+    console.warn(
+      `[gmail-client] OAuth2 mode: refresh token may not have access to "${impersonateAs}". ` +
+        `Token is typically authorized for "${emailConfig.senderAddress}". ` +
+        'API calls may fail with 403. Use service account mode for cross-mailbox access.',
+    );
+  }
+
+  const client = createGmailClientForScope([scope], impersonateAs);
+  clientCache.set(key, client);
+  return client;
 }
 
 // ---------------------------------------------------------------------------
