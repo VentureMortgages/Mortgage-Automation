@@ -136,10 +136,14 @@ Plans:
   3. When client re-uploads updated version of document, system handles versioning (replaces or versions appropriately)
   4. Documents with low classification confidence (below threshold) are flagged for Cat's manual review instead of auto-filing
   5. System files to existing Google Drive folder structure Cat uses (Mortgage Clients → client folders → subfolders)
-**Plans**: TBD
+**Plans:** 5 plans
 
 Plans:
-- [ ] 07-01: TBD during planning
+- [ ] 07-01-PLAN.md — Install deps (@anthropic-ai/sdk, zod), classification types, Zod schema, config
+- [ ] 07-02-PLAN.md — Finmo document downloader (confirmed API endpoints) + Redis dedup
+- [ ] 07-03-PLAN.md — Claude classifier (structured output TDD), naming module, subfolder router
+- [ ] 07-04-PLAN.md — Google Drive client (service account auth) + filer (folder/file CRUD)
+- [ ] 07-05-PLAN.md — Classification worker, intake queue bridge, barrel export
 
 ### Phase 8: Tracking Integration
 **Goal**: System updates checklist status in MyBrokerPro when documents are received and maintains audit trail
@@ -181,7 +185,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. CRM Integration | 4/4 | Complete | 2026-02-13 |
 | 5. Email Drafting | 2/2 | Complete | 2026-02-14 |
 | 6. Document Intake | 4/4 | Complete | 2026-02-14 |
-| 7. Classification & Filing | 0/TBD | Not started | - |
+| 7. Classification & Filing | 0/5 | Planned | - |
 | 8. Tracking Integration | 0/TBD | Not started | - |
 | 9. Automated Reminders | 0/TBD | Not started | - |
 
