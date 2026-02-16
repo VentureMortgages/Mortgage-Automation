@@ -51,6 +51,10 @@ export {
 // Doc-type matcher — bridges classifier output to checklist document names
 export { findMatchingChecklistDoc } from './doc-type-matcher.js';
 
+// Tracking sync orchestrator (Phase 8) — document-received CRM updates
+export { updateDocTracking, parseContactTrackingFields } from './tracking-sync.js';
+export type { TrackingUpdateInput, TrackingUpdateResult } from './tracking-sync.js';
+
 // Orchestrator — main entry point for webhook handler
 export { syncChecklistToCrm } from './checklist-sync.js';
 export type { SyncChecklistInput, SyncChecklistResult } from './checklist-sync.js';

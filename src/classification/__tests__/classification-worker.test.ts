@@ -89,6 +89,12 @@ const mockTasks = vi.hoisted(() => ({
 
 vi.mock('../../crm/tasks.js', () => mockTasks);
 
+const mockTrackingSync = vi.hoisted(() => ({
+  updateDocTracking: vi.fn(),
+}));
+
+vi.mock('../../crm/tracking-sync.js', () => mockTrackingSync);
+
 vi.mock('../../webhook/queue.js', () => ({
   createRedisConnection: vi.fn(() => ({
     host: 'localhost',
@@ -159,6 +165,13 @@ describe('classification-worker', () => {
     mockFiler.uploadFile.mockResolvedValue('drive-file-789');
     mockContacts.findContactByEmail.mockResolvedValue('contact-abc');
     mockTasks.createReviewTask.mockResolvedValue('task-xyz');
+    mockTrackingSync.updateDocTracking.mockResolvedValue({
+      updated: true,
+      contactId: 'contact-abc',
+      newStatus: 'In Progress',
+      noteId: 'note-xyz',
+      errors: [],
+    });
   });
 
   describe('CLASSIFICATION_QUEUE_NAME', () => {
@@ -315,6 +328,57 @@ describe('classification-worker', () => {
       // Should still return manual review result (CRM failure is non-fatal)
       expect(result.filed).toBe(false);
       expect(result.manualReview).toBe(true);
+      expect(result.error).toBeNull();
+    });
+
+    // -----------------------------------------------------------------
+    // Phase 8: CRM tracking integration tests
+    // -----------------------------------------------------------------
+
+    it('should call updateDocTracking with correct parameters after successful filing', async () => {
+      const job = mockJob();
+      const result = await processClassificationJob(job);
+
+      expect(result.filed).toBe(true);
+      expect(mockTrackingSync.updateDocTracking).toHaveBeenCalledWith({
+        senderEmail: 'client@example.com',
+        documentType: 't4',
+        driveFileId: 'drive-file-789',
+        source: 'gmail',
+        receivedAt: '2026-02-15T12:00:00Z',
+      });
+    });
+
+    it('should not call updateDocTracking when senderEmail is null', async () => {
+      const job = mockJob({ senderEmail: null });
+      const result = await processClassificationJob(job);
+
+      expect(result.filed).toBe(true);
+      expect(mockTrackingSync.updateDocTracking).not.toHaveBeenCalled();
+    });
+
+    it('should not call updateDocTracking when filing fails (low confidence manual review)', async () => {
+      mockClassifier.classifyDocument.mockResolvedValue(
+        mockClassificationResult({ confidence: 0.3 }),
+      );
+
+      const job = mockJob();
+      const result = await processClassificationJob(job);
+
+      expect(result.filed).toBe(false);
+      expect(result.manualReview).toBe(true);
+      expect(mockTrackingSync.updateDocTracking).not.toHaveBeenCalled();
+    });
+
+    it('should still return filed=true even when updateDocTracking throws', async () => {
+      mockTrackingSync.updateDocTracking.mockRejectedValue(new Error('CRM API down'));
+
+      const job = mockJob();
+      const result = await processClassificationJob(job);
+
+      // Tracking failure is non-fatal — doc is already filed to Drive
+      expect(result.filed).toBe(true);
+      expect(result.driveFileId).toBe('drive-file-789');
       expect(result.error).toBeNull();
     });
   });

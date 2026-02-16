@@ -32,6 +32,7 @@ import { getDriveClient } from './drive-client.js';
 import { resolveTargetFolder, uploadFile, findExistingFile, updateFileContent } from './filer.js';
 import { findContactByEmail } from '../crm/contacts.js';
 import { createReviewTask } from '../crm/tasks.js';
+import { updateDocTracking } from '../crm/tracking-sync.js';
 import { DOC_TYPE_LABELS } from './types.js';
 import type { ClassificationJobData, ClassificationJobResult } from './types.js';
 
@@ -218,10 +219,46 @@ export async function processClassificationJob(
       });
     }
 
-    // j. Clean up temp file
+    // j. Update CRM tracking (Phase 8 — non-fatal)
+    if (senderEmail) {
+      try {
+        const trackingResult = await updateDocTracking({
+          senderEmail,
+          documentType: classification.documentType,
+          driveFileId,
+          source,
+          receivedAt: job.data.receivedAt,
+        });
+
+        if (trackingResult.updated) {
+          console.log('[classification] CRM tracking updated:', {
+            contactId: trackingResult.contactId,
+            newStatus: trackingResult.newStatus,
+          });
+        } else {
+          console.log('[classification] CRM tracking skipped:', {
+            reason: trackingResult.reason,
+          });
+        }
+
+        if (trackingResult.errors.length > 0) {
+          console.warn('[classification] Tracking partial errors:', {
+            errors: trackingResult.errors,
+          });
+        }
+      } catch (trackingErr) {
+        // Tracking failure is NON-FATAL — doc is already filed to Drive
+        console.error('[classification] Tracking update failed:', {
+          error: trackingErr instanceof Error ? trackingErr.message : String(trackingErr),
+          intakeDocumentId,
+        });
+      }
+    }
+
+    // k. Clean up temp file
     await unlink(tempFilePath).catch(() => {});
 
-    // k. Return result
+    // l. Return result
     return {
       intakeDocumentId,
       classification,
