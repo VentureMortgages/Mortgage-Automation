@@ -49,5 +49,13 @@ export { getStoredHistoryId, storeHistoryId } from './gmail-monitor.js';
 // Finmo document handler
 export { finmoDocumentHandler } from './finmo-docs.js';
 
+// Finmo document download
+export {
+  downloadFinmoDocument,
+  isDocRequestProcessed,
+  markDocRequestProcessed,
+} from './finmo-downloader.js';
+export type { FinmoDownloadResult } from './finmo-downloader.js';
+
 // Intake worker
 export { createIntakeWorker, processIntakeJob, closeIntakeWorker } from './intake-worker.js';

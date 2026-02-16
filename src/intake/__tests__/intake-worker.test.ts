@@ -8,7 +8,10 @@
  * - Gmail source: attachment exceeds maxAttachmentBytes -> skipped
  * - Gmail source: message with no attachments -> 0 documents
  * - Gmail source: missing gmailMessageId -> 0 documents, error
- * - Finmo source: returns stub result with not-implemented error
+ * - Finmo source: downloads and converts files via finmo-downloader
+ * - Finmo source: skips already-processed doc requests (dedup)
+ * - Finmo source: returns error when documentRequestId is missing
+ * - Finmo source: handles download errors gracefully
  * - IntakeDocument has correct fields (id format, source, senderEmail)
  *
  * All external dependencies are mocked.
@@ -83,6 +86,18 @@ const mockConverter = vi.hoisted(() => ({
 vi.mock('../pdf-converter.js', () => ({
   convertToPdf: mockConverter.convertToPdf,
   ConversionError: mockConverter.ConversionError,
+}));
+
+const mockFinmoDownloader = vi.hoisted(() => ({
+  downloadFinmoDocument: vi.fn(),
+  isDocRequestProcessed: vi.fn(),
+  markDocRequestProcessed: vi.fn(),
+}));
+
+vi.mock('../finmo-downloader.js', () => ({
+  downloadFinmoDocument: mockFinmoDownloader.downloadFinmoDocument,
+  isDocRequestProcessed: mockFinmoDownloader.isDocRequestProcessed,
+  markDocRequestProcessed: mockFinmoDownloader.markDocRequestProcessed,
 }));
 
 vi.mock('../gmail-monitor.js', () => ({
@@ -348,7 +363,17 @@ describe('Intake Worker', () => {
   // -------------------------------------------------------------------------
 
   describe('Finmo source', () => {
-    it('returns stub result with not-implemented error', async () => {
+    it('downloads and converts Finmo files into IntakeDocuments', async () => {
+      mockFinmoDownloader.isDocRequestProcessed.mockResolvedValue(false);
+      mockFinmoDownloader.downloadFinmoDocument.mockResolvedValue([
+        { buffer: Buffer.from('pdf-data'), filename: 'T4-2024.pdf', mimeType: 'application/pdf' },
+      ]);
+      mockFinmoDownloader.markDocRequestProcessed.mockResolvedValue(undefined);
+
+      mockIntakeConfig.getConversionStrategy.mockReturnValue('pdf');
+      const pdfBuf = Buffer.from('converted-pdf');
+      mockConverter.convertToPdf.mockResolvedValue({ pdfBuffer: pdfBuf, converted: false });
+
       const job = createMockJob({
         source: 'finmo',
         applicationId: 'app-123',
@@ -358,10 +383,135 @@ describe('Intake Worker', () => {
 
       const result = await processIntakeJob(job);
 
+      expect(result.documentsProcessed).toBe(1);
+      expect(result.documentIds).toEqual(['finmo-doc-456-0']);
+      expect(result.errors).toHaveLength(0);
+      expect(mockFinmoDownloader.downloadFinmoDocument).toHaveBeenCalledWith('app-123', 'doc-456');
+      expect(mockFinmoDownloader.markDocRequestProcessed).toHaveBeenCalledWith('doc-456');
+    });
+
+    it('skips already-processed doc requests (dedup)', async () => {
+      mockFinmoDownloader.isDocRequestProcessed.mockResolvedValue(true);
+
+      const job = createMockJob({
+        source: 'finmo',
+        applicationId: 'app-123',
+        documentRequestId: 'doc-already',
+        receivedAt: '2026-02-14T00:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
       expect(result.documentsProcessed).toBe(0);
-      expect(result.documentIds).toHaveLength(0);
+      expect(result.errors).toHaveLength(0);
+      expect(mockFinmoDownloader.downloadFinmoDocument).not.toHaveBeenCalled();
+    });
+
+    it('returns error when documentRequestId is missing', async () => {
+      const job = createMockJob({
+        source: 'finmo',
+        applicationId: 'app-123',
+        receivedAt: '2026-02-14T00:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(0);
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('not implemented');
+      expect(result.errors[0]).toContain('missing documentRequestId');
+    });
+
+    it('handles empty download results (no files)', async () => {
+      mockFinmoDownloader.isDocRequestProcessed.mockResolvedValue(false);
+      mockFinmoDownloader.downloadFinmoDocument.mockResolvedValue([]);
+      mockFinmoDownloader.markDocRequestProcessed.mockResolvedValue(undefined);
+
+      const job = createMockJob({
+        source: 'finmo',
+        applicationId: 'app-123',
+        documentRequestId: 'doc-empty',
+        receivedAt: '2026-02-14T00:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(0);
+      expect(result.errors).toHaveLength(0);
+      expect(mockFinmoDownloader.markDocRequestProcessed).toHaveBeenCalledWith('doc-empty');
+    });
+
+    it('catches download errors without crashing', async () => {
+      mockFinmoDownloader.isDocRequestProcessed.mockResolvedValue(false);
+      mockFinmoDownloader.downloadFinmoDocument.mockRejectedValue(new Error('API timeout'));
+
+      const job = createMockJob({
+        source: 'finmo',
+        applicationId: 'app-123',
+        documentRequestId: 'doc-fail',
+        receivedAt: '2026-02-14T00:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Finmo download failed');
+      expect(result.errors[0]).toContain('API timeout');
+    });
+
+    it('handles unsupported MIME type from Finmo file', async () => {
+      mockFinmoDownloader.isDocRequestProcessed.mockResolvedValue(false);
+      mockFinmoDownloader.downloadFinmoDocument.mockResolvedValue([
+        { buffer: Buffer.from('data'), filename: 'spreadsheet.xlsx', mimeType: 'application/vnd.ms-excel' },
+      ]);
+      mockFinmoDownloader.markDocRequestProcessed.mockResolvedValue(undefined);
+
+      mockIntakeConfig.getConversionStrategy.mockReturnValue('unsupported');
+
+      const job = createMockJob({
+        source: 'finmo',
+        applicationId: 'app-123',
+        documentRequestId: 'doc-unsupported',
+        receivedAt: '2026-02-14T00:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Unsupported MIME type from Finmo');
+    });
+
+    it('catches per-file ConversionError without failing the batch', async () => {
+      mockFinmoDownloader.isDocRequestProcessed.mockResolvedValue(false);
+      mockFinmoDownloader.downloadFinmoDocument.mockResolvedValue([
+        { buffer: Buffer.from('docx'), filename: 'letter.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+        { buffer: Buffer.from('pdf'), filename: 'T4.pdf', mimeType: 'application/pdf' },
+      ]);
+      mockFinmoDownloader.markDocRequestProcessed.mockResolvedValue(undefined);
+
+      mockIntakeConfig.getConversionStrategy
+        .mockReturnValueOnce('word-to-pdf')
+        .mockReturnValueOnce('pdf');
+
+      const pdfBuf = Buffer.from('good-pdf');
+      mockConverter.convertToPdf
+        .mockRejectedValueOnce(new mockConverter.ConversionError('WORD_MANUAL_REVIEW', 'Word doc'))
+        .mockResolvedValueOnce({ pdfBuffer: pdfBuf, converted: false });
+
+      const job = createMockJob({
+        source: 'finmo',
+        applicationId: 'app-123',
+        documentRequestId: 'doc-mixed',
+        receivedAt: '2026-02-14T00:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(1);
+      expect(result.documentIds).toEqual(['finmo-doc-mixed-1']);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('WORD_MANUAL_REVIEW');
     });
   });
 });

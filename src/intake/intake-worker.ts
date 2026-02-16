@@ -13,9 +13,11 @@
  * 7. Produce IntakeDocument objects (logged, not yet stored)
  *
  * **Finmo source:**
- * - Stub implementation (returns not-implemented error)
- * - Finmo document download requires undocumented API endpoint
- * - Will be implemented when payload format is confirmed via live testing
+ * 1. Dedup check via Redis (skip already-processed doc requests)
+ * 2. Download files from Finmo API (list detail, signed URL, download)
+ * 3. Convert to PDF (images converted, PDFs pass through)
+ * 4. Produce IntakeDocument objects
+ * 5. Mark doc request as processed in Redis
  *
  * Design:
  * - processIntakeJob is exported for direct unit testing
@@ -38,6 +40,7 @@ import { getGmailReadonlyClient } from '../email/gmail-client.js';
 import { getMessageDetails } from './gmail-reader.js';
 import { extractAttachments, downloadAttachment } from './attachment-extractor.js';
 import { convertToPdf, ConversionError } from './pdf-converter.js';
+import { downloadFinmoDocument, isDocRequestProcessed, markDocRequestProcessed } from './finmo-downloader.js';
 import { INTAKE_QUEUE_NAME } from './gmail-monitor.js';
 import type { IntakeJobData, IntakeResult, IntakeDocument } from './types.js';
 
@@ -174,21 +177,105 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
 }
 
 // ---------------------------------------------------------------------------
-// Finmo Source Processing (Stub)
+// Finmo Source Processing
 // ---------------------------------------------------------------------------
 
-async function processFinmoSource(_job: Job<IntakeJobData>): Promise<IntakeResult> {
-  // Finmo document download requires API calls to /api/v1/document-requests/files
-  // which is undocumented. Phase 6 detects the webhook event and enqueues it.
-  // Actual file download will be implemented when Finmo payload format is confirmed.
+async function processFinmoSource(job: Job<IntakeJobData>): Promise<IntakeResult> {
+  const { applicationId, documentRequestId } = job.data;
+  if (!documentRequestId) {
+    return {
+      documentsProcessed: 0,
+      documentIds: [],
+      errors: ['Finmo source job missing documentRequestId'],
+    };
+  }
+
+  // Dedup check: skip if already processed
+  const alreadyProcessed = await isDocRequestProcessed(documentRequestId);
+  if (alreadyProcessed) {
+    console.log('[intake] Finmo doc request already processed, skipping:', { documentRequestId });
+    return { documentsProcessed: 0, documentIds: [], errors: [] };
+  }
+
+  const errors: string[] = [];
+  const documentIds: string[] = [];
+  const documents: IntakeDocument[] = [];
+
+  try {
+    // Download files from Finmo
+    const downloadResults = await downloadFinmoDocument(
+      applicationId ?? '',
+      documentRequestId,
+    );
+
+    if (downloadResults.length === 0) {
+      console.log('[intake] Finmo doc request has no files:', { documentRequestId });
+      // Still mark as processed to avoid re-checking
+      await markDocRequestProcessed(documentRequestId);
+      return { documentsProcessed: 0, documentIds: [], errors: [] };
+    }
+
+    for (let index = 0; index < downloadResults.length; index++) {
+      const file = downloadResults[index];
+      try {
+        // Determine conversion strategy
+        const strategy = getConversionStrategy(file.mimeType);
+
+        if (strategy === 'unsupported') {
+          errors.push(`Unsupported MIME type from Finmo: ${file.mimeType} (${file.filename})`);
+          continue;
+        }
+
+        // Convert to PDF if needed
+        const conversion = await convertToPdf(file.buffer, file.mimeType);
+
+        // Create IntakeDocument
+        const doc: IntakeDocument = {
+          id: `finmo-${documentRequestId}-${index}`,
+          pdfBuffer: conversion.pdfBuffer,
+          originalFilename: file.filename,
+          originalMimeType: file.mimeType,
+          source: 'finmo',
+          senderEmail: null,
+          applicationId: applicationId ?? null,
+          gmailMessageId: null,
+          receivedAt: job.data.receivedAt,
+        };
+
+        documents.push(doc);
+        documentIds.push(doc.id);
+
+        console.log('[intake] Produced IntakeDocument from Finmo:', {
+          id: doc.id,
+          source: doc.source,
+          originalFilename: doc.originalFilename,
+          applicationId: doc.applicationId,
+        });
+      } catch (err) {
+        if (err instanceof ConversionError) {
+          errors.push(`${err.code}: ${file.filename} — ${err.message}`);
+        } else {
+          errors.push(`Failed to process Finmo file ${file.filename}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+    }
+  } catch (err) {
+    errors.push(`Finmo download failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // Mark as processed (even with partial errors, we don't want to re-process)
+  if (documentIds.length > 0 || errors.length > 0) {
+    await markDocRequestProcessed(documentRequestId);
+  }
+
   console.log(
-    '[intake] Finmo document intake not yet implemented (INTAKE-02). Enqueued for future processing.',
+    `[intake] Processed Finmo doc request ${documentRequestId}: ${documents.length} docs, ${errors.length} errors`,
   );
 
   return {
-    documentsProcessed: 0,
-    documentIds: [],
-    errors: ['Finmo document download not implemented'],
+    documentsProcessed: documents.length,
+    documentIds,
+    errors,
   };
 }
 
