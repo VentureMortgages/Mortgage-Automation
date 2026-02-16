@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 7 - Classification & Filing (IN PROGRESS)
+**Current focus:** Phase 7 - Classification & Filing (COMPLETE)
 
 ## Current Position
 
 Phase: 7 of 9 (Classification & Filing)
-Plan: 4 of 5 complete
-Status: In Progress
-Last activity: 2026-02-15 — Completed 07-04 (Drive filer)
+Plan: 5 of 5 complete
+Status: Phase Complete
+Last activity: 2026-02-15 — Completed 07-05 (Classification worker + integration)
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100% (Phase 7 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
+- Total plans completed: 22
 - Average duration: 4 min
-- Total execution time: 1.45 hours
+- Total execution time: 1.52 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [█████████░] 90%
 | 05-email-drafting | 2/2 | 7 min | 4 min |
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
 | 06-document-intake | 4/4 | 17 min | 4 min |
-| 07-classification-filing | 4/5 | 16 min | 4 min |
+| 07-classification-filing | 5/5 | 20 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-04 (6 min), 07-01 (4 min), 07-02 (4 min), 07-03 (4 min), 07-04 (4 min)
+- Last 5 plans: 07-01 (4 min), 07-02 (4 min), 07-03 (4 min), 07-04 (4 min), 07-05 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -125,6 +125,10 @@ Progress: [█████████░] 90%
 - sanitizeFilename preserves $, +, () characters that appear in Cat's naming (e.g., $630k+)
 - MockOAuth2 class instead of vi.fn().mockImplementation for constructor mocking (Vitest 4 requires class-based constructors)
 - SUBFOLDER_NAMES as Partial<Record> lookup for clean resolveTargetFolder branching
+- Best-effort client folder resolution via CRM contact lookup with driveRootFolderId fallback (Phase 8 adds precise mapping)
+- CRM task creation failure during low-confidence review is non-fatal (logged, not thrown)
+- Temp file written to OS tmpdir before classification enqueue; queue job data contains path only (no buffer in Redis)
+- MockQueue class-based constructor for Vitest 4 compatibility (arrow functions break constructor mocking)
 
 ### Pending Todos
 
@@ -168,29 +172,25 @@ None yet.
 - Finmo document webhook handler with dedup; actual file download deferred (API undocumented)
 - Barrel export at src/intake/index.ts provides clean import surface for Phase 7
 
-**Phase 7 (Classification & Filing):** IN PROGRESS
+**Phase 7 (Classification & Filing):** COMPLETE
 - 07-01 complete: classification types, Zod schema, config (0 new tests, 241 existing pass)
 - 07-02 complete: Finmo document download pipeline (29 new tests, 270 total pass)
 - 07-03 complete: classifier, naming, router TDD (42 new tests, 312 total pass)
 - 07-04 complete: Drive client + filer module (31 new tests, 343 total pass)
-- @anthropic-ai/sdk + zod installed; DOCUMENT_TYPES (36), SUBFOLDER_ROUTING, DOC_TYPE_LABELS ready
-- ClassificationConfig with Anthropic API key, model, confidence threshold, Drive settings, kill switch
-- finmo-downloader.ts: listDocRequests, getDocRequestDetail, getSignedDownloadUrl, downloadFinmoFile
-- processFinmoSource now real implementation (dedup -> download -> convert -> IntakeDocument)
-- classifyDocument: Claude Haiku 4.5 with structured output, PDF truncation, filename hint
-- generateFilename: Cat's naming convention (Name - DocType [Institution] [Year] [Amount].pdf)
-- routeToSubfolder: maps all 36 doc types to correct Drive subfolder target
-- getDriveClient: lazy singleton Drive API v3 client with service account / OAuth2 auth
-- filer.ts: findFolder, findOrCreateFolder, uploadFile, findExistingFile, updateFileContent, resolveTargetFolder
-- ANTHROPIC_API_KEY required for classifier; DRIVE_ROOT_FOLDER_ID for filer (runtime)
+- 07-05 complete: classification worker + intake integration + barrel (11 new tests, 354 total pass)
+- Full pipeline wired: Gmail/Finmo intake -> temp file -> classification queue -> classify -> name -> route -> file to Drive
+- Low-confidence docs route to CRM manual review task (FILE-05)
+- Existing files updated instead of duplicated (FILE-04 versioning)
+- Barrel export at src/classification/index.ts covers all public API
+- ANTHROPIC_API_KEY, DRIVE_ROOT_FOLDER_ID, Google credentials, CRM API key required at runtime
 
 ## Session Continuity
 
 Last session: 2026-02-15 (plan execution)
-Stopped at: Completed 07-04-PLAN.md — Drive filer
+Stopped at: Completed 07-05-PLAN.md — Classification worker + integration (Phase 7 complete)
 Resume file: None
-Next: 07-05-PLAN.md (Classification worker)
+Next: Phase 8 (Tracking Integration)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-15 (07-04 complete, Drive filer)*
+*Last updated: 2026-02-15 (07-05 complete, Phase 7 Classification & Filing complete)*
