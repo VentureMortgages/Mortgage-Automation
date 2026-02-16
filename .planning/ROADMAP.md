@@ -153,10 +153,11 @@ Plans:
   1. When document is classified and filed to Drive, checklist status in MyBrokerPro updates from "missing" to "received"
   2. Audit trail records show who uploaded each document and when (for compliance)
   3. Cat can view dashboard in MyBrokerPro showing per-client status (received/missing/pending review) without manual updates
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 08-01: TBD during planning
+- [ ] 08-01-PLAN.md — CRM extensions (getContact, notes, doc-type matcher) + missingDocs stage format
+- [ ] 08-02-PLAN.md — Tracking sync orchestrator, classification worker integration, barrel export
 
 ### Phase 9: Automated Reminders
 **Goal**: System generates context-aware reminder drafts for clients with missing documents (disabled by default)
