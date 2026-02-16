@@ -15,7 +15,7 @@ import type { MissingDocEntry } from '../types/index.js';
 // ============================================================================
 
 const sampleMissingDocs: MissingDocEntry[] = [
-  { name: 'Government-issued photo ID (front + back)', stage: 'PRE' },
+  { name: 'Government-issued photo ID', stage: 'PRE' },
   { name: 'Second form of ID', stage: 'PRE' },
   { name: 'Void cheque or direct deposit form', stage: 'PRE' },
   { name: 'Recent paystub (within 30 days)', stage: 'PRE' },
@@ -150,10 +150,10 @@ describe('findMatchingChecklistDoc', () => {
       expect(result!.name).toBe('Letter of Employment');
     });
 
-    test('photo_id matches "Government-issued photo ID (front + back)" via alias', () => {
+    test('photo_id matches "Government-issued photo ID" via alias', () => {
       const result = findMatchingChecklistDoc('photo_id', sampleMissingDocs);
       expect(result).not.toBeNull();
-      expect(result!.name).toBe('Government-issued photo ID (front + back)');
+      expect(result!.name).toBe('Government-issued photo ID');
     });
 
     test('t1 matches "T1 General — Current year (full return)" via alias', () => {

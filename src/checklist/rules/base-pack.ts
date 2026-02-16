@@ -17,9 +17,9 @@ export const basePackRules: ChecklistRule[] = [
   {
     id: 's0_photo_id',
     section: '0_base_pack',
-    document: 'Government-issued photo ID (front + back)',
+    document: 'Government-issued photo ID',
     displayName:
-      'Government-issued photo ID (front + back) — driver\'s license or passport. Note: health cards are NOT accepted (BC Health Card with photo is OK).',
+      'Government-issued photo ID — driver\'s license or passport',
     stage: 'PRE',
     scope: 'per_borrower',
     condition: () => true,

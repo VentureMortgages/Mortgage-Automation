@@ -143,7 +143,7 @@ describe('createEmailDraft', () => {
   test('bodyPreview is first 200 chars of email body', async () => {
     const result = await createEmailDraft(input);
     expect(result.bodyPreview.length).toBeLessThanOrEqual(200);
-    expect(result.bodyPreview).toMatch(/^Hey/);
+    expect(result.bodyPreview).toContain('Hey');
   });
 
   test('MIME content contains borrower doc items', async () => {

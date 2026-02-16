@@ -80,7 +80,7 @@ describe('encodeMimeMessage', () => {
   test('decoded output contains Content-Type header', () => {
     const encoded = encodeMimeMessage(standardInput);
     const decoded = decodeBase64url(encoded);
-    expect(decoded).toContain('Content-Type: text/plain; charset=utf-8');
+    expect(decoded).toContain('Content-Type: text/html; charset=utf-8');
   });
 
   test('decoded output contains base64-encoded body after blank line', () => {

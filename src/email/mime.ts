@@ -28,7 +28,7 @@ export function encodeMimeMessage(input: MimeMessageInput): string {
     `To: ${input.to}`,
     `Subject: ${encodedSubject}`,
     'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=utf-8',
+    'Content-Type: text/html; charset=utf-8',
     'Content-Transfer-Encoding: base64',
   ].join('\r\n');
 

@@ -50,7 +50,7 @@ function salaryHourlyRules(): ChecklistRule[] {
       section: '1_income_employed_salary',
       document: 'Letter of Employment',
       displayName:
-        'Letter of Employment — must include: position, start date, salary, full-time/part-time, guaranteed hours',
+        'Letter of Employment (dated within the last 30 days) — must include: position, start date, salary, full-time/part-time, guaranteed hours',
       stage: 'PRE',
       scope: 'per_borrower',
       condition: hasSalaryOrHourly,

@@ -15,7 +15,11 @@ import open from 'open';
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const REDIRECT_URI = 'http://localhost:3333';
-const SCOPES = ['https://www.googleapis.com/auth/gmail.compose'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/gmail.compose',   // Send/draft emails
+  'https://www.googleapis.com/auth/gmail.readonly',   // Read inbox (doc intake)
+  'https://www.googleapis.com/auth/drive',            // Upload/manage Drive files
+];
 
 async function main(): Promise<void> {
   if (!CLIENT_ID || !CLIENT_SECRET) {
@@ -60,7 +64,7 @@ async function main(): Promise<void> {
 
     server.listen(3333, () => {
       console.log('Opening browser for Google OAuth consent...');
-      console.log('Sign in as dev@venturemortgages.com and authorize the app.\n');
+      console.log('Sign in as admin@venturemortgages.com and authorize the app.\n');
       open(authUrl).catch(() => {
         console.log('Could not open browser automatically. Open this URL manually:');
         console.log(authUrl);
@@ -92,7 +96,7 @@ async function main(): Promise<void> {
   console.log(`GOOGLE_REFRESH_TOKEN=${tokens.refresh_token}`);
   console.log('');
   console.log('='.repeat(60));
-  console.log('Done! Gmail API is now authorized for dev@venturemortgages.com');
+  console.log('Done! Google APIs authorized (Gmail compose + readonly + Drive)');
   console.log('='.repeat(60));
 }
 

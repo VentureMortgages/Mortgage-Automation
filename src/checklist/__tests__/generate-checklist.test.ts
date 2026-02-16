@@ -98,9 +98,9 @@ describe('SC2: Self-employed borrower', () => {
     expect(internalRuleIds).toContain('s4_t2125_check');
   });
 
-  test('shared items include savings bank statements', () => {
+  test('shared items do NOT include savings bank statements (refinance = no DP needed)', () => {
     const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
-    expect(sharedRuleIds).toContain('s14_savings_bank');
+    expect(sharedRuleIds).not.toContain('s14_savings_bank');
   });
 
   test('shared items include refinance docs', () => {

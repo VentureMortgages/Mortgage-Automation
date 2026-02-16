@@ -8,6 +8,9 @@ dist/
 SESSION_CONTEXT*.md
 BILLING.md
 
+# Windows reserved names
+nul
+
 # Local Claude config
 .claude/
 

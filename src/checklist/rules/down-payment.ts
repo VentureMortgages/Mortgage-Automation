@@ -5,7 +5,7 @@
  *
  * This is the most complex section with varied conditions and special cases:
  * - Gift letter is internal-only (CHKL-06): collected later when lender is picked
- * - Gift donor proof of funds is CONDITIONAL: only when "found_property"
+ * - Gift donor proof of funds: only appears when "found_property" (condition handles it)
  * - Inheritance and Borrowed are manual flags if not detectable from asset descriptions
  *
  * Exclusions (CHKL-05):
@@ -21,21 +21,29 @@ import type { ChecklistRule, RuleContext } from '../types/index.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Check if application has savings assets */
+/** No down payment needed for refinances — skip all DP rules */
+function isNotRefinance(ctx: RuleContext): boolean {
+  return ctx.application.goal !== 'refinance';
+}
+
+/** Check if application has savings assets (excluded for refinances) */
 function hasSavings(ctx: RuleContext): boolean {
+  if (!isNotRefinance(ctx)) return false;
   return ctx.assets.some((a) => a.type === 'cash_savings');
 }
 
-/** Check if application has RRSP assets */
+/** Check if application has RRSP assets (excluded for refinances) */
 function hasRRSP(ctx: RuleContext): boolean {
+  if (!isNotRefinance(ctx)) return false;
   return ctx.assets.some((a) => a.type === 'rrsp');
 }
 
 /**
- * Check if application has TFSA assets.
+ * Check if application has TFSA assets (excluded for refinances).
  * Can be typed as "tfsa" or described as "TFSA" in a cash_savings asset.
  */
 function hasTFSA(ctx: RuleContext): boolean {
+  if (!isNotRefinance(ctx)) return false;
   return ctx.assets.some(
     (a) =>
       a.type === 'tfsa' ||
@@ -44,15 +52,17 @@ function hasTFSA(ctx: RuleContext): boolean {
   );
 }
 
-/** Check if application has FHSA assets (detected by description) */
+/** Check if application has FHSA assets (excluded for refinances) */
 function hasFHSA(ctx: RuleContext): boolean {
+  if (!isNotRefinance(ctx)) return false;
   return ctx.assets.some(
     (a) => a.description?.toUpperCase().includes('FHSA')
   );
 }
 
-/** Check if application has gift-sourced down payment (detected by description) */
+/** Check if application has gift-sourced down payment (excluded for refinances) */
 function hasGift(ctx: RuleContext): boolean {
+  if (!isNotRefinance(ctx)) return false;
   return ctx.assets.some(
     (a) => a.description?.toLowerCase().includes('gift')
   );
@@ -67,28 +77,29 @@ function hasGiftAndFoundProperty(ctx: RuleContext): boolean {
   return hasGift(ctx) && ctx.application.process === 'found_property';
 }
 
-/** Check if any property is being sold (sale of property as down payment source) */
+/** Check if any property is being sold as DP source (excluded for refinances) */
 function hasPropertySale(ctx: RuleContext): boolean {
+  if (!isNotRefinance(ctx)) return false;
   return ctx.properties.some((p) => p.isSelling === true);
 }
 
 /**
- * Check if application has inheritance-sourced funds.
+ * Check if application has inheritance-sourced funds (excluded for refinances).
  * Detected by asset description containing "inheritance".
- * Manual flag if not detectable.
  */
 function hasInheritance(ctx: RuleContext): boolean {
+  if (!isNotRefinance(ctx)) return false;
   return ctx.assets.some(
     (a) => a.description?.toLowerCase().includes('inheritance')
   );
 }
 
 /**
- * Check if application has borrowed down payment funds.
+ * Check if application has borrowed down payment funds (excluded for refinances).
  * Detected by asset description containing "borrow" or similar.
- * Manual flag if not detectable.
  */
 function hasBorrowedDownPayment(ctx: RuleContext): boolean {
+  if (!isNotRefinance(ctx)) return false;
   return ctx.assets.some(
     (a) => a.description?.toLowerCase().includes('borrow')
   );
@@ -105,7 +116,7 @@ function savingsRules(): ChecklistRule[] {
       section: '14_down_payment_savings',
       document: '90-day bank statement history',
       displayName:
-        '90-day bank statement history (must show account ownership — name and account number)',
+        '90-day bank statement history for the account(s) currently holding your down payment funds (must show account ownership — name and account number)',
       stage: 'PRE',
       scope: 'shared',
       condition: hasSavings,
@@ -114,7 +125,7 @@ function savingsRules(): ChecklistRule[] {
       id: 's14_large_deposit',
       section: '14_down_payment_savings',
       document: 'Large deposit explanations',
-      displayName: 'Large deposit explanations',
+      displayName: 'Explanation for any deposits over $5k that aren\'t from your payroll',
       stage: 'FULL',
       scope: 'shared',
       condition: hasSavings,
@@ -198,7 +209,17 @@ function giftRules(): ChecklistRule[] {
       id: 's14_gift_amount',
       section: '14_down_payment_gift',
       document: 'Amount of gift',
-      displayName: 'Confirmed amount of gift',
+      displayName: 'Confirmed gift amount',
+      stage: 'PRE',
+      scope: 'shared',
+      condition: hasGift,
+    },
+    {
+      id: 's14_gift_savings_note',
+      section: '14_down_payment_gift',
+      document: 'Bank statements for savings used alongside gift',
+      displayName:
+        '90-day bank statement history if you\'ll also be using some of your savings in addition to the gifted funds',
       stage: 'PRE',
       scope: 'shared',
       condition: hasGift,
@@ -209,11 +230,9 @@ function giftRules(): ChecklistRule[] {
       document: 'Donor proof of funds OR transfer confirmation + current balance',
       displayName:
         'Gift donor proof of funds, OR transfer confirmation plus current account balance',
-      stage: 'CONDITIONAL',
+      stage: 'PRE',
       scope: 'shared',
       condition: hasGiftAndFoundProperty,
-      notes:
-        'Only required if an accepted offer exists. At pre-approval stage, proof of funds will expire before deal is live.',
     },
     // CHKL-06: Gift letter is internal-only — collected later when lender is picked
     {

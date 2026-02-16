@@ -1,12 +1,6 @@
 // ============================================================================
-// Tests: Email Body Generator — generateEmailBody
+// Tests: Email Body Generator — generateEmailBody (HTML)
 // ============================================================================
-//
-// Tests that generateEmailBody transforms a GeneratedChecklist into a
-// formatted, personalized doc request email matching Cat's exact tone and
-// structure from EMAIL_TEMPLATE_REFERENCE.md.
-//
-// TDD RED phase: these tests are written before the implementation exists.
 
 import { describe, test, expect } from 'vitest';
 import { generateEmailBody } from '../body.js';
@@ -35,7 +29,6 @@ function makeItem(overrides: Partial<ChecklistItem> & { displayName: string }): 
   };
 }
 
-/** Two-borrower, two-property, shared items fixture */
 function makeTwoBorrowerChecklist(): GeneratedChecklist {
   const meganItems: ChecklistItem[] = [
     makeItem({ ruleId: 'm1', displayName: 'Letter of Employment confirming back to work date' }),
@@ -131,15 +124,22 @@ const twoBorrowerContext: EmailContext = {
 };
 
 // ---------------------------------------------------------------------------
-// Tests: Two-borrower Scenario
+// Tests
 // ---------------------------------------------------------------------------
 
 describe('generateEmailBody', () => {
   const checklist = makeTwoBorrowerChecklist();
 
+  test('returns HTML wrapped in max-width container', () => {
+    const body = generateEmailBody(checklist, twoBorrowerContext);
+    expect(body).toContain('<div style="');
+    expect(body).toContain('max-width:600px');
+    expect(body).toContain('</div>');
+  });
+
   test('starts with greeting using both first names', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
-    expect(body).toMatch(/^Hey Megan and Cory!/);
+    expect(body).toContain('<p>Hey Megan and Cory!</p>');
   });
 
   test('includes intro paragraph', () => {
@@ -147,19 +147,23 @@ describe('generateEmailBody', () => {
     expect(body).toContain('Thanks for filling out the application');
   });
 
-  test('has per-borrower section with first name header and bullet items', () => {
+  test('has per-borrower sections with underlined headers', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
+    expect(body).toContain('<u>Megan</u>');
+    expect(body).toContain('<u>Cory</u>');
+  });
 
-    // Megan section: header followed by bulleted items
-    expect(body).toContain('Megan\n');
-    expect(body).toContain('- Letter of Employment confirming back to work date');
-    expect(body).toContain('- Last pay stub prior to your mat leave');
-    expect(body).toContain('- 2024 T4');
+  test('has bold doc names in list items', () => {
+    const body = generateEmailBody(checklist, twoBorrowerContext);
+    expect(body).toContain('<strong>Letter of Employment confirming back to work date</strong>');
+    expect(body).toContain('<strong>2024 T4</strong>');
+    expect(body).toContain('<strong>2023/2024 T1s</strong>');
+  });
 
-    // Cory section: header followed by bulleted items
-    expect(body).toContain('Cory\n');
-    expect(body).toContain('- 2023/2024 T1s');
-    expect(body).toContain('- 2 years business financials for RunGuide Media');
+  test('uses <ul>/<li> for bullet lists', () => {
+    const body = generateEmailBody(checklist, twoBorrowerContext);
+    expect(body).toContain('<ul');
+    expect(body).toContain('<li>');
   });
 
   test('excludes forEmail=false items', () => {
@@ -168,42 +172,43 @@ describe('generateEmailBody', () => {
     expect(body).not.toContain('Check Schedule 50');
   });
 
-  test('has per-property sections with address headers and bullet items', () => {
+  test('has per-property sections with underlined address headers', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
-    expect(body).toContain('Smoke Bluff Rd, Squamish:');
-    expect(body).toContain('Keefer Place, Vancouver:');
-    expect(body).toContain('- Current Mortgage Statement');
-    expect(body).toContain('- 2025 Property Tax Bill');
+    expect(body).toContain('<u>Smoke Bluff Rd, Squamish:</u>');
+    expect(body).toContain('<u>Keefer Place, Vancouver:</u>');
+    expect(body).toContain('<strong>Current Mortgage Statement</strong>');
+    expect(body).toContain('<strong>2025 Property Tax Bill</strong>');
   });
 
-  test('has shared Other section with bullet items', () => {
+  test('has shared Other section with underlined header', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
-    expect(body).toContain('Other\n');
-    expect(body).toContain('- Void Cheque');
-    expect(body).toContain('- 3 months bank statements for the account(s) holding your down payment funds');
+    expect(body).toContain('<u>Other</u>');
+    expect(body).toContain('<strong>Void Cheque</strong>');
   });
 
-  test('includes notes inline in parentheses', () => {
+  test('includes notes inline in parentheses after bold doc name', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
-
-    // NOA notes should appear inline in parentheses
-    expect(body).toContain('- 2023/2024 Notice of Assessments (if your 2024 NOA shows an amount owing');
-
-    // Void cheque notes
-    expect(body).toContain('- Void Cheque (for the account you anticipate your payments');
-
-    // Condo fees notes
-    expect(body).toContain('- Confirmation of Condo Fees (via Annual Strata Statement');
+    // NOA with notes: bold name followed by (note)
+    expect(body).toContain('<strong>2023/2024 Notice of Assessments</strong> (if your 2024 NOA');
+    // Void cheque with notes
+    expect(body).toContain('<strong>Void Cheque</strong> (for the account you anticipate');
+    // Condo fees with notes
+    expect(body).toContain('<strong>Confirmation of Condo Fees</strong> (via Annual Strata');
   });
 
-  test('ends with closing referencing doc inbox email', () => {
+  test('ends with closing referencing doc inbox email as mailto link', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
-    expect(body).toContain('send these documents directly to docs@venturemortgages.com');
-    expect(body).toMatch(/Thanks!$/);
+    expect(body).toContain('mailto:docs@venturemortgages.com');
+    expect(body).toContain('Thanks!');
+  });
+
+  test('does not include hardcoded signature (Gmail auto-appends Cat\'s)', () => {
+    const body = generateEmailBody(checklist, twoBorrowerContext);
+    expect(body).not.toContain('Mortgage Agent');
   });
 
   // ---------------------------------------------------------------------------
-  // Edge Cases: Single borrower
+  // Edge Cases
   // ---------------------------------------------------------------------------
 
   test('single borrower uses just first name in greeting', () => {
@@ -216,14 +221,9 @@ describe('generateEmailBody', () => {
       docInboxEmail: 'docs@venturemortgages.com',
     };
     const body = generateEmailBody(singleBorrower, singleContext);
-    const greetingLine = body.split('\n')[0];
-    expect(greetingLine).toBe('Hey Megan!');
-    expect(greetingLine).not.toContain(' and ');
+    expect(body).toContain('<p>Hey Megan!</p>');
+    expect(body).not.toContain('Hey Megan and');
   });
-
-  // ---------------------------------------------------------------------------
-  // Edge Cases: No shared items with forEmail=true
-  // ---------------------------------------------------------------------------
 
   test('omits Other section when no shared items have forEmail=true', () => {
     const noShared: GeneratedChecklist = {
@@ -233,12 +233,8 @@ describe('generateEmailBody', () => {
       ],
     };
     const body = generateEmailBody(noShared, twoBorrowerContext);
-    expect(body).not.toContain('Other');
+    expect(body).not.toContain('<u>Other</u>');
   });
-
-  // ---------------------------------------------------------------------------
-  // Edge Cases: No property checklists
-  // ---------------------------------------------------------------------------
 
   test('omits property sections when no property checklists', () => {
     const noProperties: GeneratedChecklist = {

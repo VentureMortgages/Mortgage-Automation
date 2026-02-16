@@ -111,15 +111,7 @@ function refinanceRules(): ChecklistRule[] {
       scope: 'shared',
       condition: isRefinance,
     },
-    {
-      id: 's15_refi_insurance',
-      section: '15_property_refinance',
-      document: 'Home insurance policy',
-      displayName: 'Home insurance policy',
-      stage: 'FULL',
-      scope: 'shared',
-      condition: isRefinance,
-    },
+    // Home insurance: removed per Cat — only needed for switches, not refinances
   ];
 }
 
@@ -140,16 +132,7 @@ function condoRules(): ChecklistRule[] {
       // Per Cat: Only for refinance, NOT purchase
       condition: isCondoRefinance,
     },
-    {
-      id: 's15_condo_status',
-      section: '15_property_condo',
-      document: 'Status Certificate (ON) / Strata Form B (BC)',
-      displayName: 'Status Certificate (ON) or Strata Form B (BC)',
-      stage: 'FULL',
-      scope: 'shared',
-      condition: isCondo,
-      notes: 'Usually handled by lawyers',
-    },
+    // Status Certificate / Strata Form B: removed per Cat — handled by lawyers
   ];
 }
 
