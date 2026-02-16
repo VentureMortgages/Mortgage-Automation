@@ -58,4 +58,4 @@ export {
 export type { FinmoDownloadResult } from './finmo-downloader.js';
 
 // Intake worker
-export { createIntakeWorker, processIntakeJob, closeIntakeWorker } from './intake-worker.js';
+export { createIntakeWorker, processIntakeJob, closeIntakeWorker, closeClassificationQueue } from './intake-worker.js';

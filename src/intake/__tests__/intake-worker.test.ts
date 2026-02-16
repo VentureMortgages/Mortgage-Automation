@@ -112,9 +112,40 @@ vi.mock('../../webhook/queue.js', () => ({
   })),
 }));
 
+const mockClassificationQueue = vi.hoisted(() => ({
+  add: vi.fn().mockResolvedValue(undefined),
+  close: vi.fn().mockResolvedValue(undefined),
+}));
+
+const MockQueue = vi.hoisted(() => {
+  return class MockQueue {
+    add = mockClassificationQueue.add;
+    close = mockClassificationQueue.close;
+  };
+});
+
 vi.mock('bullmq', () => ({
   Worker: vi.fn(),
   Job: vi.fn(),
+  Queue: MockQueue,
+}));
+
+vi.mock('../../classification/classification-worker.js', () => ({
+  CLASSIFICATION_QUEUE_NAME: 'doc-classification',
+}));
+
+const mockWriteFile = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock('node:fs/promises', () => ({
+  writeFile: mockWriteFile,
+}));
+
+vi.mock('node:os', () => ({
+  tmpdir: vi.fn(() => '/tmp'),
+}));
+
+vi.mock('node:crypto', () => ({
+  randomUUID: vi.fn(() => 'test-uuid-1234'),
 }));
 
 // ---------------------------------------------------------------------------

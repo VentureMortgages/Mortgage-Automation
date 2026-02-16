@@ -30,10 +30,18 @@
  * Buffers can be 10+ MB — storing them in Redis is an anti-pattern.
  * The worker downloads and processes within the job handler scope.
  *
+ * After producing each IntakeDocument, the worker writes the PDF buffer to a
+ * temp file and enqueues a classification job to the doc-classification queue.
+ * This avoids storing large buffers in Redis (BullMQ job data).
+ *
  * Consumers: BullMQ scheduler (gmail-monitor.ts triggers polls)
  */
 
-import { Worker, Job } from 'bullmq';
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { randomUUID } from 'node:crypto';
+import { Worker, Job, Queue } from 'bullmq';
 import { createRedisConnection } from '../webhook/queue.js';
 import { intakeConfig, getConversionStrategy } from './config.js';
 import { getGmailReadonlyClient } from '../email/gmail-client.js';
@@ -42,7 +50,34 @@ import { extractAttachments, downloadAttachment } from './attachment-extractor.j
 import { convertToPdf, ConversionError } from './pdf-converter.js';
 import { downloadFinmoDocument, isDocRequestProcessed, markDocRequestProcessed } from './finmo-downloader.js';
 import { INTAKE_QUEUE_NAME } from './gmail-monitor.js';
+import { CLASSIFICATION_QUEUE_NAME } from '../classification/classification-worker.js';
 import type { IntakeJobData, IntakeResult, IntakeDocument } from './types.js';
+import type { ClassificationJobData } from '../classification/types.js';
+
+// ---------------------------------------------------------------------------
+// Classification Queue (Lazy Singleton)
+// ---------------------------------------------------------------------------
+
+let _classificationQueue: Queue<ClassificationJobData> | null = null;
+
+function getClassificationQueue(): Queue<ClassificationJobData> {
+  if (_classificationQueue) return _classificationQueue;
+  _classificationQueue = new Queue(CLASSIFICATION_QUEUE_NAME, {
+    connection: createRedisConnection(),
+  });
+  return _classificationQueue;
+}
+
+/**
+ * Close the classification queue connection for graceful shutdown.
+ * Resets the singleton so a new connection can be created if needed.
+ */
+export async function closeClassificationQueue(): Promise<void> {
+  if (_classificationQueue) {
+    await _classificationQueue.close();
+    _classificationQueue = null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // processIntakeJob — Core Processing Logic
@@ -103,8 +138,7 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
     return { documentsProcessed: 0, documentIds: [], errors: [] };
   }
 
-  // 4. Process each valid attachment
-  // TODO Phase 7: enqueue IntakeDocument to classification queue
+  // 4. Process each valid attachment and enqueue for classification (Phase 7)
   const documents: IntakeDocument[] = [];
 
   for (let index = 0; index < attachments.length; index++) {
@@ -147,6 +181,27 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
 
       documents.push(doc);
       documentIds.push(doc.id);
+
+      // Write PDF to temp file (buffers must NOT go in Redis)
+      const tempFilePath = join(tmpdir(), `intake-${randomUUID()}.pdf`);
+      await writeFile(tempFilePath, pdfBuffer);
+
+      // Enqueue for classification (Phase 7)
+      const classificationJob: ClassificationJobData = {
+        intakeDocumentId: doc.id,
+        tempFilePath,
+        originalFilename: doc.originalFilename,
+        senderEmail: doc.senderEmail,
+        applicationId: doc.applicationId,
+        source: doc.source,
+        receivedAt: doc.receivedAt,
+      };
+
+      await getClassificationQueue().add(
+        'classify-doc',
+        classificationJob,
+        { jobId: `classify-${doc.id}` },
+      );
 
       // Log document metadata (no PII — just file info)
       console.log(`[intake] Produced IntakeDocument:`, {
@@ -244,6 +299,27 @@ async function processFinmoSource(job: Job<IntakeJobData>): Promise<IntakeResult
 
         documents.push(doc);
         documentIds.push(doc.id);
+
+        // Write PDF to temp file (buffers must NOT go in Redis)
+        const tempFilePath = join(tmpdir(), `intake-${randomUUID()}.pdf`);
+        await writeFile(tempFilePath, conversion.pdfBuffer);
+
+        // Enqueue for classification (Phase 7)
+        const classificationJob: ClassificationJobData = {
+          intakeDocumentId: doc.id,
+          tempFilePath,
+          originalFilename: doc.originalFilename,
+          senderEmail: doc.senderEmail,
+          applicationId: doc.applicationId,
+          source: doc.source,
+          receivedAt: doc.receivedAt,
+        };
+
+        await getClassificationQueue().add(
+          'classify-doc',
+          classificationJob,
+          { jobId: `classify-${doc.id}` },
+        );
 
         console.log('[intake] Produced IntakeDocument from Finmo:', {
           id: doc.id,
