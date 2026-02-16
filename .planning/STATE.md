@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 7 - Classification & Filing (COMPLETE)
+**Current focus:** Phase 8 - Tracking Integration (IN PROGRESS)
 
 ## Current Position
 
-Phase: 7 of 9 (Classification & Filing)
-Plan: 5 of 5 complete
-Status: Phase Complete
-Last activity: 2026-02-15 — Completed 07-05 (Classification worker + integration)
+Phase: 8 of 9 (Tracking Integration)
+Plan: 1 of 2 complete
+Status: In Progress
+Last activity: 2026-02-16 — Completed 08-01 (CRM types, getContact, notes, doc-type matcher)
 
-Progress: [██████████] 100% (Phase 7 complete)
+Progress: [████████░░] 80% (Phase 8, Plan 1/2)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 22
+- Total plans completed: 23
 - Average duration: 4 min
-- Total execution time: 1.52 hours
+- Total execution time: 1.62 hours
 
 **By Phase:**
 
@@ -33,9 +33,10 @@ Progress: [██████████] 100% (Phase 7 complete)
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
 | 06-document-intake | 4/4 | 17 min | 4 min |
 | 07-classification-filing | 5/5 | 20 min | 4 min |
+| 08-tracking-integration | 1/2 | 6 min | 6 min |
 
 **Recent Trend:**
-- Last 5 plans: 07-01 (4 min), 07-02 (4 min), 07-03 (4 min), 07-04 (4 min), 07-05 (4 min)
+- Last 5 plans: 07-03 (4 min), 07-04 (4 min), 07-05 (4 min), 08-01 (6 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -129,6 +130,11 @@ Progress: [██████████] 100% (Phase 7 complete)
 - CRM task creation failure during low-confidence review is non-fatal (logged, not thrown)
 - Temp file written to OS tmpdir before classification enqueue; queue job data contains path only (no buffer in Redis)
 - MockQueue class-based constructor for Vitest 4 compatibility (arrow functions break constructor mocking)
+- MissingDocEntry stage type includes LENDER_CONDITION (matches full ChecklistStage union)
+- Three-tier matching strategy for doc-type matcher: label prefix > contains (>=3 chars) > known aliases
+- missingDocs CRM field stores MissingDocEntry[] (structured with stage) instead of string[]
+- mapChecklistToDocNames kept as-is (backward compat); new mapChecklistToDocEntries added alongside
+- Notes attributed to Cat's userId for CRM timeline visibility
 
 ### Pending Todos
 
@@ -184,13 +190,18 @@ None yet.
 - Barrel export at src/classification/index.ts covers all public API
 - ANTHROPIC_API_KEY, DRIVE_ROOT_FOLDER_ID, Google credentials, CRM API key required at runtime
 
+**Phase 8 (Tracking Integration):** IN PROGRESS
+- 08-01 complete: CRM types, getContact, notes, doc-type matcher, stage-aware missingDocs (44 new tests, 398 total pass)
+- Building blocks ready for Plan 02 (tracking-sync orchestrator)
+- getContact reads contact custom fields, findMatchingChecklistDoc maps classifier to checklist, createAuditNote writes audit trail
+
 ## Session Continuity
 
-Last session: 2026-02-15 (plan execution)
-Stopped at: Completed 07-05-PLAN.md — Classification worker + integration (Phase 7 complete)
+Last session: 2026-02-16 (plan execution)
+Stopped at: Completed 08-01-PLAN.md — CRM types, getContact, notes, doc-type matcher
 Resume file: None
-Next: Phase 8 (Tracking Integration)
+Next: 08-02-PLAN.md (tracking-sync orchestrator + classification worker integration)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-15 (07-05 complete, Phase 7 Classification & Filing complete)*
+*Last updated: 2026-02-16 (08-01 complete)*
