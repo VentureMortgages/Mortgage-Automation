@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 8 - Tracking Integration (IN PROGRESS)
+**Current focus:** Phase 8 - Tracking Integration (COMPLETE)
 
 ## Current Position
 
 Phase: 8 of 9 (Tracking Integration)
-Plan: 1 of 2 complete
-Status: In Progress
-Last activity: 2026-02-16 — Completed 08-01 (CRM types, getContact, notes, doc-type matcher)
+Plan: 2 of 2 complete
+Status: Phase Complete
+Last activity: 2026-02-16 — Completed 08-02 (tracking-sync orchestrator + classification worker integration)
 
-Progress: [████████░░] 80% (Phase 8, Plan 1/2)
+Progress: [█████████░] 90% (Phase 8 complete, Phase 9 next)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23
+- Total plans completed: 24
 - Average duration: 4 min
-- Total execution time: 1.62 hours
+- Total execution time: 1.69 hours
 
 **By Phase:**
 
@@ -33,10 +33,10 @@ Progress: [████████░░] 80% (Phase 8, Plan 1/2)
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
 | 06-document-intake | 4/4 | 17 min | 4 min |
 | 07-classification-filing | 5/5 | 20 min | 4 min |
-| 08-tracking-integration | 1/2 | 6 min | 6 min |
+| 08-tracking-integration | 2/2 | 10 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 07-03 (4 min), 07-04 (4 min), 07-05 (4 min), 08-01 (6 min)
+- Last 5 plans: 07-04 (4 min), 07-05 (4 min), 08-01 (6 min), 08-02 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -135,6 +135,9 @@ Progress: [████████░░] 80% (Phase 8, Plan 1/2)
 - missingDocs CRM field stores MissingDocEntry[] (structured with stage) instead of string[]
 - mapChecklistToDocNames kept as-is (backward compat); new mapChecklistToDocEntries added alongside
 - Notes attributed to Cat's userId for CRM timeline visibility
+- LATER/CONDITIONAL/LENDER_CONDITION stage docs don't increment PRE or FULL counters
+- Tracking call in classification worker wrapped in own try/catch (non-fatal to filing)
+- parseContactTrackingFields exported as pure function for independent testability
 
 ### Pending Todos
 
@@ -190,18 +193,20 @@ None yet.
 - Barrel export at src/classification/index.ts covers all public API
 - ANTHROPIC_API_KEY, DRIVE_ROOT_FOLDER_ID, Google credentials, CRM API key required at runtime
 
-**Phase 8 (Tracking Integration):** IN PROGRESS
+**Phase 8 (Tracking Integration):** COMPLETE
 - 08-01 complete: CRM types, getContact, notes, doc-type matcher, stage-aware missingDocs (44 new tests, 398 total pass)
-- Building blocks ready for Plan 02 (tracking-sync orchestrator)
-- getContact reads contact custom fields, findMatchingChecklistDoc maps classifier to checklist, createAuditNote writes audit trail
+- 08-02 complete: tracking-sync orchestrator + classification worker integration (26 new tests, 424 total pass)
+- Full tracking loop: classify -> file to Drive -> updateDocTracking -> CRM fields + audit note + milestones
+- updateDocTracking reads contact, matches doc, updates fields, creates note, triggers PRE task / pipeline advance
+- Non-fatal pattern: tracking failure never blocks document filing
 
 ## Session Continuity
 
 Last session: 2026-02-16 (plan execution)
-Stopped at: Completed 08-01-PLAN.md — CRM types, getContact, notes, doc-type matcher
+Stopped at: Completed 08-02-PLAN.md — tracking-sync orchestrator + classification worker integration
 Resume file: None
-Next: 08-02-PLAN.md (tracking-sync orchestrator + classification worker integration)
+Next: Phase 9 (Orchestration) — final integration and deployment
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-16 (08-01 complete)*
+*Last updated: 2026-02-16 (08-02 complete, Phase 8 complete)*
