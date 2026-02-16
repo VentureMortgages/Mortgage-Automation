@@ -1,36 +1,89 @@
 /**
- * Document Classifier — Claude API with Structured Output
+ * Document Classifier — Google Gemini with Structured Output
  *
- * Sends a PDF document to Claude for classification. Returns a structured
+ * Sends a PDF document to Gemini for classification. Returns a structured
  * ClassificationResult with document type, confidence, borrower info, and metadata.
  *
  * Features:
- * - Claude Haiku 4.5 with structured output (guaranteed valid JSON)
+ * - Gemini 2.0 Flash with JSON schema-constrained output
  * - Large PDF truncation (only first N pages sent for classification)
  * - Filename hint as secondary signal
  * - No PII in logs (only doc type + confidence logged)
+ * - Zod validation as belt-and-suspenders after Gemini's schema enforcement
  *
  * Consumers: classification-worker.ts (Phase 7 Plan 05)
  */
 
-import Anthropic from '@anthropic-ai/sdk';
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from '@google/generative-ai';
 import { PDFDocument } from 'pdf-lib';
 import { classificationConfig } from './config.js';
 import { ClassificationResultSchema, DOCUMENT_TYPES } from './types.js';
 import type { ClassificationResult } from './types.js';
 
 // ---------------------------------------------------------------------------
-// Anthropic Client (lazy singleton)
+// Gemini Client (lazy singleton)
 // ---------------------------------------------------------------------------
 
-let _client: Anthropic | null = null;
+let _genAI: GoogleGenerativeAI | null = null;
 
-function getClient(): Anthropic {
-  if (_client) return _client;
-  _client = new Anthropic({ apiKey: classificationConfig.anthropicApiKey });
-  return _client;
+function getGenAI(): GoogleGenerativeAI {
+  if (_genAI) return _genAI;
+  _genAI = new GoogleGenerativeAI(classificationConfig.geminiApiKey);
+  return _genAI;
 }
+
+// ---------------------------------------------------------------------------
+// Gemini Response Schema (matches ClassificationResultSchema)
+// ---------------------------------------------------------------------------
+
+const classificationResponseSchema: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    documentType: {
+      type: SchemaType.STRING,
+      description: 'The classified document type',
+    },
+    confidence: {
+      type: SchemaType.NUMBER,
+      description: 'Confidence score between 0.0 and 1.0',
+    },
+    borrowerFirstName: {
+      type: SchemaType.STRING,
+      description: 'First name of the borrower visible on the document',
+      nullable: true,
+    },
+    borrowerLastName: {
+      type: SchemaType.STRING,
+      description: 'Last name of the borrower visible on the document',
+      nullable: true,
+    },
+    taxYear: {
+      type: SchemaType.NUMBER,
+      description: 'Tax year if this is a tax document',
+      nullable: true,
+    },
+    amount: {
+      type: SchemaType.STRING,
+      description: 'Dollar amount in Cat format ($16k, $5.2k, $585)',
+      nullable: true,
+    },
+    institution: {
+      type: SchemaType.STRING,
+      description: 'Institution or employer name visible on the document',
+      nullable: true,
+    },
+    pageCount: {
+      type: SchemaType.NUMBER,
+      description: 'Number of pages in the document',
+    },
+    additionalNotes: {
+      type: SchemaType.STRING,
+      description: 'Any other relevant context about the document',
+      nullable: true,
+    },
+  },
+  required: ['documentType', 'confidence', 'pageCount'],
+};
 
 // ---------------------------------------------------------------------------
 // PDF Truncation
@@ -41,25 +94,32 @@ function getClient(): Anthropic {
  * Returns the original buffer if the PDF has fewer pages than the limit.
  */
 export async function truncatePdf(pdfBuffer: Buffer, maxPages: number): Promise<Buffer> {
-  const srcDoc = await PDFDocument.load(new Uint8Array(pdfBuffer));
-  const pageCount = srcDoc.getPageCount();
+  try {
+    const srcDoc = await PDFDocument.load(new Uint8Array(pdfBuffer), {
+      ignoreEncryption: true,
+    });
+    const pageCount = srcDoc.getPageCount();
 
-  if (pageCount <= maxPages) {
+    if (pageCount <= maxPages) {
+      return pdfBuffer;
+    }
+
+    const newDoc = await PDFDocument.create();
+    const pages = srcDoc.getPages();
+    const pagesToCopy = pages.slice(0, maxPages);
+    const copiedPages = await newDoc.copyPages(srcDoc, pagesToCopy.map((_, i) => i));
+
+    for (const page of copiedPages) {
+      newDoc.addPage(page);
+    }
+
+    const truncatedBytes = await newDoc.save();
+    return Buffer.from(truncatedBytes);
+  } catch {
+    // If truncation fails for any reason (encrypted, malformed, etc.),
+    // skip truncation and send the full buffer to Gemini
     return pdfBuffer;
   }
-
-  // Create a new document with only the first maxPages pages
-  const newDoc = await PDFDocument.create();
-  const pages = srcDoc.getPages();
-  const pagesToCopy = pages.slice(0, maxPages);
-  const copiedPages = await newDoc.copyPages(srcDoc, pagesToCopy.map((_, i) => i));
-
-  for (const page of copiedPages) {
-    newDoc.addPage(page);
-  }
-
-  const truncatedBytes = await newDoc.save();
-  return Buffer.from(truncatedBytes);
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +154,7 @@ Instructions:
 // ---------------------------------------------------------------------------
 
 /**
- * Classify a PDF document using Claude API with structured output.
+ * Classify a PDF document using Gemini API with structured output.
  *
  * @param pdfBuffer - The PDF file as a Buffer
  * @param filenameHint - Optional original filename (secondary classification signal)
@@ -110,36 +170,28 @@ export async function classifyDocument(
     classificationConfig.maxClassificationPages,
   );
 
-  const response = await getClient().messages.create({
+  const model = getGenAI().getGenerativeModel({
     model: classificationConfig.model,
-    max_tokens: 512,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'document',
-            source: {
-              type: 'base64',
-              media_type: 'application/pdf',
-              data: truncatedBuffer.toString('base64'),
-            },
-          },
-          {
-            type: 'text',
-            text: classificationPrompt(filenameHint),
-          },
-        ],
-      },
-    ],
-    output_config: {
-      format: zodOutputFormat(ClassificationResultSchema),
+    generationConfig: {
+      responseMimeType: 'application/json',
+      responseSchema: classificationResponseSchema,
     },
   });
 
-  // Parse and validate the structured output
-  const textBlock = response.content[0];
-  const rawResult = JSON.parse((textBlock as { text: string }).text);
+  const result = await model.generateContent([
+    {
+      inlineData: {
+        mimeType: 'application/pdf',
+        data: truncatedBuffer.toString('base64'),
+      },
+    },
+    { text: classificationPrompt(filenameHint) },
+  ]);
+
+  const responseText = result.response.text();
+
+  // Parse and validate with Zod (belt-and-suspenders)
+  const rawResult = JSON.parse(responseText);
   const validated = ClassificationResultSchema.parse(rawResult);
 
   return validated;

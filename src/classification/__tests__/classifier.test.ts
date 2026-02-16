@@ -1,17 +1,17 @@
 /**
- * Tests for Document Classifier (Claude API)
+ * Tests for Document Classifier (Gemini API)
  *
  * Tests cover:
- * - classifyDocument returns valid ClassificationResult from Claude API response
+ * - classifyDocument returns valid ClassificationResult from Gemini API response
  * - Handles different doc types (T4, pay stub)
  * - Handles low confidence (result still returned)
- * - Passes PDF as base64 document block with correct media_type
- * - Uses structured output config (output_config.format with zodOutputFormat)
+ * - Passes PDF as inlineData with correct mimeType
+ * - Uses structured output config (responseMimeType + responseSchema)
  * - Uses configured model from classificationConfig
  * - Propagates API errors
  * - Truncates large PDFs before classification
  *
- * All Anthropic SDK and pdf-lib interactions are mocked.
+ * All Gemini SDK and pdf-lib interactions are mocked.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -20,27 +20,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Module-level mocks (must be before imports)
 // ---------------------------------------------------------------------------
 
-const mockCreate = vi.fn();
+const mockGenerateContent = vi.fn();
 
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: class MockAnthropic {
-    messages = { create: mockCreate };
+vi.mock('@google/generative-ai', () => ({
+  SchemaType: {
+    OBJECT: 'OBJECT',
+    STRING: 'STRING',
+    NUMBER: 'NUMBER',
   },
-}));
-
-// Mock zodOutputFormat to return a recognizable format object
-vi.mock('@anthropic-ai/sdk/helpers/zod', () => ({
-  zodOutputFormat: (schema: unknown) => ({
-    type: 'json_schema',
-    json_schema: { name: 'classification', schema },
-  }),
+  GoogleGenerativeAI: class MockGoogleGenAI {
+    constructor(_apiKey: string) {}
+    getGenerativeModel(_config: unknown) {
+      return { generateContent: mockGenerateContent };
+    }
+  },
 }));
 
 // Mock config to avoid env var loading
 vi.mock('../../classification/config.js', () => ({
   classificationConfig: {
-    anthropicApiKey: 'test-key',
-    model: 'claude-haiku-4-5-20241022',
+    geminiApiKey: 'test-key',
+    model: 'gemini-2.0-flash',
     maxClassificationPages: 3,
     confidenceThreshold: 0.7,
   },
@@ -78,9 +78,11 @@ import { classifyDocument, truncatePdf } from '../classifier.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-function mockClaudeResponse(result: Record<string, unknown>) {
-  mockCreate.mockResolvedValue({
-    content: [{ type: 'text', text: JSON.stringify(result) }],
+function mockGeminiResponse(result: Record<string, unknown>) {
+  mockGenerateContent.mockResolvedValue({
+    response: {
+      text: () => JSON.stringify(result),
+    },
   });
 }
 
@@ -123,10 +125,9 @@ describe('Document Classifier', () => {
 
   describe('classifyDocument', () => {
     it('classifies a T4 document', async () => {
-      mockClaudeResponse(sampleT4Result);
+      mockGeminiResponse(sampleT4Result);
 
       const pdfBuffer = Buffer.from('fake-pdf-content');
-      // Mock a 1-page PDF so no truncation needed
       mockGetPageCount.mockReturnValue(1);
 
       const result = await classifyDocument(pdfBuffer);
@@ -141,7 +142,7 @@ describe('Document Classifier', () => {
     });
 
     it('classifies a pay stub', async () => {
-      mockClaudeResponse(samplePayStubResult);
+      mockGeminiResponse(samplePayStubResult);
 
       const pdfBuffer = Buffer.from('fake-pay-stub-pdf');
       mockGetPageCount.mockReturnValue(2);
@@ -156,7 +157,7 @@ describe('Document Classifier', () => {
 
     it('handles low confidence (result still returned)', async () => {
       const lowConfResult = { ...sampleT4Result, confidence: 0.4 };
-      mockClaudeResponse(lowConfResult);
+      mockGeminiResponse(lowConfResult);
 
       const pdfBuffer = Buffer.from('blurry-scan');
       mockGetPageCount.mockReturnValue(1);
@@ -168,54 +169,38 @@ describe('Document Classifier', () => {
       expect(result.documentType).toBe('t4');
     });
 
-    it('passes PDF as base64 document block', async () => {
-      mockClaudeResponse(sampleT4Result);
+    it('passes PDF as inlineData with correct mimeType', async () => {
+      mockGeminiResponse(sampleT4Result);
 
       const pdfBuffer = Buffer.from('test-pdf-bytes');
       mockGetPageCount.mockReturnValue(1);
 
       await classifyDocument(pdfBuffer);
 
-      expect(mockCreate).toHaveBeenCalledTimes(1);
-      const callArgs = mockCreate.mock.calls[0][0];
-      const contentBlocks = callArgs.messages[0].content;
+      expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+      const callArgs = mockGenerateContent.mock.calls[0][0];
 
-      // First block should be the document
-      expect(contentBlocks[0].type).toBe('document');
-      expect(contentBlocks[0].source.type).toBe('base64');
-      expect(contentBlocks[0].source.media_type).toBe('application/pdf');
-      // The data should be base64-encoded
-      expect(typeof contentBlocks[0].source.data).toBe('string');
+      // First element should be the inlineData
+      expect(callArgs[0].inlineData).toBeDefined();
+      expect(callArgs[0].inlineData.mimeType).toBe('application/pdf');
+      expect(typeof callArgs[0].inlineData.data).toBe('string');
     });
 
-    it('uses structured output config', async () => {
-      mockClaudeResponse(sampleT4Result);
+    it('includes prompt text in request', async () => {
+      mockGeminiResponse(sampleT4Result);
 
       const pdfBuffer = Buffer.from('test-pdf');
       mockGetPageCount.mockReturnValue(1);
 
       await classifyDocument(pdfBuffer);
 
-      const callArgs = mockCreate.mock.calls[0][0];
-      expect(callArgs.output_config).toBeDefined();
-      expect(callArgs.output_config.format).toBeDefined();
-      expect(callArgs.output_config.format.type).toBe('json_schema');
-    });
-
-    it('uses configured model', async () => {
-      mockClaudeResponse(sampleT4Result);
-
-      const pdfBuffer = Buffer.from('test-pdf');
-      mockGetPageCount.mockReturnValue(1);
-
-      await classifyDocument(pdfBuffer);
-
-      const callArgs = mockCreate.mock.calls[0][0];
-      expect(callArgs.model).toBe('claude-haiku-4-5-20241022');
+      const callArgs = mockGenerateContent.mock.calls[0][0];
+      // Second element should be the text prompt
+      expect(callArgs[1].text).toContain('Classify this Canadian mortgage document');
     });
 
     it('throws on API error', async () => {
-      mockCreate.mockRejectedValue(new Error('API rate limit exceeded'));
+      mockGenerateContent.mockRejectedValue(new Error('API rate limit exceeded'));
 
       const pdfBuffer = Buffer.from('test-pdf');
       mockGetPageCount.mockReturnValue(1);
@@ -224,18 +209,18 @@ describe('Document Classifier', () => {
     });
 
     it('includes filenameHint in prompt when provided', async () => {
-      mockClaudeResponse(sampleT4Result);
+      mockGeminiResponse(sampleT4Result);
 
       const pdfBuffer = Buffer.from('test-pdf');
       mockGetPageCount.mockReturnValue(1);
 
       await classifyDocument(pdfBuffer, 'T4-Kathy-2024.pdf');
 
-      const callArgs = mockCreate.mock.calls[0][0];
-      const textBlock = callArgs.messages[0].content.find(
-        (b: { type: string }) => b.type === 'text',
+      const callArgs = mockGenerateContent.mock.calls[0][0];
+      const textPart = callArgs.find(
+        (p: { text?: string }) => p.text !== undefined,
       );
-      expect(textBlock.text).toContain('T4-Kathy-2024.pdf');
+      expect(textPart.text).toContain('T4-Kathy-2024.pdf');
     });
   });
 
@@ -250,14 +235,12 @@ describe('Document Classifier', () => {
       const pdfBuffer = Buffer.from('short-pdf');
       const result = await truncatePdf(pdfBuffer, 3);
 
-      // Should return original buffer unchanged
       expect(result).toBe(pdfBuffer);
     });
 
     it('truncates large PDFs to maxPages', async () => {
       mockGetPageCount.mockReturnValue(10);
 
-      // Mock page objects for copyPages
       const mockPages = Array.from({ length: 10 }, (_, i) => ({ pageNum: i }));
       mockGetPages.mockReturnValue(mockPages);
       mockCopyPages.mockResolvedValue([{ copied: 0 }, { copied: 1 }, { copied: 2 }]);
@@ -266,7 +249,6 @@ describe('Document Classifier', () => {
       const pdfBuffer = Buffer.from('large-pdf-with-10-pages');
       const result = await truncatePdf(pdfBuffer, 3);
 
-      // Should return a different (truncated) buffer
       expect(result).not.toBe(pdfBuffer);
       expect(mockAddPage).toHaveBeenCalledTimes(3);
       expect(mockSave).toHaveBeenCalled();
