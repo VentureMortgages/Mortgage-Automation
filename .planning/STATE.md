@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 7 of 9 (Classification & Filing)
-Plan: 1 of 5 complete
+Plan: 2 of 5 complete
 Status: In Progress
-Last activity: 2026-02-15 — Completed 07-01 (Classification types & config)
+Last activity: 2026-02-16 — Completed 07-02 (Finmo document download)
 
-Progress: [████████░░] 82%
+Progress: [████████░░] 84%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
+- Total plans completed: 19
 - Average duration: 4 min
-- Total execution time: 1.25 hours
+- Total execution time: 1.32 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [████████░░] 82%
 | 05-email-drafting | 2/2 | 7 min | 4 min |
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
 | 06-document-intake | 4/4 | 17 min | 4 min |
-| 07-classification-filing | 1/5 | 4 min | 4 min |
+| 07-classification-filing | 2/5 | 8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-01 (3 min), 06-02 (5 min), 06-03 (3 min), 06-04 (6 min), 07-01 (4 min)
+- Last 5 plans: 06-02 (5 min), 06-03 (3 min), 06-04 (6 min), 07-01 (4 min), 07-02 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -115,6 +115,10 @@ Progress: [████████░░] 82%
 - 36 document types (not 33 as estimated) covering all mortgage doc categories from DRIVE_STRUCTURE analysis
 - driveRootFolderId optional in config (populated by setup script or env var, not required at load time)
 - Kill switch at config level (CLASSIFICATION_ENABLED=false) following same pattern as webhook kill switch
+- Redis set (SISMEMBER/SADD) for Finmo dedup instead of key-value (simpler atomic membership check, no expiry needed)
+- Defensive signed URL extraction checks url/signedUrl/downloadUrl fields (Finmo response shape undocumented)
+- Per-file error catching in downloadFinmoDocument (one bad file does not abort remaining downloads)
+- Mark doc request processed even with partial errors (prevent infinite re-processing loops)
 
 ### Pending Todos
 
@@ -160,17 +164,20 @@ None yet.
 
 **Phase 7 (Classification & Filing):** IN PROGRESS
 - 07-01 complete: classification types, Zod schema, config (0 new tests, 241 existing pass)
+- 07-02 complete: Finmo document download pipeline (29 new tests, 270 total pass)
 - @anthropic-ai/sdk + zod installed; DOCUMENT_TYPES (36), SUBFOLDER_ROUTING, DOC_TYPE_LABELS ready
 - ClassificationConfig with Anthropic API key, model, confidence threshold, Drive settings, kill switch
-- ANTHROPIC_API_KEY required for classifier (Plan 02); DRIVE_ROOT_FOLDER_ID for filer (Plan 04)
+- finmo-downloader.ts: listDocRequests, getDocRequestDetail, getSignedDownloadUrl, downloadFinmoFile
+- processFinmoSource now real implementation (dedup -> download -> convert -> IntakeDocument)
+- ANTHROPIC_API_KEY required for classifier (Plan 03); DRIVE_ROOT_FOLDER_ID for filer (Plan 04)
 
 ## Session Continuity
 
-Last session: 2026-02-15 (plan execution)
-Stopped at: Completed 07-01-PLAN.md — Classification types & config
+Last session: 2026-02-16 (plan execution)
+Stopped at: Completed 07-02-PLAN.md — Finmo document download
 Resume file: None
-Next: 07-02-PLAN.md (Classifier module)
+Next: 07-03-PLAN.md (Classifier module)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-15 (07-01 complete, Phase 7 started)*
+*Last updated: 2026-02-16 (07-02 complete, Finmo document download)*
