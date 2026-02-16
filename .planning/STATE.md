@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 7 of 9 (Classification & Filing)
-Plan: 2 of 5 complete
+Plan: 3 of 5 complete
 Status: In Progress
-Last activity: 2026-02-16 — Completed 07-02 (Finmo document download)
+Last activity: 2026-02-16 — Completed 07-03 (Classifier, naming, router)
 
-Progress: [████████░░] 84%
+Progress: [████████░░] 86%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19
+- Total plans completed: 20
 - Average duration: 4 min
-- Total execution time: 1.32 hours
+- Total execution time: 1.38 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [████████░░] 84%
 | 05-email-drafting | 2/2 | 7 min | 4 min |
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
 | 06-document-intake | 4/4 | 17 min | 4 min |
-| 07-classification-filing | 2/5 | 8 min | 4 min |
+| 07-classification-filing | 3/5 | 12 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-02 (5 min), 06-03 (3 min), 06-04 (6 min), 07-01 (4 min), 07-02 (4 min)
+- Last 5 plans: 06-03 (3 min), 06-04 (6 min), 07-01 (4 min), 07-02 (4 min), 07-03 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -119,6 +119,10 @@ Progress: [████████░░] 84%
 - Defensive signed URL extraction checks url/signedUrl/downloadUrl fields (Finmo response shape undocumented)
 - Per-file error catching in downloadFinmoDocument (one bad file does not abort remaining downloads)
 - Mark doc request processed even with partial errors (prevent infinite re-processing loops)
+- zodOutputFormat takes single argument (Zod schema) in @anthropic-ai/sdk v0.74.0 (plan referenced two-arg version)
+- Classifier validates response with ClassificationResultSchema.parse() after JSON.parse (belt-and-suspenders)
+- Person subfolder names use first name only per Drive conventions (Terry/, Kathy/, Susan/)
+- sanitizeFilename preserves $, +, () characters that appear in Cat's naming (e.g., $630k+)
 
 ### Pending Todos
 
@@ -165,19 +169,23 @@ None yet.
 **Phase 7 (Classification & Filing):** IN PROGRESS
 - 07-01 complete: classification types, Zod schema, config (0 new tests, 241 existing pass)
 - 07-02 complete: Finmo document download pipeline (29 new tests, 270 total pass)
+- 07-03 complete: classifier, naming, router TDD (42 new tests, 312 total pass)
 - @anthropic-ai/sdk + zod installed; DOCUMENT_TYPES (36), SUBFOLDER_ROUTING, DOC_TYPE_LABELS ready
 - ClassificationConfig with Anthropic API key, model, confidence threshold, Drive settings, kill switch
 - finmo-downloader.ts: listDocRequests, getDocRequestDetail, getSignedDownloadUrl, downloadFinmoFile
 - processFinmoSource now real implementation (dedup -> download -> convert -> IntakeDocument)
-- ANTHROPIC_API_KEY required for classifier (Plan 03); DRIVE_ROOT_FOLDER_ID for filer (Plan 04)
+- classifyDocument: Claude Haiku 4.5 with structured output, PDF truncation, filename hint
+- generateFilename: Cat's naming convention (Name - DocType [Institution] [Year] [Amount].pdf)
+- routeToSubfolder: maps all 36 doc types to correct Drive subfolder target
+- ANTHROPIC_API_KEY required for classifier; DRIVE_ROOT_FOLDER_ID for filer (Plan 04)
 
 ## Session Continuity
 
 Last session: 2026-02-16 (plan execution)
-Stopped at: Completed 07-02-PLAN.md — Finmo document download
+Stopped at: Completed 07-03-PLAN.md — Classifier, naming, router
 Resume file: None
-Next: 07-03-PLAN.md (Classifier module)
+Next: 07-04-PLAN.md (Drive filer)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-16 (07-02 complete, Finmo document download)*
+*Last updated: 2026-02-16 (07-03 complete, Classifier, naming, router)*
