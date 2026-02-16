@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 7 of 9 (Classification & Filing)
-Plan: 3 of 5 complete
+Plan: 4 of 5 complete
 Status: In Progress
-Last activity: 2026-02-16 — Completed 07-03 (Classifier, naming, router)
+Last activity: 2026-02-15 — Completed 07-04 (Drive filer)
 
-Progress: [████████░░] 86%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20
+- Total plans completed: 21
 - Average duration: 4 min
-- Total execution time: 1.38 hours
+- Total execution time: 1.45 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [████████░░] 86%
 | 05-email-drafting | 2/2 | 7 min | 4 min |
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
 | 06-document-intake | 4/4 | 17 min | 4 min |
-| 07-classification-filing | 3/5 | 12 min | 4 min |
+| 07-classification-filing | 4/5 | 16 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 06-03 (3 min), 06-04 (6 min), 07-01 (4 min), 07-02 (4 min), 07-03 (4 min)
+- Last 5 plans: 06-04 (6 min), 07-01 (4 min), 07-02 (4 min), 07-03 (4 min), 07-04 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -123,6 +123,8 @@ Progress: [████████░░] 86%
 - Classifier validates response with ClassificationResultSchema.parse() after JSON.parse (belt-and-suspenders)
 - Person subfolder names use first name only per Drive conventions (Terry/, Kathy/, Susan/)
 - sanitizeFilename preserves $, +, () characters that appear in Cat's naming (e.g., $630k+)
+- MockOAuth2 class instead of vi.fn().mockImplementation for constructor mocking (Vitest 4 requires class-based constructors)
+- SUBFOLDER_NAMES as Partial<Record> lookup for clean resolveTargetFolder branching
 
 ### Pending Todos
 
@@ -170,6 +172,7 @@ None yet.
 - 07-01 complete: classification types, Zod schema, config (0 new tests, 241 existing pass)
 - 07-02 complete: Finmo document download pipeline (29 new tests, 270 total pass)
 - 07-03 complete: classifier, naming, router TDD (42 new tests, 312 total pass)
+- 07-04 complete: Drive client + filer module (31 new tests, 343 total pass)
 - @anthropic-ai/sdk + zod installed; DOCUMENT_TYPES (36), SUBFOLDER_ROUTING, DOC_TYPE_LABELS ready
 - ClassificationConfig with Anthropic API key, model, confidence threshold, Drive settings, kill switch
 - finmo-downloader.ts: listDocRequests, getDocRequestDetail, getSignedDownloadUrl, downloadFinmoFile
@@ -177,15 +180,17 @@ None yet.
 - classifyDocument: Claude Haiku 4.5 with structured output, PDF truncation, filename hint
 - generateFilename: Cat's naming convention (Name - DocType [Institution] [Year] [Amount].pdf)
 - routeToSubfolder: maps all 36 doc types to correct Drive subfolder target
-- ANTHROPIC_API_KEY required for classifier; DRIVE_ROOT_FOLDER_ID for filer (Plan 04)
+- getDriveClient: lazy singleton Drive API v3 client with service account / OAuth2 auth
+- filer.ts: findFolder, findOrCreateFolder, uploadFile, findExistingFile, updateFileContent, resolveTargetFolder
+- ANTHROPIC_API_KEY required for classifier; DRIVE_ROOT_FOLDER_ID for filer (runtime)
 
 ## Session Continuity
 
-Last session: 2026-02-16 (plan execution)
-Stopped at: Completed 07-03-PLAN.md — Classifier, naming, router
+Last session: 2026-02-15 (plan execution)
+Stopped at: Completed 07-04-PLAN.md — Drive filer
 Resume file: None
-Next: 07-04-PLAN.md (Drive filer)
+Next: 07-05-PLAN.md (Classification worker)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-16 (07-03 complete, Classifier, naming, router)*
+*Last updated: 2026-02-15 (07-04 complete, Drive filer)*
