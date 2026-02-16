@@ -16,6 +16,9 @@ export type {
   CrmContactUpsertInput,
   CrmTaskInput,
   CrmOpportunityInput,
+  CrmContact,
+  MissingDocEntry,
+  CrmNoteInput,
 } from './types/index.js';
 
 export {
@@ -31,7 +34,8 @@ export { crmConfig, validateConfig } from './config.js';
 export type { CrmConfig } from './config.js';
 
 // CRM services
-export { upsertContact, findContactByEmail } from './contacts.js';
+export { upsertContact, findContactByEmail, getContact } from './contacts.js';
+export { createAuditNote } from './notes.js';
 export { createReviewTask, createPreReadinessTask, addBusinessDays } from './tasks.js';
 export { upsertOpportunity, moveToCollectingDocs, moveToAllDocsReceived } from './opportunities.js';
 
@@ -39,9 +43,13 @@ export { upsertOpportunity, moveToCollectingDocs, moveToAllDocsReceived } from '
 export {
   mapChecklistToFields,
   mapChecklistToDocNames,
+  mapChecklistToDocEntries,
   computeDocStatus,
   buildChecklistSummary,
 } from './checklist-mapper.js';
+
+// Doc-type matcher — bridges classifier output to checklist document names
+export { findMatchingChecklistDoc } from './doc-type-matcher.js';
 
 // Orchestrator — main entry point for webhook handler
 export { syncChecklistToCrm } from './checklist-sync.js';
