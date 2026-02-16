@@ -16,7 +16,7 @@ import type {
   ChecklistItem,
 } from '../checklist/types/index.js';
 
-import type { CrmCustomFieldUpdate } from './types/index.js';
+import type { CrmCustomFieldUpdate, MissingDocEntry } from './types/index.js';
 import type { CrmConfig } from './config.js';
 
 // ============================================================================
@@ -52,8 +52,8 @@ export function mapChecklistToFields(
   const preItems = allItems.filter((i) => i.stage === 'PRE');
   const fullItems = allItems.filter((i) => i.stage === 'FULL');
 
-  // 3. Extract document names for missing docs JSON (initially ALL are missing)
-  const missingDocNames = mapChecklistToDocNames(allItems);
+  // 3. Extract structured doc entries for missing docs JSON (initially ALL are missing)
+  const missingDocEntries = mapChecklistToDocEntries(allItems);
 
   // 4. Build the update array
   return [
@@ -62,7 +62,7 @@ export function mapChecklistToFields(
     { id: config.fieldIds.preDocsReceived, field_value: 0 },
     { id: config.fieldIds.fullDocsTotal, field_value: fullItems.length },
     { id: config.fieldIds.fullDocsReceived, field_value: 0 },
-    { id: config.fieldIds.missingDocs, field_value: JSON.stringify(missingDocNames) },
+    { id: config.fieldIds.missingDocs, field_value: JSON.stringify(missingDocEntries) },
     { id: config.fieldIds.receivedDocs, field_value: '[]' },
     { id: config.fieldIds.docRequestSent, field_value: new Date().toISOString().split('T')[0] },
   ];
@@ -88,6 +88,27 @@ export function mapChecklistToFields(
  */
 export function mapChecklistToDocNames(items: ChecklistItem[]): string[] {
   return items.map((item) => item.document);
+}
+
+// ============================================================================
+// Function 2b: mapChecklistToDocEntries
+// ============================================================================
+
+/**
+ * Maps checklist items to structured MissingDocEntry objects with stage info.
+ *
+ * Unlike mapChecklistToDocNames (which returns flat strings), this preserves
+ * the stage field (PRE/FULL/LATER/CONDITIONAL) so the tracking sync in
+ * Phase 8 can determine which counter to increment when a document is received.
+ *
+ * @param items - Checklist items to extract entries from
+ * @returns Array of MissingDocEntry objects with name and stage
+ */
+export function mapChecklistToDocEntries(items: ChecklistItem[]): MissingDocEntry[] {
+  return items.map((item) => ({
+    name: item.document,
+    stage: item.stage,
+  }));
 }
 
 // ============================================================================

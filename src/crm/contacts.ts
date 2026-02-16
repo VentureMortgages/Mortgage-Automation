@@ -4,7 +4,7 @@
 
 import { crmConfig, devPrefix } from './config.js';
 import { EXISTING_FIELDS } from './types/index.js';
-import type { CrmCustomFieldUpdate } from './types/index.js';
+import type { CrmCustomFieldUpdate, CrmContact } from './types/index.js';
 import { CrmApiError, CrmAuthError, CrmRateLimitError } from './errors.js';
 
 // ============================================================================
@@ -109,6 +109,21 @@ export async function findContactByEmail(email: string): Promise<string | null> 
 
   // Return the first matching contact's ID
   return data.contacts[0].id;
+}
+
+/**
+ * Retrieves a contact's full record including custom field values.
+ *
+ * Used by Phase 8 (Tracking Integration) to read current custom field state
+ * before the read-modify-write update cycle.
+ *
+ * @param contactId - The CRM contact ID to retrieve
+ * @returns The contact record with customFields array
+ */
+export async function getContact(contactId: string): Promise<CrmContact> {
+  const response = await crmFetch(`/contacts/${contactId}`, { method: 'GET' });
+  const data = (await response.json()) as { contact: CrmContact };
+  return data.contact;
 }
 
 // ============================================================================

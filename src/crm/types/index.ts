@@ -119,3 +119,25 @@ export interface CrmOpportunityInput {
   stageId: string;
   name: string;
 }
+
+/** CRM contact record returned by GET /contacts/:contactId */
+export interface CrmContact {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  customFields: Array<{ id: string; value: unknown }>;
+}
+
+/** Structured entry for missingDocs/receivedDocs CRM fields (includes stage for counter tracking) */
+export interface MissingDocEntry {
+  name: string;
+  stage: 'PRE' | 'FULL' | 'LATER' | 'CONDITIONAL' | 'LENDER_CONDITION';
+}
+
+/** Input for creating an audit note on a CRM contact */
+export interface CrmNoteInput {
+  documentType: string;
+  source: string;
+  driveFileId: string;
+}

@@ -11,6 +11,7 @@ import { fixtures } from '../../checklist/__tests__/fixtures/index.js';
 import {
   mapChecklistToFields,
   mapChecklistToDocNames,
+  mapChecklistToDocEntries,
   computeDocStatus,
   buildChecklistSummary,
 } from '../checklist-mapper.js';
@@ -82,18 +83,19 @@ describe('mapChecklistToFields', () => {
     expect(fullReceivedField?.field_value).toBe(0);
   });
 
-  test('missing docs JSON contains document names', () => {
+  test('missing docs JSON contains structured MissingDocEntry objects', () => {
     const result = mapChecklistToFields(checklist, { fieldIds: mockFieldIds });
 
     const missingDocsField = result.find((f) => f.id === 'test-missing');
     expect(missingDocsField).toBeDefined();
 
-    const parsed = JSON.parse(missingDocsField!.field_value as string) as string[];
+    const parsed = JSON.parse(missingDocsField!.field_value as string) as Array<{ name: string; stage: string }>;
     expect(parsed.length).toBeGreaterThan(0);
 
-    // All entries should be strings (document names, not objects)
+    // All entries should be MissingDocEntry objects with name and stage
     for (const item of parsed) {
-      expect(typeof item).toBe('string');
+      expect(typeof item.name).toBe('string');
+      expect(['PRE', 'FULL', 'LATER', 'CONDITIONAL', 'LENDER_CONDITION']).toContain(item.stage);
     }
   });
 
@@ -155,6 +157,56 @@ describe('mapChecklistToDocNames', () => {
       // No email addresses
       expect(name).not.toMatch(/@.*\./);
     }
+  });
+});
+
+// ============================================================================
+// mapChecklistToDocEntries
+// ============================================================================
+
+describe('mapChecklistToDocEntries', () => {
+  test('returns objects with name and stage fields', () => {
+    const items: ChecklistItem[] = [
+      {
+        ruleId: 'test-rule-1',
+        document: 'T4 — Current year',
+        displayName: 'T4 income tax slip for the current tax year',
+        stage: 'PRE',
+        forEmail: true,
+        section: 'income',
+      },
+      {
+        ruleId: 'test-rule-2',
+        document: 'Letter of Employment',
+        displayName: 'Letter of employment from employer',
+        stage: 'FULL',
+        forEmail: true,
+        section: 'income',
+      },
+    ];
+
+    const result = mapChecklistToDocEntries(items);
+    expect(result).toEqual([
+      { name: 'T4 — Current year', stage: 'PRE' },
+      { name: 'Letter of Employment', stage: 'FULL' },
+    ]);
+  });
+
+  test('handles empty items array', () => {
+    const result = mapChecklistToDocEntries([]);
+    expect(result).toEqual([]);
+  });
+
+  test('preserves all stage types', () => {
+    const items: ChecklistItem[] = [
+      { ruleId: 'r1', document: 'Doc A', displayName: 'A', stage: 'PRE', forEmail: true, section: 'income' },
+      { ruleId: 'r2', document: 'Doc B', displayName: 'B', stage: 'FULL', forEmail: true, section: 'income' },
+      { ruleId: 'r3', document: 'Doc C', displayName: 'C', stage: 'LATER', forEmail: true, section: 'income' },
+      { ruleId: 'r4', document: 'Doc D', displayName: 'D', stage: 'CONDITIONAL', forEmail: true, section: 'income' },
+    ];
+
+    const result = mapChecklistToDocEntries(items);
+    expect(result.map(e => e.stage)).toEqual(['PRE', 'FULL', 'LATER', 'CONDITIONAL']);
   });
 });
 
