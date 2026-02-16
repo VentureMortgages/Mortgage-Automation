@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 6 - Document Intake (COMPLETE)
+**Current focus:** Phase 7 - Classification & Filing (IN PROGRESS)
 
 ## Current Position
 
-Phase: 6 of 9 (Document Intake)
-Plan: 4 of 4 complete
-Status: Phase Complete
-Last activity: 2026-02-14 — Completed 06-04 (Intake monitor, worker & barrel)
+Phase: 7 of 9 (Classification & Filing)
+Plan: 1 of 5 complete
+Status: In Progress
+Last activity: 2026-02-15 — Completed 07-01 (Classification types & config)
 
-Progress: [████████░░] 80%
+Progress: [████████░░] 82%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
+- Total plans completed: 18
 - Average duration: 4 min
-- Total execution time: 1.18 hours
+- Total execution time: 1.25 hours
 
 **By Phase:**
 
@@ -32,9 +32,10 @@ Progress: [████████░░] 80%
 | 05-email-drafting | 2/2 | 7 min | 4 min |
 | 01-webhook-foundation | 3/3 | 12 min | 4 min |
 | 06-document-intake | 4/4 | 17 min | 4 min |
+| 07-classification-filing | 1/5 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (4 min), 06-01 (3 min), 06-02 (5 min), 06-03 (3 min), 06-04 (6 min)
+- Last 5 plans: 06-01 (3 min), 06-02 (5 min), 06-03 (3 min), 06-04 (6 min), 07-01 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -110,6 +111,10 @@ Progress: [████████░░] 80%
 - Finmo handler uses fire-and-forget queue.add with .then/.catch (respond 202 immediately)
 - processIntakeJob catches ConversionError per-attachment without failing the whole job
 - IntakeDocument objects logged then discarded (Phase 7 will consume them via classification queue)
+- Zod v4 (4.3.6) installed as dependency of @anthropic-ai/sdk, compatible with zodOutputFormat helper
+- 36 document types (not 33 as estimated) covering all mortgage doc categories from DRIVE_STRUCTURE analysis
+- driveRootFolderId optional in config (populated by setup script or env var, not required at load time)
+- Kill switch at config level (CLASSIFICATION_ENABLED=false) following same pattern as webhook kill switch
 
 ### Pending Todos
 
@@ -153,16 +158,19 @@ None yet.
 - Finmo document webhook handler with dedup; actual file download deferred (API undocumented)
 - Barrel export at src/intake/index.ts provides clean import surface for Phase 7
 
-**Phase 7 (Classification & Filing):**
-- Decision needed: reuse existing mortgage.ai PDF classification code or build new classifier
+**Phase 7 (Classification & Filing):** IN PROGRESS
+- 07-01 complete: classification types, Zod schema, config (0 new tests, 241 existing pass)
+- @anthropic-ai/sdk + zod installed; DOCUMENT_TYPES (36), SUBFOLDER_ROUTING, DOC_TYPE_LABELS ready
+- ClassificationConfig with Anthropic API key, model, confidence threshold, Drive settings, kill switch
+- ANTHROPIC_API_KEY required for classifier (Plan 02); DRIVE_ROOT_FOLDER_ID for filer (Plan 04)
 
 ## Session Continuity
 
-Last session: 2026-02-14 (plan execution)
-Stopped at: Completed 06-04-PLAN.md — Phase 6 Document Intake COMPLETE
+Last session: 2026-02-15 (plan execution)
+Stopped at: Completed 07-01-PLAN.md — Classification types & config
 Resume file: None
-Next: Phase 7 (Classification & Filing) planning
+Next: 07-02-PLAN.md (Classifier module)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-14 (06-04 complete, Phase 6 100%)*
+*Last updated: 2026-02-15 (07-01 complete, Phase 7 started)*
