@@ -18,31 +18,33 @@ const testChecklist: GeneratedChecklist = {
   borrowerChecklists: [
     {
       borrowerName: 'Test Borrower',
-      borrowerIndex: 0,
+      borrowerId: 'test-borrower-1',
       isMainBorrower: true,
       items: [
-        { id: 'test-1', displayName: '2 most recent pay stubs', category: 'income', stage: 'PRE', scope: 'per_borrower', forEmail: true, notes: 'Must show year-to-date earnings' },
-        { id: 'test-2', displayName: 'T4 slips (2 years)', category: 'income', stage: 'PRE', scope: 'per_borrower', forEmail: true },
-        { id: 'test-3', displayName: '90-day bank statements', category: 'banking', stage: 'PRE', scope: 'per_borrower', forEmail: true, notes: 'All pages, all accounts used for down payment or savings' },
-        { id: 'test-4', displayName: 'Letter of employment', category: 'income', stage: 'PRE', scope: 'per_borrower', forEmail: true, notes: 'Must include position, salary, start date, and employment status' },
+        { ruleId: 'test-1', document: 'pay stubs', displayName: '2 most recent pay stubs', stage: 'PRE', section: '1_income_employed_salary', forEmail: true, notes: 'Must show year-to-date earnings' },
+        { ruleId: 'test-2', document: 'T4 slips', displayName: 'T4 slips (2 years)', stage: 'PRE', section: '1_income_employed_salary', forEmail: true },
+        { ruleId: 'test-3', document: '90-day bank statements', displayName: '90-day bank statements', stage: 'PRE', section: '14_down_payment_savings', forEmail: true, notes: 'All pages, all accounts used for down payment or savings' },
+        { ruleId: 'test-4', document: 'Letter of employment', displayName: 'Letter of employment', stage: 'PRE', section: '1_income_employed_salary', forEmail: true, notes: 'Must include position, salary, start date, and employment status' },
       ],
     },
   ],
   propertyChecklists: [
     {
       propertyDescription: '123 Test Street, Toronto',
-      propertyIndex: 0,
+      propertyId: 'test-property-1',
       items: [
-        { id: 'test-5', displayName: 'MLS listing', category: 'property', stage: 'FULL', scope: 'per_property', forEmail: true },
-        { id: 'test-6', displayName: 'Purchase agreement', category: 'property', stage: 'FULL', scope: 'per_property', forEmail: true, notes: 'All pages including schedules and amendments' },
+        { ruleId: 'test-5', document: 'MLS listing', displayName: 'MLS listing', stage: 'FULL', section: '15_property_purchase', forEmail: true },
+        { ruleId: 'test-6', document: 'Purchase agreement', displayName: 'Purchase agreement', stage: 'FULL', section: '15_property_purchase', forEmail: true, notes: 'All pages including schedules and amendments' },
       ],
     },
   ],
   sharedItems: [
-    { id: 'test-7', displayName: 'Void cheque or direct deposit form', category: 'other', stage: 'FULL', scope: 'shared', forEmail: true },
+    { ruleId: 'test-7', document: 'Void cheque', displayName: 'Void cheque or direct deposit form', stage: 'FULL', section: '0_base_pack', forEmail: true },
   ],
   internalFlags: [],
-  stats: { totalItems: 7, preItems: 4, fullItems: 3, borrowerCount: 1, propertyCount: 1 },
+  stats: { totalItems: 7, preItems: 4, fullItems: 3, perBorrowerItems: 4, sharedItems: 1, internalFlags: 0, warnings: 0 },
+  applicationId: 'test-app-1',
+  warnings: [],
   generatedAt: new Date().toISOString(),
 };
 
