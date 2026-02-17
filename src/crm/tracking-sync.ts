@@ -36,6 +36,8 @@ export interface TrackingUpdateInput {
   driveFileId: string;
   source: 'gmail' | 'finmo';
   receivedAt: string;
+  /** Pre-resolved contact ID — skips email lookup when provided */
+  contactId?: string;
 }
 
 export interface TrackingUpdateResult {
@@ -129,8 +131,8 @@ export async function updateDocTracking(
   const errors: string[] = [];
   const fieldIds = crmConfig.fieldIds;
 
-  // 1. Find contact by email
-  const contactId = await findContactByEmail(input.senderEmail);
+  // 1. Find contact by email (or use pre-resolved contactId)
+  const contactId = input.contactId ?? await findContactByEmail(input.senderEmail);
   if (!contactId) {
     return { updated: false, reason: 'no-contact', errors: [] };
   }

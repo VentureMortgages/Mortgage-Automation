@@ -34,7 +34,8 @@ export { crmConfig, validateConfig } from './config.js';
 export type { CrmConfig } from './config.js';
 
 // CRM services
-export { upsertContact, findContactByEmail, getContact } from './contacts.js';
+export { upsertContact, findContactByEmail, findContactByName, resolveContactId, getContact } from './contacts.js';
+export type { ResolveContactResult } from './contacts.js';
 export { createAuditNote } from './notes.js';
 export { createReviewTask, createPreReadinessTask, addBusinessDays } from './tasks.js';
 export { upsertOpportunity, moveToCollectingDocs, moveToAllDocsReceived } from './opportunities.js';

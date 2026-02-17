@@ -26,6 +26,11 @@ export interface UpsertContactResult {
   isNew: boolean;
 }
 
+export interface ResolveContactResult {
+  contactId: string | null;
+  resolvedVia: 'email' | 'name' | null;
+}
+
 // ============================================================================
 // Constants — Finmo-managed field IDs that must NEVER be overwritten
 // ============================================================================
@@ -110,6 +115,84 @@ export async function findContactByEmail(email: string): Promise<string | null> 
 
   // Return the first matching contact's ID
   return data.contacts[0].id;
+}
+
+/**
+ * Searches for a contact by first + last name.
+ *
+ * Uses POST /contacts/search with "firstName lastName" as query.
+ * GHL search is fuzzy, so we exact-match filter (case-insensitive) after.
+ * Returns null if 0 matches or 2+ matches (ambiguity guard → manual review).
+ */
+export async function findContactByName(
+  firstName: string,
+  lastName: string,
+): Promise<string | null> {
+  const body = {
+    locationId: crmConfig.locationId,
+    query: `${firstName} ${lastName}`,
+    pageLimit: 5,
+  };
+
+  const response = await crmFetch('/contacts/search', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+
+  const data = (await response.json()) as {
+    contacts: Array<{ id: string; firstName?: string; lastName?: string }>;
+  };
+
+  if (!data.contacts || data.contacts.length === 0) {
+    return null;
+  }
+
+  // Exact-match filter (case-insensitive) — GHL may return fuzzy results
+  const exactMatches = data.contacts.filter(
+    (c) =>
+      c.firstName?.toLowerCase() === firstName.toLowerCase() &&
+      c.lastName?.toLowerCase() === lastName.toLowerCase(),
+  );
+
+  // Ambiguity guard: 2+ exact matches → return null (manual review)
+  if (exactMatches.length !== 1) {
+    return null;
+  }
+
+  return exactMatches[0].id;
+}
+
+/**
+ * Resolves a CRM contact ID using email first, then name as fallback.
+ *
+ * Used by the classification worker to find the borrower's CRM contact
+ * even when the email sender is not the borrower (e.g., Cat forwarding).
+ */
+export async function resolveContactId(input: {
+  senderEmail: string | null;
+  borrowerFirstName: string | null;
+  borrowerLastName: string | null;
+}): Promise<ResolveContactResult> {
+  // Try email lookup first
+  if (input.senderEmail) {
+    const contactId = await findContactByEmail(input.senderEmail);
+    if (contactId) {
+      return { contactId, resolvedVia: 'email' };
+    }
+  }
+
+  // Fallback: name-based lookup
+  if (input.borrowerFirstName && input.borrowerLastName) {
+    const contactId = await findContactByName(
+      input.borrowerFirstName,
+      input.borrowerLastName,
+    );
+    if (contactId) {
+      return { contactId, resolvedVia: 'name' };
+    }
+  }
+
+  return { contactId: null, resolvedVia: null };
 }
 
 /**

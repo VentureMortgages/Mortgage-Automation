@@ -30,7 +30,7 @@ import { generateFilename } from './naming.js';
 import { routeToSubfolder, getPersonSubfolderName } from './router.js';
 import { getDriveClient } from './drive-client.js';
 import { resolveTargetFolder, uploadFile, findExistingFile, updateFileContent } from './filer.js';
-import { findContactByEmail } from '../crm/contacts.js';
+import { resolveContactId } from '../crm/contacts.js';
 import { createReviewTask } from '../crm/tasks.js';
 import { updateDocTracking } from '../crm/tracking-sync.js';
 import { DOC_TYPE_LABELS } from './types.js';
@@ -72,7 +72,20 @@ export async function processClassificationJob(
       confidence: classification.confidence,
     });
 
-    // c. Check confidence threshold (FILE-05: low confidence -> manual review)
+    // c. Resolve CRM contact (once — email first, name fallback)
+    const resolved = await resolveContactId({
+      senderEmail,
+      borrowerFirstName: classification.borrowerFirstName ?? null,
+      borrowerLastName: classification.borrowerLastName ?? null,
+    });
+
+    const contactId = resolved.contactId;
+    console.log('[classification] Contact resolution:', {
+      resolvedVia: resolved.resolvedVia,
+      hasContactId: !!contactId,
+    });
+
+    // d. Check confidence threshold (FILE-05: low confidence -> manual review)
     if (classification.confidence < classificationConfig.confidenceThreshold) {
       console.log('[classification] Low confidence, routing to manual review:', {
         confidence: classification.confidence,
@@ -80,12 +93,6 @@ export async function processClassificationJob(
       });
 
       try {
-        // Try to find a contact for the CRM task
-        let contactId: string | null = null;
-        if (senderEmail) {
-          contactId = await findContactByEmail(senderEmail);
-        }
-
         if (contactId) {
           await createReviewTask(
             contactId,
@@ -96,7 +103,7 @@ export async function processClassificationJob(
           );
         } else {
           console.warn('[classification] No CRM contact found for manual review task:', {
-            senderEmail,
+            hasEmail: !!senderEmail,
             applicationId,
           });
         }
@@ -119,23 +126,13 @@ export async function processClassificationJob(
       };
     }
 
-    // d. Resolve client Drive folder
+    // e. Resolve client Drive folder
     // TODO: Phase 8 will add a CRM custom field for Drive folder ID.
-    // For now, use best-effort: look up contact via email, then fall back to
-    // driveRootFolderId. If we cannot resolve a folder, route to manual review.
+    // For now, use driveRootFolderId as fallback.
     let clientFolderId: string | null = null;
 
-    if (senderEmail) {
-      try {
-        const contactId = await findContactByEmail(senderEmail);
-        if (contactId) {
-          // TODO: Look up Drive folder ID from CRM custom field (Phase 8).
-          // For now, fall back to Drive root folder.
-          clientFolderId = classificationConfig.driveRootFolderId || null;
-        }
-      } catch {
-        // CRM lookup failure is non-fatal; fall back
-      }
+    if (contactId) {
+      clientFolderId = classificationConfig.driveRootFolderId || null;
     }
 
     // Fallback: use Drive root folder if available
@@ -148,16 +145,13 @@ export async function processClassificationJob(
       console.warn('[classification] Cannot resolve client Drive folder, routing to manual review');
 
       try {
-        if (senderEmail) {
-          const contactId = await findContactByEmail(senderEmail);
-          if (contactId) {
-            await createReviewTask(
-              contactId,
-              `Manual Review: ${originalFilename}`,
-              `Could not resolve client Drive folder. Document type: ${classification.documentType}. ` +
-                `Source: ${source}. Please file manually.`,
-            );
-          }
+        if (contactId) {
+          await createReviewTask(
+            contactId,
+            `Manual Review: ${originalFilename}`,
+            `Could not resolve client Drive folder. Document type: ${classification.documentType}. ` +
+              `Source: ${source}. Please file manually.`,
+          );
         }
       } catch {
         // CRM task creation failure is non-fatal
@@ -220,14 +214,15 @@ export async function processClassificationJob(
     }
 
     // j. Update CRM tracking (Phase 8 — non-fatal)
-    if (senderEmail) {
+    if (senderEmail || contactId) {
       try {
         const trackingResult = await updateDocTracking({
-          senderEmail,
+          senderEmail: senderEmail ?? '',
           documentType: classification.documentType,
           driveFileId,
           source,
           receivedAt: job.data.receivedAt,
+          ...(contactId ? { contactId } : {}),
         });
 
         if (trackingResult.updated) {

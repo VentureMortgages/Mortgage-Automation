@@ -1,5 +1,5 @@
 // ============================================================================
-// Tests: CRM Contacts Service — getContact() and findContactByEmail()
+// Tests: CRM Contacts Service
 // ============================================================================
 //
 // Tests the contacts module with mocked fetch. Uses the same mocking pattern
@@ -18,7 +18,7 @@ vi.mock('../config.js', () => ({
   devPrefix: (text: string) => text,
 }));
 
-import { getContact, findContactByEmail } from '../contacts.js';
+import { getContact, findContactByEmail, findContactByName, resolveContactId } from '../contacts.js';
 import { CrmAuthError, CrmApiError } from '../errors.js';
 
 // ============================================================================
@@ -162,5 +162,199 @@ describe('findContactByEmail', () => {
     const body = JSON.parse(init.body);
     expect(body.locationId).toBe('test-location-id');
     expect(body.query).toBe('test@example.com');
+  });
+});
+
+// ============================================================================
+// findContactByName
+// ============================================================================
+
+describe('findContactByName', () => {
+  test('returns contact ID on exact match', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [{ id: 'contact-abc', firstName: 'Terry', lastName: 'Smith' }],
+      }),
+    });
+
+    const result = await findContactByName('Terry', 'Smith');
+    expect(result).toBe('contact-abc');
+  });
+
+  test('returns null when no contacts found', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contacts: [] }),
+    });
+
+    const result = await findContactByName('Nobody', 'Here');
+    expect(result).toBeNull();
+  });
+
+  test('returns null on ambiguity (2+ exact matches)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [
+          { id: 'contact-1', firstName: 'Terry', lastName: 'Smith' },
+          { id: 'contact-2', firstName: 'Terry', lastName: 'Smith' },
+        ],
+      }),
+    });
+
+    const result = await findContactByName('Terry', 'Smith');
+    expect(result).toBeNull();
+  });
+
+  test('filters out fuzzy/non-exact matches from GHL', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [
+          { id: 'contact-1', firstName: 'Terrence', lastName: 'Smith' },
+          { id: 'contact-2', firstName: 'Terry', lastName: 'Smithson' },
+        ],
+      }),
+    });
+
+    const result = await findContactByName('Terry', 'Smith');
+    expect(result).toBeNull();
+  });
+
+  test('matches case-insensitively', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [{ id: 'contact-abc', firstName: 'terry', lastName: 'SMITH' }],
+      }),
+    });
+
+    const result = await findContactByName('Terry', 'Smith');
+    expect(result).toBe('contact-abc');
+  });
+
+  test('sends query as "firstName lastName" with pageLimit 5', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contacts: [] }),
+    });
+
+    await findContactByName('Terry', 'Smith');
+
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe('https://test-api.example.com/contacts/search');
+    const body = JSON.parse(init.body);
+    expect(body.query).toBe('Terry Smith');
+    expect(body.pageLimit).toBe(5);
+  });
+});
+
+// ============================================================================
+// resolveContactId
+// ============================================================================
+
+describe('resolveContactId', () => {
+  test('returns email resolution when email lookup succeeds', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [{ id: 'contact-email', email: 'borrower@example.com' }],
+      }),
+    });
+
+    const result = await resolveContactId({
+      senderEmail: 'borrower@example.com',
+      borrowerFirstName: 'Terry',
+      borrowerLastName: 'Smith',
+    });
+
+    expect(result.contactId).toBe('contact-email');
+    expect(result.resolvedVia).toBe('email');
+    // Should NOT make a second call for name lookup
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('falls back to name lookup when email fails', async () => {
+    // Email lookup returns no results
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contacts: [] }),
+    });
+    // Name lookup returns a match
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [{ id: 'contact-name', firstName: 'Terry', lastName: 'Smith' }],
+      }),
+    });
+
+    const result = await resolveContactId({
+      senderEmail: 'admin@venturemortgages.com',
+      borrowerFirstName: 'Terry',
+      borrowerLastName: 'Smith',
+    });
+
+    expect(result.contactId).toBe('contact-name');
+    expect(result.resolvedVia).toBe('name');
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  test('returns null when both email and name fail', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contacts: [] }),
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contacts: [] }),
+    });
+
+    const result = await resolveContactId({
+      senderEmail: 'admin@venturemortgages.com',
+      borrowerFirstName: 'Unknown',
+      borrowerLastName: 'Person',
+    });
+
+    expect(result.contactId).toBeNull();
+    expect(result.resolvedVia).toBeNull();
+  });
+
+  test('skips email lookup when senderEmail is null', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [{ id: 'contact-name', firstName: 'Terry', lastName: 'Smith' }],
+      }),
+    });
+
+    const result = await resolveContactId({
+      senderEmail: null,
+      borrowerFirstName: 'Terry',
+      borrowerLastName: 'Smith',
+    });
+
+    expect(result.contactId).toBe('contact-name');
+    expect(result.resolvedVia).toBe('name');
+    // Only one call — name lookup, no email lookup
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('skips name lookup when names are null', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contacts: [] }),
+    });
+
+    const result = await resolveContactId({
+      senderEmail: 'admin@venturemortgages.com',
+      borrowerFirstName: null,
+      borrowerLastName: null,
+    });
+
+    expect(result.contactId).toBeNull();
+    expect(result.resolvedVia).toBeNull();
+    // Only one call — email lookup, no name lookup
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });

@@ -78,7 +78,7 @@ const mockFiler = vi.hoisted(() => ({
 vi.mock('../filer.js', () => mockFiler);
 
 const mockContacts = vi.hoisted(() => ({
-  findContactByEmail: vi.fn(),
+  resolveContactId: vi.fn(),
 }));
 
 vi.mock('../../crm/contacts.js', () => mockContacts);
@@ -163,7 +163,7 @@ describe('classification-worker', () => {
     mockFiler.resolveTargetFolder.mockResolvedValue('target-folder-456');
     mockFiler.findExistingFile.mockResolvedValue(null);
     mockFiler.uploadFile.mockResolvedValue('drive-file-789');
-    mockContacts.findContactByEmail.mockResolvedValue('contact-abc');
+    mockContacts.resolveContactId.mockResolvedValue({ contactId: 'contact-abc', resolvedVia: 'email' });
     mockTasks.createReviewTask.mockResolvedValue('task-xyz');
     mockTrackingSync.updateDocTracking.mockResolvedValue({
       updated: true,
@@ -217,8 +217,8 @@ describe('classification-worker', () => {
       expect(result.error).toBeNull();
       expect(result.classification?.confidence).toBe(0.3);
 
-      // CRM task should be created
-      expect(mockContacts.findContactByEmail).toHaveBeenCalledWith('client@example.com');
+      // CRM task should be created (contact resolved via resolveContactId)
+      expect(mockContacts.resolveContactId).toHaveBeenCalled();
       expect(mockTasks.createReviewTask).toHaveBeenCalledWith(
         'contact-abc',
         'Manual Review: T4_2024.pdf',
@@ -293,7 +293,7 @@ describe('classification-worker', () => {
       // No driveRootFolderId configured
       mockConfig.classificationConfig.driveRootFolderId = '';
       // No contact found
-      mockContacts.findContactByEmail.mockResolvedValue(null);
+      mockContacts.resolveContactId.mockResolvedValue({ contactId: null, resolvedVia: null });
 
       const job = mockJob();
       const result = await processClassificationJob(job);
@@ -346,10 +346,23 @@ describe('classification-worker', () => {
         driveFileId: 'drive-file-789',
         source: 'gmail',
         receivedAt: '2026-02-15T12:00:00Z',
+        contactId: 'contact-abc',
       });
     });
 
-    it('should not call updateDocTracking when senderEmail is null', async () => {
+    it('should still call updateDocTracking via contactId when senderEmail is null', async () => {
+      mockContacts.resolveContactId.mockResolvedValue({ contactId: 'contact-name', resolvedVia: 'name' });
+      const job = mockJob({ senderEmail: null });
+      const result = await processClassificationJob(job);
+
+      expect(result.filed).toBe(true);
+      expect(mockTrackingSync.updateDocTracking).toHaveBeenCalledWith(
+        expect.objectContaining({ contactId: 'contact-name' }),
+      );
+    });
+
+    it('should not call updateDocTracking when both senderEmail and contactId are null', async () => {
+      mockContacts.resolveContactId.mockResolvedValue({ contactId: null, resolvedVia: null });
       const job = mockJob({ senderEmail: null });
       const result = await processClassificationJob(job);
 
@@ -380,6 +393,39 @@ describe('classification-worker', () => {
       expect(result.filed).toBe(true);
       expect(result.driveFileId).toBe('drive-file-789');
       expect(result.error).toBeNull();
+    });
+
+    // -----------------------------------------------------------------
+    // Name fallback contact resolution
+    // -----------------------------------------------------------------
+
+    it('should resolve contact by name when email lookup fails (forwarded email)', async () => {
+      // Simulate Cat forwarding — email resolves via name fallback
+      mockContacts.resolveContactId.mockResolvedValue({ contactId: 'contact-name', resolvedVia: 'name' });
+
+      const job = mockJob({ senderEmail: 'admin@venturemortgages.com' });
+      const result = await processClassificationJob(job);
+
+      expect(result.filed).toBe(true);
+      expect(mockContacts.resolveContactId).toHaveBeenCalledWith({
+        senderEmail: 'admin@venturemortgages.com',
+        borrowerFirstName: 'Terry',
+        borrowerLastName: 'Smith',
+      });
+      expect(mockTrackingSync.updateDocTracking).toHaveBeenCalledWith(
+        expect.objectContaining({ contactId: 'contact-name' }),
+      );
+    });
+
+    it('should still file to Drive even when contact resolution fails entirely', async () => {
+      mockContacts.resolveContactId.mockResolvedValue({ contactId: null, resolvedVia: null });
+
+      const job = mockJob();
+      const result = await processClassificationJob(job);
+
+      // Doc should still be filed — contact resolution is non-blocking for Drive
+      expect(result.filed).toBe(true);
+      expect(result.driveFileId).toBe('drive-file-789');
     });
   });
 });

@@ -408,6 +408,16 @@ describe('tracking-sync', () => {
   // =========================================================================
 
   describe('updateDocTracking — edge cases', () => {
+    it('should use provided contactId and skip findContactByEmail', async () => {
+      setupHappyPath();
+
+      const result = await updateDocTracking(makeInput({ contactId: 'pre-resolved-id' }));
+
+      expect(result.updated).toBe(true);
+      expect(mockContacts.findContactByEmail).not.toHaveBeenCalled();
+      expect(mockContacts.getContact).toHaveBeenCalledWith('pre-resolved-id');
+    });
+
     it('should return no-contact when email not found in CRM', async () => {
       mockContacts.findContactByEmail.mockResolvedValue(null);
 
