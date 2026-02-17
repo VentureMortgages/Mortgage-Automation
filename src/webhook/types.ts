@@ -22,6 +22,7 @@ export interface ProcessingResult {
   applicationId: string;
   contactId: string;
   draftId: string;
+  budgetSheetId?: string | null;
   warnings: string[];
   errors: string[];
 }

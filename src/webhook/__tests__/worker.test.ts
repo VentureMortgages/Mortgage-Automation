@@ -52,6 +52,24 @@ vi.mock('../../email/index.js', () => ({
   createEmailDraft: vi.fn(),
 }));
 
+const mockBudgetConfig = vi.hoisted(() => ({
+  budgetConfig: { enabled: false },
+}));
+
+vi.mock('../../budget/index.js', () => ({
+  createBudgetSheet: vi.fn(),
+  buildClientFolderName: vi.fn(() => 'Doe, Jane'),
+  ...mockBudgetConfig,
+}));
+
+vi.mock('../../classification/drive-client.js', () => ({
+  getDriveClient: vi.fn(() => ({})),
+}));
+
+vi.mock('../../classification/filer.js', () => ({
+  findOrCreateFolder: vi.fn(() => Promise.resolve('folder-123')),
+}));
+
 // Prevent BullMQ from creating real connections
 vi.mock('bullmq', () => ({
   Worker: vi.fn(),
@@ -63,6 +81,7 @@ import { fetchFinmoApplication } from '../finmo-client.js';
 import { generateChecklist } from '../../checklist/engine/index.js';
 import { syncChecklistToCrm } from '../../crm/index.js';
 import { createEmailDraft } from '../../email/index.js';
+import { createBudgetSheet } from '../../budget/index.js';
 import type { FinmoApplicationResponse } from '../../checklist/types/index.js';
 import type { GeneratedChecklist } from '../../checklist/types/index.js';
 import type { SyncChecklistResult } from '../../crm/index.js';
@@ -285,6 +304,7 @@ describe('processJob', () => {
       applicationId: 'app-123',
       contactId: 'crm-contact-456',
       draftId: 'draft-abc',
+      budgetSheetId: null,
       warnings: ['Unknown field value: payType=commission_plus'],
       errors: [],
     });
@@ -496,5 +516,52 @@ describe('processJob', () => {
       'Task creation failed: timeout',
       'Opportunity upsert failed: 500',
     ]);
+  });
+
+  describe('budget sheet step (step 5)', () => {
+    const mockBudget = vi.mocked(createBudgetSheet);
+
+    beforeEach(() => {
+      mockFetch.mockResolvedValue(createMockFinmoApp());
+      mockGenerate.mockReturnValue(createMockChecklist());
+      mockCrm.mockResolvedValue(createMockCrmResult());
+      mockEmail.mockResolvedValue(createMockEmailResult());
+    });
+
+    it('should create budget sheet when enabled and DRIVE_ROOT_FOLDER_ID set', async () => {
+      mockBudgetConfig.budgetConfig.enabled = true;
+      process.env.DRIVE_ROOT_FOLDER_ID = 'root-folder-id';
+      mockBudget.mockResolvedValue({
+        spreadsheetId: 'budget-sheet-001',
+        spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/budget-sheet-001',
+        tabName: 'Purchase Budget',
+        prefilled: true,
+      });
+
+      const result = await processJob(createMockJob());
+
+      expect(result.budgetSheetId).toBe('budget-sheet-001');
+      expect(mockBudget).toHaveBeenCalled();
+
+      delete process.env.DRIVE_ROOT_FOLDER_ID;
+      mockBudgetConfig.budgetConfig.enabled = false;
+    });
+
+    it('should not fail the job when budget sheet creation throws', async () => {
+      mockBudgetConfig.budgetConfig.enabled = true;
+      process.env.DRIVE_ROOT_FOLDER_ID = 'root-folder-id';
+      mockBudget.mockRejectedValue(new Error('Sheets API quota exceeded'));
+
+      const result = await processJob(createMockJob());
+
+      // Job still succeeds — budget error is non-fatal
+      expect(result.applicationId).toBe('app-123');
+      expect(result.contactId).toBe('crm-contact-456');
+      expect(result.draftId).toBe('draft-abc');
+      expect(result.budgetSheetId).toBeNull();
+
+      delete process.env.DRIVE_ROOT_FOLDER_ID;
+      mockBudgetConfig.budgetConfig.enabled = false;
+    });
   });
 });

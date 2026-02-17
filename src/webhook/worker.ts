@@ -29,6 +29,9 @@ import { fetchFinmoApplication } from './finmo-client.js';
 import { generateChecklist } from '../checklist/engine/index.js';
 import { syncChecklistToCrm } from '../crm/index.js';
 import { createEmailDraft } from '../email/index.js';
+import { createBudgetSheet, buildClientFolderName, budgetConfig } from '../budget/index.js';
+import { getDriveClient } from '../classification/drive-client.js';
+import { findOrCreateFolder } from '../classification/filer.js';
 import type { JobData, ProcessingResult } from './types.js';
 
 let _worker: Worker | null = null;
@@ -98,10 +101,33 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     subject: emailResult.subject,
   });
 
+  // 5. Create budget sheet (non-fatal — errors logged but don't fail the job)
+  let budgetSheetId: string | null = null;
+  try {
+    if (budgetConfig.enabled) {
+      const driveRootFolderId = process.env.DRIVE_ROOT_FOLDER_ID;
+      if (driveRootFolderId) {
+        const clientFolderName = buildClientFolderName(finmoApp.borrowers);
+        const clientFolderId = await findOrCreateFolder(getDriveClient(), clientFolderName, driveRootFolderId);
+        const budgetResult = await createBudgetSheet(finmoApp, clientFolderId);
+        budgetSheetId = budgetResult.spreadsheetId;
+        console.log('[worker] Budget sheet created', { applicationId, spreadsheetId: budgetSheetId });
+      } else {
+        console.log('[worker] Budget sheet skipped (DRIVE_ROOT_FOLDER_ID not set)');
+      }
+    }
+  } catch (err) {
+    console.error('[worker] Budget sheet creation failed (non-fatal)', {
+      applicationId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   return {
     applicationId,
     contactId: crmResult.contactId,
     draftId: emailResult.draftId,
+    budgetSheetId,
     warnings: checklist.warnings,
     errors: crmResult.errors,
   };
