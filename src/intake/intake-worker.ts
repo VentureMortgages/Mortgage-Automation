@@ -50,7 +50,8 @@ import { extractAttachments, downloadAttachment } from './attachment-extractor.j
 import { convertToPdf, ConversionError } from './pdf-converter.js';
 import { downloadFinmoDocument, isDocRequestProcessed, markDocRequestProcessed } from './finmo-downloader.js';
 import { isBccCopy, handleSentDetection } from './sent-detector.js';
-import { INTAKE_QUEUE_NAME } from './gmail-monitor.js';
+import { pollForNewMessages, getInitialHistoryId } from './gmail-reader.js';
+import { INTAKE_QUEUE_NAME, getIntakeQueue, getStoredHistoryId, storeHistoryId } from './gmail-monitor.js';
 import { CLASSIFICATION_QUEUE_NAME } from '../classification/classification-worker.js';
 import type { IntakeJobData, IntakeResult, IntakeDocument } from './types.js';
 import type { ClassificationJobData } from '../classification/types.js';
@@ -108,12 +109,10 @@ export async function processIntakeJob(job: Job<IntakeJobData>): Promise<IntakeR
 
 async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult> {
   const messageId = job.data.gmailMessageId;
+
+  // If no messageId, this is a poll job — poll for new messages and enqueue them
   if (!messageId) {
-    return {
-      documentsProcessed: 0,
-      documentIds: [],
-      errors: ['Gmail source job missing gmailMessageId'],
-    };
+    return processGmailPoll();
   }
 
   const gmailClient = getGmailReadonlyClient(intakeConfig.docsInbox);
@@ -240,6 +239,65 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
     documentsProcessed: documents.length,
     documentIds,
     errors,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Gmail Poll Handler
+// ---------------------------------------------------------------------------
+
+/**
+ * Polls Gmail for new messages and enqueues individual intake jobs.
+ *
+ * This bridges the BullMQ scheduler (periodic poll jobs) with per-message
+ * processing. On each poll:
+ * 1. Read stored historyId from Redis (or get initial on first run)
+ * 2. Call Gmail history.list for new messages since that historyId
+ * 3. Enqueue an intake job for each new message
+ * 4. Store the new historyId for next poll
+ */
+async function processGmailPoll(): Promise<IntakeResult> {
+  const gmailClient = getGmailReadonlyClient(intakeConfig.docsInbox);
+
+  // Get last processed historyId (or seed on first run)
+  let historyId = await getStoredHistoryId();
+  if (!historyId) {
+    historyId = await getInitialHistoryId(gmailClient);
+    await storeHistoryId(historyId);
+    console.log('[intake] First run — seeded historyId:', historyId);
+    return { documentsProcessed: 0, documentIds: [], errors: [] };
+  }
+
+  // Poll for new messages
+  const { messageIds, newHistoryId } = await pollForNewMessages(gmailClient, historyId);
+
+  // Store updated historyId
+  await storeHistoryId(newHistoryId);
+
+  if (messageIds.length === 0) {
+    return { documentsProcessed: 0, documentIds: [], errors: [] };
+  }
+
+  console.log(`[intake] Poll found ${messageIds.length} new messages`);
+
+  // Enqueue individual message jobs
+  const queue = getIntakeQueue();
+  for (const msgId of messageIds) {
+    await queue.add(
+      'process-gmail-message',
+      {
+        source: 'gmail' as const,
+        gmailMessageId: msgId,
+        receivedAt: new Date().toISOString(),
+      },
+      { jobId: `gmail-${msgId}` },
+    );
+  }
+
+  return {
+    documentsProcessed: 0,
+    documentIds: [],
+    errors: [],
   };
 }
 

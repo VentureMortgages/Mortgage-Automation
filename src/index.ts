@@ -1,18 +1,19 @@
 /**
  * Application Entry Point
  *
- * Starts both the Express HTTP server and the BullMQ worker in a single process.
+ * Starts the Express HTTP server and all BullMQ workers in a single process.
  * This is appropriate for the current scale (<10 webhooks/day).
  *
  * Startup:
  * 1. Log environment configuration
  * 2. Start Express server on configured port
- * 3. Start BullMQ worker (listens for jobs on finmo-webhooks queue)
+ * 3. Start BullMQ workers (webhook, intake, classification)
+ * 4. Start Gmail monitor (periodic inbox polling)
  *
  * Shutdown (SIGTERM/SIGINT):
  * 1. Stop accepting new HTTP connections
- * 2. Close worker (finish current job, stop accepting new)
- * 3. Close queue connection
+ * 2. Close all workers (finish current jobs, stop accepting new)
+ * 3. Close all queue connections
  * 4. Exit process
  *
  * Usage:
@@ -23,6 +24,9 @@
 import { createApp } from './webhook/server.js';
 import { createWorker, closeWorker } from './webhook/worker.js';
 import { closeQueue } from './webhook/queue.js';
+import { getIntakeQueue, closeIntakeQueue, startGmailMonitor } from './intake/gmail-monitor.js';
+import { createIntakeWorker, closeIntakeWorker, closeClassificationQueue } from './intake/intake-worker.js';
+import { createClassificationWorker, closeClassificationWorker } from './classification/classification-worker.js';
 import { appConfig } from './config.js';
 
 async function main() {
@@ -36,8 +40,14 @@ async function main() {
     console.log(`[startup] Server listening on port ${appConfig.server.port}`);
   });
 
-  // Start BullMQ worker
+  // Start BullMQ workers
   const worker = createWorker();
+  const intakeWorker = createIntakeWorker();
+  const classificationWorker = createClassificationWorker();
+
+  // Start Gmail monitor (periodic inbox polling)
+  const intakeQueue = getIntakeQueue();
+  await startGmailMonitor(intakeQueue);
 
   // Graceful shutdown
   const shutdown = async (signal: string) => {
@@ -48,13 +58,21 @@ async function main() {
       console.log('[shutdown] HTTP server closed');
     });
 
-    // Close worker (finish current job, stop accepting new)
+    // Close all workers
     await closeWorker();
-    console.log('[shutdown] Worker closed');
+    console.log('[shutdown] Webhook worker closed');
 
-    // Close queue connection
+    await closeIntakeWorker();
+    console.log('[shutdown] Intake worker closed');
+
+    await closeClassificationWorker();
+    console.log('[shutdown] Classification worker closed');
+
+    // Close all queue connections
     await closeQueue();
-    console.log('[shutdown] Queue closed');
+    await closeIntakeQueue();
+    await closeClassificationQueue();
+    console.log('[shutdown] All queues closed');
 
     process.exit(0);
   };

@@ -55,10 +55,14 @@ vi.mock('../../email/gmail-client.js', () => ({
 
 const mockReader = vi.hoisted(() => ({
   getMessageDetails: vi.fn(),
+  pollForNewMessages: vi.fn(),
+  getInitialHistoryId: vi.fn(),
 }));
 
 vi.mock('../gmail-reader.js', () => ({
   getMessageDetails: mockReader.getMessageDetails,
+  pollForNewMessages: mockReader.pollForNewMessages,
+  getInitialHistoryId: mockReader.getInitialHistoryId,
 }));
 
 const mockExtractor = vi.hoisted(() => ({
@@ -100,8 +104,19 @@ vi.mock('../finmo-downloader.js', () => ({
   markDocRequestProcessed: mockFinmoDownloader.markDocRequestProcessed,
 }));
 
+const mockMonitor = vi.hoisted(() => ({
+  getStoredHistoryId: vi.fn().mockResolvedValue(null),
+  storeHistoryId: vi.fn().mockResolvedValue(undefined),
+  getIntakeQueue: vi.fn().mockReturnValue({
+    add: vi.fn().mockResolvedValue(undefined),
+  }),
+}));
+
 vi.mock('../gmail-monitor.js', () => ({
   INTAKE_QUEUE_NAME: 'doc-intake',
+  getStoredHistoryId: mockMonitor.getStoredHistoryId,
+  storeHistoryId: mockMonitor.storeHistoryId,
+  getIntakeQueue: mockMonitor.getIntakeQueue,
 }));
 
 vi.mock('../../webhook/queue.js', () => ({
@@ -430,7 +445,17 @@ describe('Intake Worker', () => {
       expect(result.errors[0]).toContain('Pipeline advance failed');
     });
 
-    it('returns error when gmailMessageId is missing', async () => {
+    it('triggers poll and enqueues new messages when gmailMessageId is missing', async () => {
+      // When no gmailMessageId, the worker polls Gmail for new messages
+      mockMonitor.getStoredHistoryId.mockResolvedValue('12345');
+      mockReader.pollForNewMessages.mockResolvedValue({
+        messageIds: ['msg-new-1', 'msg-new-2'],
+        newHistoryId: '12346',
+      });
+
+      const mockQueueAdd = vi.fn().mockResolvedValue(undefined);
+      mockMonitor.getIntakeQueue.mockReturnValue({ add: mockQueueAdd });
+
       const job = createMockJob({
         source: 'gmail',
         receivedAt: '2026-02-14T00:00:00Z',
@@ -439,8 +464,25 @@ describe('Intake Worker', () => {
       const result = await processIntakeJob(job);
 
       expect(result.documentsProcessed).toBe(0);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('missing gmailMessageId');
+      expect(result.errors).toHaveLength(0);
+      expect(mockMonitor.storeHistoryId).toHaveBeenCalledWith('12346');
+      expect(mockQueueAdd).toHaveBeenCalledTimes(2);
+    });
+
+    it('seeds historyId on first poll (no stored value)', async () => {
+      mockMonitor.getStoredHistoryId.mockResolvedValue(null);
+      mockReader.getInitialHistoryId.mockResolvedValue('99999');
+
+      const job = createMockJob({
+        source: 'gmail',
+        receivedAt: '2026-02-14T00:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(0);
+      expect(mockMonitor.storeHistoryId).toHaveBeenCalledWith('99999');
+      expect(mockReader.pollForNewMessages).not.toHaveBeenCalled();
     });
 
     it('produces IntakeDocument with correct fields', async () => {
