@@ -92,6 +92,7 @@ export async function findContactByEmail(email: string): Promise<string | null> 
   const body = {
     locationId: crmConfig.locationId,
     query: email,
+    pageLimit: 1,
   };
 
   const response = await crmFetch('/contacts/search', {

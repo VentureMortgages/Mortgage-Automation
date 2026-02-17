@@ -122,7 +122,14 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
   // 1. Get message metadata (sender, subject, date)
   const messageMeta = await getMessageDetails(gmailClient, messageId);
 
-  // 1b. Check if this is an outbound BCC copy (doc-request email sent by Cat)
+  // 1b. Only process emails from our domain (forwarded by Cat/Taylor)
+  const senderDomain = messageMeta.from.split('@')[1]?.toLowerCase();
+  if (senderDomain !== 'venturemortgages.com') {
+    console.log('[intake] Skipping external sender', { messageId, from: messageMeta.from });
+    return { documentsProcessed: 0, documentIds: [], errors: [] };
+  }
+
+  // 1c. Check if this is an outbound BCC copy (doc-request email sent by Cat)
   if (isBccCopy(messageMeta)) {
     console.log('[intake] Detected outbound BCC copy, updating CRM', { messageId });
     const sentResult = await handleSentDetection(messageMeta);

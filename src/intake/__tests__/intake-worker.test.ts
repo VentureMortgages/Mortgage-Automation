@@ -195,7 +195,7 @@ function setupGmailMessage(messageId: string, parts: unknown[] = []) {
   mockReader.getMessageDetails.mockResolvedValue({
     messageId,
     threadId: 'thread-1',
-    from: 'sender@example.com',
+    from: 'admin@venturemortgages.com',
     subject: 'Documents',
     date: '2026-02-14',
     historyId: '99999',
