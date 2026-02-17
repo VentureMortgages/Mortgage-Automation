@@ -23,14 +23,26 @@ export function encodeMimeMessage(input: MimeMessageInput): string {
   // Build MIME headers (joined with CRLF)
   // Subject uses RFC 2047 encoded-word for non-ASCII characters (e.g., em dash)
   const encodedSubject = encodeSubject(input.subject);
-  const headers = [
+  const headerLines = [
     `From: ${input.from}`,
     `To: ${input.to}`,
+  ];
+  if (input.bcc) {
+    headerLines.push(`Bcc: ${input.bcc}`);
+  }
+  // Custom X- headers for tracking (e.g., X-Venture-Contact-Id)
+  if (input.customHeaders) {
+    for (const [key, value] of Object.entries(input.customHeaders)) {
+      headerLines.push(`${key}: ${value}`);
+    }
+  }
+  headerLines.push(
     `Subject: ${encodedSubject}`,
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=utf-8',
     'Content-Transfer-Encoding: base64',
-  ].join('\r\n');
+  );
+  const headers = headerLines.join('\r\n');
 
   // Base64-encode the body for safe UTF-8 transport
   const bodyBase64 = Buffer.from(input.body, 'utf-8').toString('base64');

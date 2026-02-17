@@ -28,7 +28,7 @@ export async function upsertOpportunity(input: {
     locationId: crmConfig.locationId,
     contactId: input.contactId,
     pipelineId: input.pipelineId,
-    stageId: input.stageId,
+    pipelineStageId: input.stageId,
     name: input.name,
     status: 'open',
   };

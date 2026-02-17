@@ -22,3 +22,4 @@ Recordings/
 *.sample.json
 finmo_app_sample.json
 tests/e2e/form-screenshot.png
+.finmo-test-counter

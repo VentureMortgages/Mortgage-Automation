@@ -36,6 +36,9 @@ export interface MimeMessageInput {
   from: string;
   subject: string;
   body: string;
+  bcc?: string;
+  /** Custom X- headers for tracking (e.g., X-Venture-Contact-Id) */
+  customHeaders?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +52,8 @@ export interface EmailConfig {
   recipientOverride: string | null;
   subjectPrefix: string;
   docInbox: string;
+  /** BCC address for send confirmation tracking (copy arrives in monitored inbox) */
+  bccAddress: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -49,12 +49,17 @@ export async function createEmailDraft(
   // 3. Build subject line
   const subject = `${emailConfig.subjectPrefix}Documents Needed — ${input.borrowerFirstNames.join(' & ')}`;
 
-  // 4. Encode as MIME message
+  // 4. Encode as MIME message (with BCC for send tracking + custom headers)
   const raw = encodeMimeMessage({
     to: recipient,
     from: emailConfig.senderAddress,
+    bcc: emailConfig.bccAddress,
     subject,
     body,
+    customHeaders: {
+      'X-Venture-Type': 'doc-request',
+      'X-Venture-Contact-Id': input.contactId,
+    },
   });
 
   // 5. Create Gmail draft

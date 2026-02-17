@@ -173,6 +173,8 @@ export async function getMessageDetails(
     subject: getHeader('Subject'),
     date: getHeader('Date'),
     historyId: response.data.historyId ?? '',
+    ventureType: getHeader('X-Venture-Type') || undefined,
+    ventureContactId: getHeader('X-Venture-Contact-Id') || undefined,
   };
 }
 

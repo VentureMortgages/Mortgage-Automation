@@ -134,6 +134,16 @@ vi.mock('../../classification/classification-worker.js', () => ({
   CLASSIFICATION_QUEUE_NAME: 'doc-classification',
 }));
 
+const mockSentDetector = vi.hoisted(() => ({
+  isBccCopy: vi.fn().mockReturnValue(false),
+  handleSentDetection: vi.fn(),
+}));
+
+vi.mock('../sent-detector.js', () => ({
+  isBccCopy: mockSentDetector.isBccCopy,
+  handleSentDetection: mockSentDetector.handleSentDetection,
+}));
+
 const mockWriteFile = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock('node:fs/promises', () => ({
@@ -192,6 +202,8 @@ describe('Intake Worker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIntakeConfig.intakeConfig.maxAttachmentBytes = 25 * 1024 * 1024;
+    // Reset BCC detection mock (clearAllMocks doesn't reset return values)
+    mockSentDetector.isBccCopy.mockReturnValue(false);
   });
 
   // -------------------------------------------------------------------------
@@ -345,6 +357,77 @@ describe('Intake Worker', () => {
       expect(result.documentsProcessed).toBe(0);
       expect(result.documentIds).toHaveLength(0);
       expect(result.errors).toHaveLength(0);
+    });
+
+    it('short-circuits for outbound BCC copy (doc-request)', async () => {
+      const messageId = 'msg-bcc-1';
+      mockReader.getMessageDetails.mockResolvedValue({
+        messageId,
+        threadId: 'thread-1',
+        from: 'admin@venturemortgages.com',
+        subject: 'Documents Needed — TestEmp',
+        date: '2026-02-16',
+        historyId: '99999',
+        ventureType: 'doc-request',
+        ventureContactId: 'contact-abc',
+      });
+
+      mockSentDetector.isBccCopy.mockReturnValue(true);
+      mockSentDetector.handleSentDetection.mockResolvedValue({
+        detected: true,
+        contactId: 'contact-abc',
+        sentDate: '2026-02-16',
+        errors: [],
+      });
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-02-16T00:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(0);
+      expect(result.errors).toHaveLength(0);
+      expect(mockSentDetector.handleSentDetection).toHaveBeenCalled();
+      // Should NOT fetch full message or extract attachments
+      expect(mockGmailClient.client.users.messages.get).not.toHaveBeenCalled();
+      expect(mockExtractor.extractAttachments).not.toHaveBeenCalled();
+    });
+
+    it('propagates sent-detector errors in BCC short-circuit', async () => {
+      const messageId = 'msg-bcc-err';
+      mockReader.getMessageDetails.mockResolvedValue({
+        messageId,
+        threadId: 'thread-1',
+        from: 'admin@venturemortgages.com',
+        subject: 'Documents Needed',
+        date: '2026-02-16',
+        historyId: '99999',
+        ventureType: 'doc-request',
+        ventureContactId: 'contact-xyz',
+      });
+
+      mockSentDetector.isBccCopy.mockReturnValue(true);
+      mockSentDetector.handleSentDetection.mockResolvedValue({
+        detected: true,
+        contactId: 'contact-xyz',
+        sentDate: '2026-02-16',
+        errors: ['Pipeline advance failed: API down'],
+      });
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-02-16T00:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Pipeline advance failed');
     });
 
     it('returns error when gmailMessageId is missing', async () => {

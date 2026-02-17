@@ -49,6 +49,7 @@ import { getMessageDetails } from './gmail-reader.js';
 import { extractAttachments, downloadAttachment } from './attachment-extractor.js';
 import { convertToPdf, ConversionError } from './pdf-converter.js';
 import { downloadFinmoDocument, isDocRequestProcessed, markDocRequestProcessed } from './finmo-downloader.js';
+import { isBccCopy, handleSentDetection } from './sent-detector.js';
 import { INTAKE_QUEUE_NAME } from './gmail-monitor.js';
 import { CLASSIFICATION_QUEUE_NAME } from '../classification/classification-worker.js';
 import type { IntakeJobData, IntakeResult, IntakeDocument } from './types.js';
@@ -121,6 +122,17 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
 
   // 1. Get message metadata (sender, subject, date)
   const messageMeta = await getMessageDetails(gmailClient, messageId);
+
+  // 1b. Check if this is an outbound BCC copy (doc-request email sent by Cat)
+  if (isBccCopy(messageMeta)) {
+    console.log('[intake] Detected outbound BCC copy, updating CRM', { messageId });
+    const sentResult = await handleSentDetection(messageMeta);
+    return {
+      documentsProcessed: 0,
+      documentIds: [],
+      errors: sentResult.errors,
+    };
+  }
 
   // 2. Get full message for attachment extraction
   const fullMessage = await gmailClient.users.messages.get({

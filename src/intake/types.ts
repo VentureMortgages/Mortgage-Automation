@@ -34,6 +34,9 @@ export interface GmailMessageMeta {
   subject: string;
   date: string;
   historyId: string;
+  /** Custom X-Venture-* headers (for outbound BCC detection) */
+  ventureType?: string;
+  ventureContactId?: string;
 }
 
 /** Attachment info extracted from a Gmail message part */
