@@ -90,11 +90,13 @@ function makeTwoBorrowerChecklist(): GeneratedChecklist {
     makeItem({
       ruleId: 's1',
       displayName: 'Void Cheque',
+      section: '0_base_pack',
       notes: 'for the account you anticipate your payments to be made from',
     }),
     makeItem({
       ruleId: 's2',
-      displayName: '3 months bank statements for the account(s) holding your down payment funds',
+      displayName: '90-day bank statement history for the account(s) holding your down payment funds',
+      section: '14_down_payment',
     }),
   ];
 
@@ -155,7 +157,7 @@ describe('generateEmailBody', () => {
 
   test('has bold doc names in list items', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
-    expect(body).toContain('<strong>Letter of Employment confirming back to work date</strong>');
+    // Simple names (no delimiter) are fully bold
     expect(body).toContain('<strong>2024 T4</strong>');
     expect(body).toContain('<strong>2023/2024 T1s</strong>');
   });
@@ -180,8 +182,11 @@ describe('generateEmailBody', () => {
     expect(body).toContain('<strong>2025 Property Tax Bill</strong>');
   });
 
-  test('has shared Other section with underlined header', () => {
+  test('has sub-categorized shared sections (Down Payment / Other)', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
+    // Down Payment section for items with section starting with "14_"
+    expect(body).toContain('<u>Down Payment</u>');
+    // Other section for remaining shared items (void cheque)
     expect(body).toContain('<u>Other</u>');
     expect(body).toContain('<strong>Void Cheque</strong>');
   });
@@ -192,8 +197,41 @@ describe('generateEmailBody', () => {
     expect(body).toContain('<strong>2023/2024 Notice of Assessments</strong> (if your 2024 NOA');
     // Void cheque with notes
     expect(body).toContain('<strong>Void Cheque</strong> (for the account you anticipate');
-    // Condo fees with notes
+    // Condo fees with notes — "Confirmation of Condo Fees" has no delimiter, so fully bold
     expect(body).toContain('<strong>Confirmation of Condo Fees</strong> (via Annual Strata');
+  });
+
+  test('bold formatting splits at delimiter — only title is bold', () => {
+    // Create fixture with items that have delimiters in displayName
+    const delimiterChecklist: GeneratedChecklist = {
+      ...checklist,
+      borrowerChecklists: [{
+        borrowerId: 'b1',
+        borrowerName: 'Test Person',
+        isMainBorrower: true,
+        items: [
+          makeItem({
+            ruleId: 'loe',
+            displayName: 'Letter of Employment (dated within 30 days) — must include: position, start date',
+          }),
+          makeItem({
+            ruleId: 'simple',
+            displayName: 'Recent pay stub',
+          }),
+        ],
+      }],
+      propertyChecklists: [],
+      sharedItems: [],
+    };
+    const ctx: EmailContext = {
+      borrowerFirstNames: ['Test'],
+      docInboxEmail: 'docs@test.com',
+    };
+    const body = generateEmailBody(delimiterChecklist, ctx);
+    // Title only bolded, rest in normal text
+    expect(body).toContain('<strong>Letter of Employment</strong> (dated within 30 days)');
+    // Simple name is fully bold
+    expect(body).toContain('<strong>Recent pay stub</strong>');
   });
 
   test('ends with closing referencing doc inbox email as mailto link', () => {
@@ -225,7 +263,7 @@ describe('generateEmailBody', () => {
     expect(body).not.toContain('Hey Megan and');
   });
 
-  test('omits Other section when no shared items have forEmail=true', () => {
+  test('omits shared sections when no shared items have forEmail=true', () => {
     const noShared: GeneratedChecklist = {
       ...checklist,
       sharedItems: [
@@ -234,6 +272,8 @@ describe('generateEmailBody', () => {
     };
     const body = generateEmailBody(noShared, twoBorrowerContext);
     expect(body).not.toContain('<u>Other</u>');
+    expect(body).not.toContain('<u>Down Payment</u>');
+    expect(body).not.toContain('<u>Property</u>');
   });
 
   test('omits property sections when no property checklists', () => {
@@ -244,5 +284,74 @@ describe('generateEmailBody', () => {
     const body = generateEmailBody(noProperties, twoBorrowerContext);
     expect(body).not.toContain('Smoke Bluff');
     expect(body).not.toContain('Keefer Place');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Already on file section
+  // ---------------------------------------------------------------------------
+
+  test('renders "already on file" section when alreadyOnFile is provided', () => {
+    const ctx: EmailContext = {
+      ...twoBorrowerContext,
+      alreadyOnFile: [
+        {
+          checklistItem: makeItem({ displayName: 'T4 — Current year' }),
+          driveFileId: 'f1',
+          borrowerName: 'Megan',
+        },
+        {
+          checklistItem: makeItem({ displayName: 'Void Cheque' }),
+          driveFileId: 'f2',
+          borrowerName: 'Megan',
+        },
+      ],
+    };
+    const body = generateEmailBody(checklist, ctx);
+
+    // Should have the on-file header
+    expect(body).toContain('We already have the following documents on file');
+    // Should list the docs
+    expect(body).toContain('<strong>T4</strong>');
+    expect(body).toContain('<strong>Void Cheque</strong>');
+    // Should have the transition text
+    expect(body).toContain('We just need the following additional documents');
+    // Should NOT have the standard intro paragraph
+    expect(body).not.toContain('ensure the accuracy of your pre-approval budget');
+  });
+
+  test('uses standard intro when alreadyOnFile is empty', () => {
+    const ctx: EmailContext = {
+      ...twoBorrowerContext,
+      alreadyOnFile: [],
+    };
+    const body = generateEmailBody(checklist, ctx);
+
+    expect(body).not.toContain('We already have the following documents on file');
+    expect(body).toContain('ensure the accuracy of your pre-approval budget');
+  });
+
+  test('uses standard intro when alreadyOnFile is undefined', () => {
+    const body = generateEmailBody(checklist, twoBorrowerContext);
+
+    expect(body).not.toContain('We already have the following documents on file');
+    expect(body).toContain('ensure the accuracy of your pre-approval budget');
+  });
+
+  test('on-file section strips parenthetical details from doc names', () => {
+    const ctx: EmailContext = {
+      ...twoBorrowerContext,
+      alreadyOnFile: [
+        {
+          checklistItem: makeItem({ displayName: 'Letter of Employment (dated within 30 days)' }),
+          driveFileId: 'f1',
+          borrowerName: 'Megan',
+        },
+      ],
+    };
+    const body = generateEmailBody(checklist, ctx);
+
+    expect(body).toContain('<strong>Letter of Employment</strong>');
+    // Should NOT include the parenthetical in the on-file list
+    expect(body).not.toContain('on file.*dated within 30 days');
   });
 });

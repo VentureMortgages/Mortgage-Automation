@@ -43,6 +43,8 @@ export interface SyncChecklistInput {
   borrowerPhone?: string;
   /** For linking to existing Finmo contact */
   finmoDealId?: string;
+  /** Pre-received docs from Drive scan (already on file) */
+  preReceivedDocs?: { name: string; stage: string }[];
 }
 
 export interface SyncChecklistResult {
@@ -91,9 +93,11 @@ export async function syncChecklistToCrm(
   }
 
   // 1. Map checklist to CRM fields (pure, no API call)
-  const fieldUpdates = mapChecklistToFields(input.checklist, {
-    fieldIds: crmConfig.fieldIds,
-  });
+  const fieldUpdates = mapChecklistToFields(
+    input.checklist,
+    { fieldIds: crmConfig.fieldIds },
+    input.preReceivedDocs,
+  );
 
   // 2. Upsert contact — CRITICAL: abort if this fails
   const { contactId } = await upsertContact({

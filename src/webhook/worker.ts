@@ -32,6 +32,8 @@ import { createEmailDraft } from '../email/index.js';
 import { createBudgetSheet, buildClientFolderName, budgetConfig } from '../budget/index.js';
 import { getDriveClient } from '../classification/drive-client.js';
 import { findOrCreateFolder } from '../classification/filer.js';
+import { scanClientFolder, filterChecklistByExistingDocs } from '../drive/index.js';
+import type { FilterResult } from '../drive/index.js';
 import type { JobData, ProcessingResult } from './types.js';
 
 let _worker: Worker | null = null;
@@ -65,19 +67,61 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     borrowers: checklist.borrowerChecklists.length,
   });
 
-  // 3. Sync to CRM
+  // 3. Resolve client folder (needed for Drive scan + budget sheet)
   const mainBorrower = finmoApp.borrowers.find(b => b.isMainBorrower);
   if (!mainBorrower) {
     throw new Error(`No main borrower found for application ${applicationId}`);
   }
 
+  let clientFolderId: string | null = null;
+  const driveRootFolderId = process.env.DRIVE_ROOT_FOLDER_ID;
+  if (driveRootFolderId) {
+    const clientFolderName = buildClientFolderName(finmoApp.borrowers);
+    clientFolderId = await findOrCreateFolder(getDriveClient(), clientFolderName, driveRootFolderId);
+  }
+
+  // 4. Scan Drive folder for existing docs (non-fatal)
+  let filterResult: FilterResult | null = null;
+  if (clientFolderId) {
+    try {
+      const borrowerFirstNames = finmoApp.borrowers.map(b => b.firstName);
+      const existingDocs = await scanClientFolder(getDriveClient(), clientFolderId, borrowerFirstNames);
+      if (existingDocs.length > 0) {
+        filterResult = filterChecklistByExistingDocs(checklist, existingDocs, new Date());
+        console.log('[worker] Drive scan found existing docs', {
+          applicationId,
+          scanned: existingDocs.length,
+          onFile: filterResult.alreadyOnFile.length,
+          expired: filterResult.expiredDocs.length,
+        });
+      }
+    } catch (err) {
+      console.error('[worker] Drive scan failed (non-fatal)', {
+        applicationId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // 5. Use filtered checklist for both email and CRM
+  // The filtered checklist has on-file items removed; preReceivedDocs tells the
+  // CRM mapper how many items were already received so totals are computed correctly.
+  const emailChecklist = filterResult?.filteredChecklist ?? checklist;
+  const alreadyOnFile = filterResult?.alreadyOnFile ?? [];
+  const preReceivedDocs = alreadyOnFile.map(d => ({
+    name: d.checklistItem.document,
+    stage: d.checklistItem.stage,
+  }));
+
+  // 6. Sync to CRM (with pre-received docs if any)
   const crmResult = await syncChecklistToCrm({
-    checklist,
+    checklist: emailChecklist,
     borrowerEmail: mainBorrower.email,
     borrowerFirstName: mainBorrower.firstName,
     borrowerLastName: mainBorrower.lastName,
     borrowerPhone: mainBorrower.phone ?? undefined,
     finmoDealId: applicationId,
+    preReceivedDocs: preReceivedDocs.length > 0 ? preReceivedDocs : undefined,
   });
 
   console.log('[worker] CRM synced', {
@@ -87,12 +131,13 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     errors: crmResult.errors.length,
   });
 
-  // 4. Create email draft
+  // 7. Create email draft (uses filtered checklist + on-file section)
   const emailResult = await createEmailDraft({
-    checklist,
+    checklist: emailChecklist,
     recipientEmail: mainBorrower.email,
     borrowerFirstNames: finmoApp.borrowers.map(b => b.firstName),
     contactId: crmResult.contactId,
+    alreadyOnFile: alreadyOnFile.length > 0 ? alreadyOnFile : undefined,
   });
 
   console.log('[worker] Email draft created', {
@@ -101,14 +146,11 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     subject: emailResult.subject,
   });
 
-  // 5. Create budget sheet (non-fatal — errors logged but don't fail the job)
+  // 8. Create budget sheet (non-fatal — errors logged but don't fail the job)
   let budgetSheetId: string | null = null;
   try {
     if (budgetConfig.enabled) {
-      const driveRootFolderId = process.env.DRIVE_ROOT_FOLDER_ID;
-      if (driveRootFolderId) {
-        const clientFolderName = buildClientFolderName(finmoApp.borrowers);
-        const clientFolderId = await findOrCreateFolder(getDriveClient(), clientFolderName, driveRootFolderId);
+      if (clientFolderId) {
         const budgetResult = await createBudgetSheet(finmoApp, clientFolderId);
         budgetSheetId = budgetResult.spreadsheetId;
         console.log('[worker] Budget sheet created', { applicationId, spreadsheetId: budgetSheetId });

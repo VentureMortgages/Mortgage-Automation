@@ -16,7 +16,7 @@ import type {
   ChecklistItem,
 } from '../checklist/types/index.js';
 
-import type { CrmCustomFieldUpdate, MissingDocEntry } from './types/index.js';
+import type { CrmCustomFieldUpdate } from './types/index.js';
 import type { CrmConfig } from './config.js';
 
 // ============================================================================
@@ -33,13 +33,18 @@ import type { CrmConfig } from './config.js';
  * Initially all items are "missing" (none received yet). The doc status
  * is set to "In Progress" since the checklist was just generated and sent.
  *
+ * If preReceivedDocs are provided (from Drive folder scan), those items
+ * are counted as already received and added to the receivedDocs field.
+ *
  * @param checklist - The generated checklist from the rule engine
  * @param config - Object containing fieldIds (passed, not imported, for purity)
+ * @param preReceivedDocs - Optional doc names already on file from Drive scan
  * @returns Array of CRM custom field updates ready for the contacts API
  */
 export function mapChecklistToFields(
   checklist: GeneratedChecklist,
   config: { fieldIds: CrmConfig['fieldIds'] },
+  preReceivedDocs?: { name: string; stage: string }[],
 ): CrmCustomFieldUpdate[] {
   // 1. Flatten all client-facing items from all sources
   const allItems: ChecklistItem[] = [
@@ -52,18 +57,40 @@ export function mapChecklistToFields(
   const preItems = allItems.filter((i) => i.stage === 'PRE');
   const fullItems = allItems.filter((i) => i.stage === 'FULL');
 
-  // 3. Extract structured doc entries for missing docs JSON (initially ALL are missing)
-  const missingDocEntries = mapChecklistToDocEntries(allItems);
+  // 3. Handle pre-received docs from Drive scan (if any)
+  const received = preReceivedDocs ?? [];
+  const preReceived = received.filter(d => d.stage === 'PRE').length;
+  const fullReceived = received.filter(d => d.stage === 'FULL').length;
 
-  // 4. Build the update array
+  // Total counts include both missing items (in filtered checklist) and pre-received
+  const preTotal = preItems.length + preReceived;
+  const fullTotal = fullItems.length + fullReceived;
+
+  // 4. Format doc entries as human-readable text for CRM display
+  const missingDocEntries = mapChecklistToDocEntries(allItems);
+  const missingDocsText = formatMissingDocsForCrm(missingDocEntries);
+  const receivedDocsText = formatReceivedDocsForCrm(received.map(d => d.name));
+
+  // 5. Compute initial status
+  // "In Progress" is the default when a checklist is sent — even with 0 received,
+  // the request has been initiated. Only upgrade to "PRE Complete" / "All Complete"
+  // if pre-received docs satisfy those thresholds.
+  let docStatus: string;
+  if (received.length > 0) {
+    docStatus = computeDocStatus(preTotal, preReceived, fullTotal, fullReceived);
+  } else {
+    docStatus = 'In Progress';
+  }
+
+  // 6. Build the update array
   return [
-    { id: config.fieldIds.docStatus, field_value: 'In Progress' },
-    { id: config.fieldIds.preDocsTotal, field_value: preItems.length },
-    { id: config.fieldIds.preDocsReceived, field_value: 0 },
-    { id: config.fieldIds.fullDocsTotal, field_value: fullItems.length },
-    { id: config.fieldIds.fullDocsReceived, field_value: 0 },
-    { id: config.fieldIds.missingDocs, field_value: JSON.stringify(missingDocEntries) },
-    { id: config.fieldIds.receivedDocs, field_value: '[]' },
+    { id: config.fieldIds.docStatus, field_value: docStatus },
+    { id: config.fieldIds.preDocsTotal, field_value: preTotal },
+    { id: config.fieldIds.preDocsReceived, field_value: preReceived },
+    { id: config.fieldIds.fullDocsTotal, field_value: fullTotal },
+    { id: config.fieldIds.fullDocsReceived, field_value: fullReceived },
+    { id: config.fieldIds.missingDocs, field_value: missingDocsText },
+    { id: config.fieldIds.receivedDocs, field_value: receivedDocsText },
     { id: config.fieldIds.docRequestSent, field_value: new Date().toISOString().split('T')[0] },
   ];
 }
@@ -94,21 +121,141 @@ export function mapChecklistToDocNames(items: ChecklistItem[]): string[] {
 // Function 2b: mapChecklistToDocEntries
 // ============================================================================
 
+/** Structured entry for missingDocs tracking (name + stage for counter logic) */
+export interface DocEntry {
+  name: string;
+  stage: string;
+}
+
 /**
- * Maps checklist items to structured MissingDocEntry objects with stage info.
+ * Maps checklist items to structured doc entry objects with stage info.
  *
  * Unlike mapChecklistToDocNames (which returns flat strings), this preserves
  * the stage field (PRE/FULL/LATER/CONDITIONAL) so the tracking sync in
  * Phase 8 can determine which counter to increment when a document is received.
  *
  * @param items - Checklist items to extract entries from
- * @returns Array of MissingDocEntry objects with name and stage
+ * @returns Array of DocEntry objects with name and stage
  */
-export function mapChecklistToDocEntries(items: ChecklistItem[]): MissingDocEntry[] {
+export function mapChecklistToDocEntries(items: ChecklistItem[]): DocEntry[] {
   return items.map((item) => ({
     name: item.document,
     stage: item.stage,
   }));
+}
+
+// ============================================================================
+// CRM Display Formatting — Human-readable text for LARGE_TEXT fields
+// ============================================================================
+
+/**
+ * Formats missing doc entries as readable text for CRM display.
+ *
+ * Each line: "Doc Name [STAGE]"
+ * Grouped by stage (PRE first, then FULL, then others).
+ *
+ * Example output:
+ *   Two pieces of government-issued ID [PRE]
+ *   Recent pay stub [PRE]
+ *   Letter of Employment [PRE]
+ *   Void cheque [FULL]
+ *
+ * The tracking sync parser (`parseMissingDocsText`) reads this format back.
+ */
+export function formatMissingDocsForCrm(entries: DocEntry[]): string {
+  if (entries.length === 0) return '';
+  return entries.map((e) => `${e.name} [${e.stage}]`).join('\n');
+}
+
+/**
+ * Formats received doc names as readable text for CRM display.
+ *
+ * Each line: "Doc Name"
+ *
+ * Example output:
+ *   T4 — Current year
+ *   Letter of Employment
+ */
+export function formatReceivedDocsForCrm(docNames: string[]): string {
+  if (docNames.length === 0) return '';
+  return docNames.join('\n');
+}
+
+/**
+ * Parses missing docs from CRM field value.
+ *
+ * Supports TWO formats for backward compatibility:
+ * 1. New text format: "Doc Name [STAGE]\nDoc Name [STAGE]"
+ * 2. Legacy JSON format: [{"name":"Doc Name","stage":"STAGE"}, ...]
+ *
+ * @returns Array of DocEntry objects
+ */
+export function parseMissingDocsText(value: unknown): DocEntry[] {
+  if (typeof value !== 'string' || value.trim() === '') return [];
+
+  const trimmed = value.trim();
+
+  // Try legacy JSON format first (starts with '[')
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (e): e is DocEntry =>
+            typeof e === 'object' && e !== null && typeof e.name === 'string' && typeof e.stage === 'string',
+        );
+      }
+    } catch {
+      // Fall through to text parsing
+    }
+  }
+
+  // New text format: one entry per line, "Doc Name [STAGE]"
+  return trimmed
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      const match = line.match(/^(.+?)\s*\[(\w+)\]$/);
+      if (match) {
+        return { name: match[1].trim(), stage: match[2] };
+      }
+      // Line without stage tag — default to PRE
+      return { name: line, stage: 'PRE' };
+    });
+}
+
+/**
+ * Parses received docs from CRM field value.
+ *
+ * Supports TWO formats for backward compatibility:
+ * 1. New text format: "Doc Name\nDoc Name"
+ * 2. Legacy JSON format: ["Doc Name", "Doc Name"]
+ *
+ * @returns Array of document name strings
+ */
+export function parseReceivedDocsText(value: unknown): string[] {
+  if (typeof value !== 'string' || value.trim() === '') return [];
+
+  const trimmed = value.trim();
+
+  // Try legacy JSON format first (starts with '[')
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((e): e is string => typeof e === 'string');
+      }
+    } catch {
+      // Fall through to text parsing
+    }
+  }
+
+  // New text format: one entry per line
+  return trimmed
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 }
 
 // ============================================================================

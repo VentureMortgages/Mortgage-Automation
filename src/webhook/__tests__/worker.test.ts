@@ -13,7 +13,7 @@
  * - Redis/queue (queue.ts)
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ============================================================================
 // Module-level mocks
@@ -70,6 +70,11 @@ vi.mock('../../classification/filer.js', () => ({
   findOrCreateFolder: vi.fn(() => Promise.resolve('folder-123')),
 }));
 
+vi.mock('../../drive/index.js', () => ({
+  scanClientFolder: vi.fn(() => Promise.resolve([])),
+  filterChecklistByExistingDocs: vi.fn(),
+}));
+
 // Prevent BullMQ from creating real connections
 vi.mock('bullmq', () => ({
   Worker: vi.fn(),
@@ -82,6 +87,7 @@ import { generateChecklist } from '../../checklist/engine/index.js';
 import { syncChecklistToCrm } from '../../crm/index.js';
 import { createEmailDraft } from '../../email/index.js';
 import { createBudgetSheet } from '../../budget/index.js';
+import { scanClientFolder, filterChecklistByExistingDocs } from '../../drive/index.js';
 import type { FinmoApplicationResponse } from '../../checklist/types/index.js';
 import type { GeneratedChecklist } from '../../checklist/types/index.js';
 import type { SyncChecklistResult } from '../../crm/index.js';
@@ -516,6 +522,139 @@ describe('processJob', () => {
       'Task creation failed: timeout',
       'Opportunity upsert failed: 500',
     ]);
+  });
+
+  describe('Drive scan step (step 4)', () => {
+    const mockScan = vi.mocked(scanClientFolder);
+    const mockFilter = vi.mocked(filterChecklistByExistingDocs);
+
+    beforeEach(() => {
+      mockFetch.mockResolvedValue(createMockFinmoApp());
+      mockGenerate.mockReturnValue(createMockChecklist());
+      mockCrm.mockResolvedValue(createMockCrmResult());
+      mockEmail.mockResolvedValue(createMockEmailResult());
+      process.env.DRIVE_ROOT_FOLDER_ID = 'root-folder-id';
+    });
+
+    afterEach(() => {
+      delete process.env.DRIVE_ROOT_FOLDER_ID;
+    });
+
+    it('should call scanClientFolder when DRIVE_ROOT_FOLDER_ID is set', async () => {
+      mockScan.mockResolvedValue([]);
+      await processJob(createMockJob());
+      expect(mockScan).toHaveBeenCalledWith(expect.anything(), 'folder-123', ['Jane']);
+    });
+
+    it('should not call scanClientFolder when DRIVE_ROOT_FOLDER_ID is not set', async () => {
+      delete process.env.DRIVE_ROOT_FOLDER_ID;
+      await processJob(createMockJob());
+      expect(mockScan).not.toHaveBeenCalled();
+    });
+
+    it('should pass filtered checklist to email when docs found', async () => {
+      const filteredChecklist = {
+        ...createMockChecklist(),
+        stats: { ...createMockChecklist().stats, totalItems: 0 },
+      };
+      mockScan.mockResolvedValue([
+        {
+          fileId: 'f1',
+          filename: 'Jane - T4 2024.pdf',
+          documentType: 't4' as const,
+          borrowerName: 'Jane',
+          year: 2024,
+          modifiedTime: '2025-04-01T00:00:00Z',
+        },
+      ]);
+      mockFilter.mockReturnValue({
+        filteredChecklist,
+        alreadyOnFile: [{
+          checklistItem: createMockChecklist().borrowerChecklists[0].items[0],
+          driveFileId: 'f1',
+          borrowerName: 'Jane',
+        }],
+        expiredDocs: [],
+      });
+
+      await processJob(createMockJob());
+
+      // Email should get the filtered checklist
+      expect(mockEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          checklist: filteredChecklist,
+          alreadyOnFile: expect.arrayContaining([
+            expect.objectContaining({ driveFileId: 'f1' }),
+          ]),
+        }),
+      );
+    });
+
+    it('should pass preReceivedDocs to CRM sync when docs found', async () => {
+      const checklistItem = createMockChecklist().borrowerChecklists[0].items[0];
+      const filteredChecklist = createMockChecklist();
+      mockScan.mockResolvedValue([{
+        fileId: 'f1',
+        filename: 'Jane - Pay Stub.pdf',
+        documentType: 'pay_stub' as const,
+        borrowerName: 'Jane',
+        modifiedTime: '2026-02-01T00:00:00Z',
+      }]);
+      mockFilter.mockReturnValue({
+        filteredChecklist,
+        alreadyOnFile: [{
+          checklistItem,
+          driveFileId: 'f1',
+          borrowerName: 'Jane',
+        }],
+        expiredDocs: [],
+      });
+
+      await processJob(createMockJob());
+
+      expect(mockCrm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preReceivedDocs: [{
+            name: checklistItem.document,
+            stage: checklistItem.stage,
+          }],
+        }),
+      );
+    });
+
+    it('should not fail the job when Drive scan throws', async () => {
+      mockScan.mockRejectedValue(new Error('Drive API quota exceeded'));
+
+      const result = await processJob(createMockJob());
+
+      // Job still succeeds — Drive scan error is non-fatal
+      expect(result.applicationId).toBe('app-123');
+      expect(result.contactId).toBe('crm-contact-456');
+      expect(result.draftId).toBe('draft-abc');
+
+      // Email should get the original (unfiltered) checklist
+      expect(mockEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          alreadyOnFile: undefined,
+        }),
+      );
+    });
+
+    it('should use original checklist when no existing docs found', async () => {
+      const checklist = createMockChecklist();
+      mockGenerate.mockReturnValue(checklist);
+      mockScan.mockResolvedValue([]);
+
+      await processJob(createMockJob());
+
+      expect(mockFilter).not.toHaveBeenCalled();
+      expect(mockEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          checklist,
+          alreadyOnFile: undefined,
+        }),
+      );
+    });
   });
 
   describe('budget sheet step (step 5)', () => {

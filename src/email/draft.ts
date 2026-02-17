@@ -41,6 +41,7 @@ export async function createEmailDraft(
   const body = generateEmailBody(input.checklist, {
     borrowerFirstNames: input.borrowerFirstNames,
     docInboxEmail: emailConfig.docInbox,
+    alreadyOnFile: input.alreadyOnFile,
   });
 
   // 2. Determine recipient (dev override for safety)

@@ -13,6 +13,7 @@
  */
 
 import type { GeneratedChecklist } from '../checklist/types/index.js';
+import type { AlreadyOnFileDoc } from '../drive/checklist-filter.js';
 
 // ---------------------------------------------------------------------------
 // Email Body Generation
@@ -24,6 +25,8 @@ export interface EmailContext {
   borrowerFirstNames: string[];
   /** The email address clients should send docs to */
   docInboxEmail: string;
+  /** Documents already on file from a previous application (optional) */
+  alreadyOnFile?: AlreadyOnFileDoc[];
 }
 
 // ---------------------------------------------------------------------------
@@ -66,6 +69,8 @@ export interface CreateEmailDraftInput {
   recipientEmail: string;
   borrowerFirstNames: string[];
   contactId: string;
+  /** Documents already on file from a previous application (optional) */
+  alreadyOnFile?: AlreadyOnFileDoc[];
 }
 
 /** Result of creating a Gmail draft */
