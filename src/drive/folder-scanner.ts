@@ -57,6 +57,22 @@ for (const [docType, label] of Object.entries(DOC_TYPE_LABELS)) {
   LABEL_TO_DOC_TYPE.set(label.toLowerCase(), docType as DocumentType);
 }
 
+/** Aliases for shorthand labels Cat sometimes uses (e.g., "FHSA" instead of "FHSA Statement") */
+const DOC_TYPE_ALIASES: Map<string, DocumentType> = new Map([
+  ['fhsa', 'fhsa_statement'],
+  ['rrsp', 'rrsp_statement'],
+  ['rsp', 'rrsp_statement'],
+  ['tfsa', 'tfsa_statement'],
+  ['chequing', 'bank_statement'],
+  ['checking', 'bank_statement'],
+]);
+
+/** Check if a label matches a known doc type or alias */
+function isKnownLabel(label: string): boolean {
+  const lower = label.toLowerCase();
+  return LABEL_TO_DOC_TYPE.has(lower) || DOC_TYPE_ALIASES.has(lower);
+}
+
 // ============================================================================
 // Public API
 // ============================================================================
@@ -128,84 +144,88 @@ export function parseDocFromFilename(filename: string): ParsedDoc | null {
   const rest = base.slice(dashIdx + 3).trim();
   if (!borrowerName || !rest) return null;
 
-  // Parse the rest: DocType tokens, optional year, optional amount, optional institution
-  const tokens = rest.split(/\s+/);
+  return parseDocTokens(rest, borrowerName);
+}
 
-  let year: number | undefined;
-  let amount: string | undefined;
-  const labelTokens: string[] = [];
-  const extraTokens: string[] = [];
-
-  for (const token of tokens) {
-    // Year: 4-digit number between 2000-2099
-    if (/^20\d{2}$/.test(token)) {
-      year = parseInt(token, 10);
-    }
-    // Amount: starts with $
-    else if (token.startsWith('$')) {
-      amount = token;
-    }
-    // Doc type label tokens come first, institution tokens come after
-    else {
-      // Heuristic: once we've seen a year or amount, remaining tokens are institution
-      if (year !== undefined || amount !== undefined) {
-        extraTokens.push(token);
-      } else {
-        labelTokens.push(token);
-      }
+/**
+ * Parses the doc-type portion of a filename into structured parts.
+ * Shared by both standard parse (after " - ") and flexible parse.
+ */
+function parseDocTokens(rest: string, borrowerName: string): ParsedDoc {
+  // Tokenize: split on whitespace, then also split on colons (e.g., "Savings:RSP")
+  const rawTokens = rest.split(/\s+/);
+  const tokens: string[] = [];
+  for (const t of rawTokens) {
+    if (t.includes(':')) {
+      tokens.push(...t.split(':').filter(Boolean));
+    } else {
+      tokens.push(t);
     }
   }
 
-  // The doc type label is the first meaningful tokens
-  // Institution is what's left after extracting doc type label
-  // We try progressively shorter prefixes to find a known doc type label
+  // Separate years, amounts, and word tokens
+  let year: number | undefined;
+  let amount: string | undefined;
+  const wordTokens: string[] = [];
+
+  for (const token of tokens) {
+    if (/^20\d{2}$/.test(token)) {
+      year = parseInt(token, 10);
+    } else if (token.startsWith('$')) {
+      amount = token;
+    } else {
+      wordTokens.push(token);
+    }
+  }
+
+  // Try matching doc type at any position within wordTokens (longest first).
+  // This handles cases like "YE 2025 Pay Stub" where the year splits the
+  // non-label prefix from the actual doc type label.
   let docTypeLabel = '';
   let institution: string | undefined;
 
-  // Try matching from longest possible label to shortest
-  for (let i = labelTokens.length; i >= 1; i--) {
-    const candidate = labelTokens.slice(0, i).join(' ');
-    if (LABEL_TO_DOC_TYPE.has(candidate.toLowerCase())) {
-      docTypeLabel = candidate;
-      const remainingTokens = [...labelTokens.slice(i), ...extraTokens];
-      if (remainingTokens.length > 0) {
-        institution = remainingTokens.join(' ');
+  for (let len = wordTokens.length; len >= 1; len--) {
+    for (let start = 0; start <= wordTokens.length - len; start++) {
+      const candidate = wordTokens.slice(start, start + len).join(' ');
+      if (isKnownLabel(candidate)) {
+        docTypeLabel = candidate;
+        const before = wordTokens.slice(0, start);
+        const after = wordTokens.slice(start + len);
+        const remaining = [...before, ...after];
+        if (remaining.length > 0) {
+          institution = remaining.join(' ');
+        }
+        break;
       }
-      break;
     }
+    if (docTypeLabel) break;
   }
 
-  // If no known label matched, use all label tokens as the doc type
+  // If no known label matched, use all word tokens as the doc type
   if (!docTypeLabel) {
-    docTypeLabel = labelTokens.join(' ');
-    if (extraTokens.length > 0) {
-      institution = extraTokens.join(' ');
-    }
+    docTypeLabel = wordTokens.join(' ');
   }
 
-  return {
-    borrowerName,
-    docTypeLabel,
-    institution,
-    year,
-    amount,
-  };
+  return { borrowerName, docTypeLabel, institution, year, amount };
 }
 
 /**
  * Resolves a parsed doc type label to a DocumentType enum value.
  *
- * Uses exact match first, then case-insensitive contains match
- * (only for labels >= 3 chars to avoid false positives from short
- * labels like "ID" matching "dividend", "liquid", etc.).
+ * Checks: exact label match → alias match → contains match (≥3 chars).
  */
 export function resolveDocumentType(docTypeLabel: string): DocumentType | null {
-  // Exact match (case-insensitive)
-  const exact = LABEL_TO_DOC_TYPE.get(docTypeLabel.toLowerCase());
+  const lower = docTypeLabel.toLowerCase();
+
+  // Exact label match
+  const exact = LABEL_TO_DOC_TYPE.get(lower);
   if (exact) return exact;
 
+  // Alias match
+  const alias = DOC_TYPE_ALIASES.get(lower);
+  if (alias) return alias;
+
   // Contains match — only for labels >= 3 chars to avoid false positives
-  const lower = docTypeLabel.toLowerCase();
   for (const [label, docType] of LABEL_TO_DOC_TYPE) {
     if (label.length < 3 || lower.length < 3) continue;
     if (label.includes(lower) || lower.includes(label)) {
@@ -238,7 +258,11 @@ export async function scanClientFolder(
   const normalizedNames = new Set(borrowerFirstNames.map(n => n.toLowerCase()));
 
   for (const file of files) {
-    const parsed = parseDocFromFilename(file.name);
+    // Try standard parse first, then flexible fallback for non-standard names
+    let parsed = parseDocFromFilename(file.name);
+    if (!parsed) {
+      parsed = parseDocFlexible(file.name, normalizedNames);
+    }
     if (!parsed) continue;
 
     // Only include files belonging to borrowers on this application
@@ -265,6 +289,78 @@ export async function scanClientFolder(
 // ============================================================================
 // Internal helpers
 // ============================================================================
+
+/**
+ * Flexible fallback parser for files without the standard "Name - DocType" format.
+ *
+ * Handles Cat's alternative naming patterns:
+ *   "Andrew CIBC FHSA Current Balance $24k.pdf" (name without " - ")
+ *   "RRSP 90 day Andrew $31k.pdf"               (name after doc type)
+ *   "CIBC FHSA Andrew Jan-March $16k.pdf"        (name in middle)
+ *
+ * Requires known borrower names to identify the borrower in the filename.
+ * Returns null if no borrower name found or no doc type resolved.
+ */
+function parseDocFlexible(filename: string, knownNames: Set<string>): ParsedDoc | null {
+  const base = filename.replace(/\.[^.]+$/, '');
+  const rawTokens = base.split(/[\s:]+/).filter(Boolean);
+
+  // Separate years, amounts, and word tokens
+  let year: number | undefined;
+  let amount: string | undefined;
+  const wordTokens: string[] = [];
+
+  for (const token of rawTokens) {
+    if (/^20\d{2}$/.test(token)) {
+      year = parseInt(token, 10);
+    } else if (token.startsWith('$')) {
+      amount = token;
+    } else {
+      wordTokens.push(token);
+    }
+  }
+
+  // Find a known borrower name in the tokens
+  let borrowerName: string | null = null;
+  let nameIndex = -1;
+
+  for (let i = 0; i < wordTokens.length; i++) {
+    if (knownNames.has(wordTokens[i].toLowerCase())) {
+      borrowerName = wordTokens[i];
+      nameIndex = i;
+      break;
+    }
+  }
+
+  if (!borrowerName) return null;
+
+  // Remove borrower name from tokens, try to find doc type in the rest
+  const docTokens = [...wordTokens.slice(0, nameIndex), ...wordTokens.slice(nameIndex + 1)];
+
+  let docTypeLabel = '';
+  let institution: string | undefined;
+
+  for (let len = docTokens.length; len >= 1; len--) {
+    for (let start = 0; start <= docTokens.length - len; start++) {
+      const candidate = docTokens.slice(start, start + len).join(' ');
+      if (isKnownLabel(candidate)) {
+        docTypeLabel = candidate;
+        const before = docTokens.slice(0, start);
+        const after = docTokens.slice(start + len);
+        const remaining = [...before, ...after];
+        if (remaining.length > 0) {
+          institution = remaining.join(' ');
+        }
+        break;
+      }
+    }
+    if (docTypeLabel) break;
+  }
+
+  if (!docTypeLabel) return null;
+
+  return { borrowerName, docTypeLabel, institution, year, amount };
+}
 
 /** Lists contents of a single Drive folder (handles pagination) */
 async function listFolderContents(

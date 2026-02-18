@@ -102,6 +102,38 @@ describe('parseDocFromFilename', () => {
     expect(result?.docTypeLabel).toBe('NOA');
     expect(result?.year).toBe(2024);
   });
+
+  it('parses "YE Pay Stub" with mid-label year', () => {
+    const result = parseDocFromFilename('Tabitha - YE 2025 Pay Stub $34k.pdf');
+    expect(result).toEqual({
+      borrowerName: 'Tabitha',
+      docTypeLabel: 'Pay Stub',
+      institution: 'YE',
+      year: 2025,
+      amount: '$34k',
+    });
+  });
+
+  it('parses shorthand FHSA (without "Statement")', () => {
+    const result = parseDocFromFilename('Tabitha - FHSA June 4 $16k.pdf');
+    expect(result?.borrowerName).toBe('Tabitha');
+    expect(result?.docTypeLabel).toBe('FHSA');
+    expect(result?.amount).toBe('$16k');
+  });
+
+  it('parses shorthand RRSP with extra context', () => {
+    const result = parseDocFromFilename('Andrew - RRSP 90 days $43k.pdf');
+    expect(result?.borrowerName).toBe('Andrew');
+    expect(result?.docTypeLabel).toBe('RRSP');
+    expect(result?.amount).toBe('$43k');
+  });
+
+  it('parses colon-separated labels: "Savings:RSP"', () => {
+    const result = parseDocFromFilename('Tabitha - April Statement Savings:RSP $140k.pdf');
+    expect(result?.borrowerName).toBe('Tabitha');
+    expect(result?.docTypeLabel).toBe('RSP');
+    expect(result?.amount).toBe('$140k');
+  });
 });
 
 // ============================================================================
@@ -138,6 +170,19 @@ describe('resolveDocumentType', () => {
     // "ID" is only 2 chars — should not match anything containing "id" as substring
     expect(resolveDocumentType('Dividend Statement')).toBeNull();
     expect(resolveDocumentType('Liquid Assets')).toBeNull();
+  });
+
+  it('resolves shorthand aliases', () => {
+    expect(resolveDocumentType('FHSA')).toBe('fhsa_statement');
+    expect(resolveDocumentType('RRSP')).toBe('rrsp_statement');
+    expect(resolveDocumentType('RSP')).toBe('rrsp_statement');
+    expect(resolveDocumentType('TFSA')).toBe('tfsa_statement');
+    expect(resolveDocumentType('Chequing')).toBe('bank_statement');
+  });
+
+  it('resolves aliases case-insensitively', () => {
+    expect(resolveDocumentType('fhsa')).toBe('fhsa_statement');
+    expect(resolveDocumentType('rrsp')).toBe('rrsp_statement');
   });
 });
 
@@ -282,6 +327,32 @@ describe('scanClientFolder', () => {
   it('skips docs with "other" document type', async () => {
     const drive = createMockDrive([
       { id: 'f1', name: 'Jane - Document.pdf', mimeType: 'application/pdf', modifiedTime: '2025-04-01T00:00:00Z' },
+    ]);
+
+    const results = await scanClientFolder(drive, 'folder-id', ['Jane']);
+    expect(results).toHaveLength(0);
+  });
+
+  it('uses flexible fallback for files without " - " separator', async () => {
+    const drive = createMockDrive([
+      { id: 'f1', name: 'Andrew CIBC FHSA Current Balance $24k.pdf', mimeType: 'application/pdf', modifiedTime: '2025-04-01T00:00:00Z' },
+      { id: 'f2', name: 'RRSP 90 day Andrew $31k.pdf', mimeType: 'application/pdf', modifiedTime: '2025-04-01T00:00:00Z' },
+      { id: 'f3', name: 'CIBC FHSA Andrew Jan-March $16k.pdf', mimeType: 'application/pdf', modifiedTime: '2025-04-01T00:00:00Z' },
+    ]);
+
+    const results = await scanClientFolder(drive, 'folder-id', ['Andrew']);
+    expect(results).toHaveLength(3);
+    expect(results[0].documentType).toBe('fhsa_statement');
+    expect(results[0].borrowerName).toBe('Andrew');
+    expect(results[1].documentType).toBe('rrsp_statement');
+    expect(results[1].borrowerName).toBe('Andrew');
+    expect(results[2].documentType).toBe('fhsa_statement');
+    expect(results[2].borrowerName).toBe('Andrew');
+  });
+
+  it('flexible fallback skips files with no known borrower name', async () => {
+    const drive = createMockDrive([
+      { id: 'f1', name: 'CIBC #6937 Chequing 90 days $34k.pdf', mimeType: 'application/pdf', modifiedTime: '2025-04-01T00:00:00Z' },
     ]);
 
     const results = await scanClientFolder(drive, 'folder-id', ['Jane']);
