@@ -134,6 +134,13 @@ describe('parseDocFromFilename', () => {
     expect(result?.docTypeLabel).toBe('RSP');
     expect(result?.amount).toBe('$140k');
   });
+
+  it('parses CRA SOA shorthand', () => {
+    const result = parseDocFromFilename('Brigitte - CRA SOA Feb 4.pdf');
+    expect(result?.borrowerName).toBe('Brigitte');
+    expect(result?.docTypeLabel).toBe('CRA SOA');
+    expect(result?.institution).toBe('Feb 4');
+  });
 });
 
 // ============================================================================
@@ -183,6 +190,11 @@ describe('resolveDocumentType', () => {
   it('resolves aliases case-insensitively', () => {
     expect(resolveDocumentType('fhsa')).toBe('fhsa_statement');
     expect(resolveDocumentType('rrsp')).toBe('rrsp_statement');
+  });
+
+  it('resolves CRA SOA alias', () => {
+    expect(resolveDocumentType('CRA SOA')).toBe('cra_statement_of_account');
+    expect(resolveDocumentType('cra soa')).toBe('cra_statement_of_account');
   });
 });
 

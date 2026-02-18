@@ -65,6 +65,7 @@ const DOC_TYPE_ALIASES: Map<string, DocumentType> = new Map([
   ['tfsa', 'tfsa_statement'],
   ['chequing', 'bank_statement'],
   ['checking', 'bank_statement'],
+  ['cra soa', 'cra_statement_of_account'],
 ]);
 
 /** Check if a label matches a known doc type or alias */
