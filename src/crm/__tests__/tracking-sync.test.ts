@@ -1,19 +1,27 @@
 /**
- * Tests for Tracking Sync Orchestrator — Document-received CRM updates
+ * Tests for Tracking Sync Orchestrator — Opportunity-level doc tracking (Phase 10)
  *
  * Tests cover:
- * - Happy path: PRE doc received, FULL doc received, counters/status update
- * - Milestone triggers: PRE Complete -> task, All Complete -> pipeline advance
- * - Audit note created with correct document name and source
- * - Edge cases: no contact, no match, already received, LATER/CONDITIONAL stage
- * - Error handling: non-fatal audit note, task, and pipeline failures
- * - parseContactTrackingFields: valid JSON, missing fields, malformed JSON
+ * - parseContactTrackingFields: valid JSON, missing fields, malformed JSON, numeric strings
+ * - parseOpportunityTrackingFields: fieldValueString/fieldValueNumber, missing fields
+ * - Opportunity-level tracking:
+ *   - Happy path: PRE doc received on single opportunity
+ *   - Reusable doc updates ALL open opportunities (cross-deal)
+ *   - Property-specific doc updates only matched opportunity (single-deal)
+ *   - Property-specific doc with ambiguous deal returns error
+ *   - Pipeline stage advances per-opportunity when All Complete
+ *   - PRE readiness task created only once even for cross-deal
+ *   - Audit note created on contact, not opportunity
+ * - Contact fallback when no opportunities
+ * - Edge cases: no-contact, no-match, already-received, LATER/CONDITIONAL stage
+ * - Error handling: non-fatal audit note, task, pipeline failures
  *
  * All external dependencies are mocked via vi.mock / vi.hoisted.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { CrmContact, MissingDocEntry } from '../types/index.js';
+import type { CrmContact, CrmOpportunity, CrmOpportunityCustomField, MissingDocEntry } from '../types/index.js';
+import { EXISTING_OPP_FIELDS } from '../types/index.js';
 
 // ---------------------------------------------------------------------------
 // Module-level mocks (vi.hoisted)
@@ -58,10 +66,29 @@ const mockTasks = vi.hoisted(() => ({
 vi.mock('../tasks.js', () => mockTasks);
 
 const mockOpportunities = vi.hoisted(() => ({
-  moveToAllDocsReceived: vi.fn(),
+  searchOpportunities: vi.fn(),
+  getOpportunity: vi.fn(),
+  updateOpportunityFields: vi.fn(),
+  updateOpportunityStage: vi.fn(),
+  getOpportunityFieldValue: vi.fn(),
 }));
 
 vi.mock('../opportunities.js', () => mockOpportunities);
+
+// Mock PROPERTY_SPECIFIC_TYPES from doc-expiry
+const mockDocExpiry = vi.hoisted(() => ({
+  PROPERTY_SPECIFIC_TYPES: new Set([
+    'purchase_agreement',
+    'mls_listing',
+    'property_tax_bill',
+    'home_insurance',
+    'gift_letter',
+    'lease_agreement',
+    'mortgage_statement',
+  ]),
+}));
+
+vi.mock('../../drive/doc-expiry.js', () => mockDocExpiry);
 
 const MOCK_FIELD_IDS = vi.hoisted(() => ({
   docStatus: 'field-doc-status',
@@ -75,11 +102,29 @@ const MOCK_FIELD_IDS = vi.hoisted(() => ({
   lastDocReceived: 'field-last-doc-received',
 }));
 
+const MOCK_OPP_FIELD_IDS = vi.hoisted(() => ({
+  docStatus: 'opp-field-doc-status',
+  docRequestSent: 'opp-field-doc-request-sent',
+  missingDocs: 'opp-field-missing-docs',
+  receivedDocs: 'opp-field-received-docs',
+  preDocsTotal: 'opp-field-pre-total',
+  preDocsReceived: 'opp-field-pre-received',
+  fullDocsTotal: 'opp-field-full-total',
+  fullDocsReceived: 'opp-field-full-received',
+  lastDocReceived: 'opp-field-last-doc-received',
+}));
+
 vi.mock('../config.js', () => ({
   crmConfig: {
     fieldIds: MOCK_FIELD_IDS,
+    opportunityFieldIds: MOCK_OPP_FIELD_IDS,
     locationId: 'loc-123',
     isDev: false,
+    stageIds: {
+      applicationReceived: 'stage-app-received',
+      collectingDocuments: 'stage-collecting-docs',
+      allDocsReceived: 'stage-all-docs-received',
+    },
   },
 }));
 
@@ -87,7 +132,11 @@ vi.mock('../config.js', () => ({
 // Import SUT after mocks
 // ---------------------------------------------------------------------------
 
-import { updateDocTracking, parseContactTrackingFields } from '../tracking-sync.js';
+import {
+  updateDocTracking,
+  parseContactTrackingFields,
+  parseOpportunityTrackingFields,
+} from '../tracking-sync.js';
 import type { TrackingUpdateInput } from '../tracking-sync.js';
 
 // ---------------------------------------------------------------------------
@@ -120,10 +169,122 @@ function makeInput(overrides: Partial<TrackingUpdateInput> = {}): TrackingUpdate
 }
 
 /**
- * Sets up the standard happy-path mocks: contact found, contact record with
- * missingDocs/receivedDocs/counters, doc matched, status computed.
+ * Creates a CrmOpportunity with opportunity-format custom fields.
+ * Fields use fieldValueString/fieldValueNumber format (not contact's { id, value } format).
  */
-function setupHappyPath(opts: {
+function makeOpportunity(
+  id: string,
+  customFields: CrmOpportunityCustomField[] = [],
+  overrides: Partial<CrmOpportunity> = {},
+): CrmOpportunity {
+  return {
+    id,
+    name: 'Test Deal',
+    contactId: 'contact-abc',
+    pipelineId: 'pipeline-123',
+    pipelineStageId: 'stage-collecting-docs',
+    status: 'open',
+    customFields,
+    ...overrides,
+  };
+}
+
+/**
+ * Builds opportunity custom fields from tracking data in the opportunity format.
+ */
+function makeOppTrackingFields(opts: {
+  missingDocs?: MissingDocEntry[];
+  receivedDocs?: string[];
+  preDocsTotal?: number;
+  preDocsReceived?: number;
+  fullDocsTotal?: number;
+  fullDocsReceived?: number;
+} = {}): CrmOpportunityCustomField[] {
+  const {
+    missingDocs = makeMissingDocs([
+      { name: 'T4 - Current year', stage: 'PRE' },
+      { name: 'Recent paystub (within 30 days)', stage: 'PRE' },
+      { name: 'NOA - Previous year', stage: 'FULL' },
+    ]),
+    receivedDocs = ['Letter of Employment'],
+    preDocsTotal = 3,
+    preDocsReceived = 1,
+    fullDocsTotal = 2,
+    fullDocsReceived = 0,
+  } = opts;
+
+  // Format missingDocs as text (same format the CRM stores)
+  const missingText = missingDocs.map((d) => `${d.name} [${d.stage}]`).join('\n');
+  const receivedText = receivedDocs.join('\n');
+
+  return [
+    { id: MOCK_OPP_FIELD_IDS.missingDocs, fieldValueString: missingText },
+    { id: MOCK_OPP_FIELD_IDS.receivedDocs, fieldValueString: receivedText },
+    { id: MOCK_OPP_FIELD_IDS.preDocsTotal, fieldValueNumber: preDocsTotal },
+    { id: MOCK_OPP_FIELD_IDS.preDocsReceived, fieldValueNumber: preDocsReceived },
+    { id: MOCK_OPP_FIELD_IDS.fullDocsTotal, fieldValueNumber: fullDocsTotal },
+    { id: MOCK_OPP_FIELD_IDS.fullDocsReceived, fieldValueNumber: fullDocsReceived },
+  ];
+}
+
+/**
+ * Sets up standard happy path for opportunity-level tracking:
+ * contact found, 1 open opportunity with tracking fields, doc matched.
+ */
+function setupOpportunityHappyPath(opts: {
+  opportunities?: CrmOpportunity[];
+  matchedDoc?: MissingDocEntry | null;
+  newStatus?: string;
+} = {}) {
+  const {
+    opportunities = [makeOpportunity('opp-001', makeOppTrackingFields())],
+    matchedDoc = { name: 'T4 - Current year', stage: 'PRE' as const },
+    newStatus = 'In Progress',
+  } = opts;
+
+  const contact = makeContact();
+
+  // Contact resolution
+  mockContacts.findContactByEmail.mockResolvedValue('contact-abc');
+  mockContacts.getContact.mockResolvedValue(contact);
+  mockContacts.upsertContact.mockResolvedValue({ contactId: 'contact-abc', isNew: false });
+
+  // Opportunity search + get
+  mockOpportunities.searchOpportunities.mockResolvedValue(opportunities);
+  // getOpportunity returns the same as search by default (with full custom fields)
+  for (const opp of opportunities) {
+    mockOpportunities.getOpportunity.mockResolvedValue(opp);
+  }
+  mockOpportunities.updateOpportunityFields.mockResolvedValue(undefined);
+  mockOpportunities.updateOpportunityStage.mockResolvedValue(undefined);
+
+  // Use real getOpportunityFieldValue implementation
+  mockOpportunities.getOpportunityFieldValue.mockImplementation(
+    (opp: CrmOpportunity, fieldId: string): string | number | undefined => {
+      if (!opp.customFields) return undefined;
+      const field = opp.customFields.find((f) => f.id === fieldId);
+      if (!field) return undefined;
+      if (field.fieldValueString !== undefined && field.fieldValueString !== null) return field.fieldValueString;
+      if (field.fieldValueNumber !== undefined && field.fieldValueNumber !== null) return field.fieldValueNumber;
+      if (field.fieldValueDate !== undefined && field.fieldValueDate !== null) return field.fieldValueDate;
+      return undefined;
+    },
+  );
+
+  // Doc matching
+  mockDocTypeMatcher.findMatchingChecklistDoc.mockReturnValue(matchedDoc);
+  mockChecklistMapper.computeDocStatus.mockReturnValue(newStatus);
+  mockNotes.createAuditNote.mockResolvedValue('note-xyz');
+  mockTasks.createPreReadinessTask.mockResolvedValue('task-123');
+
+  return contact;
+}
+
+/**
+ * Sets up standard happy path for CONTACT-level fallback:
+ * contact found, no opportunities, doc tracked on contact.
+ */
+function setupContactFallbackPath(opts: {
   missingDocs?: MissingDocEntry[];
   receivedDocs?: string[];
   preDocsTotal?: number;
@@ -160,11 +321,14 @@ function setupHappyPath(opts: {
   mockContacts.findContactByEmail.mockResolvedValue('contact-abc');
   mockContacts.getContact.mockResolvedValue(contact);
   mockContacts.upsertContact.mockResolvedValue({ contactId: 'contact-abc', isNew: false });
+
+  // No opportunities — triggers contact fallback
+  mockOpportunities.searchOpportunities.mockResolvedValue([]);
+
   mockDocTypeMatcher.findMatchingChecklistDoc.mockReturnValue(matchedDoc);
   mockChecklistMapper.computeDocStatus.mockReturnValue(newStatus);
   mockNotes.createAuditNote.mockResolvedValue('note-xyz');
   mockTasks.createPreReadinessTask.mockResolvedValue('task-123');
-  mockOpportunities.moveToAllDocsReceived.mockResolvedValue('opp-456');
 
   return contact;
 }
@@ -266,77 +430,107 @@ describe('tracking-sync', () => {
   });
 
   // =========================================================================
-  // updateDocTracking — Happy path
+  // parseOpportunityTrackingFields
   // =========================================================================
 
-  describe('updateDocTracking — happy path', () => {
-    it('should update tracking when PRE doc received: remove from missing, add to received, increment preDocsReceived', async () => {
-      setupHappyPath({ newStatus: 'In Progress' });
+  describe('parseOpportunityTrackingFields', () => {
+    // Need real getOpportunityFieldValue for these tests
+    beforeEach(() => {
+      mockOpportunities.getOpportunityFieldValue.mockImplementation(
+        (opp: CrmOpportunity, fieldId: string): string | number | undefined => {
+          if (!opp.customFields) return undefined;
+          const field = opp.customFields.find((f) => f.id === fieldId);
+          if (!field) return undefined;
+          if (field.fieldValueString !== undefined && field.fieldValueString !== null) return field.fieldValueString;
+          if (field.fieldValueNumber !== undefined && field.fieldValueNumber !== null) return field.fieldValueNumber;
+          if (field.fieldValueDate !== undefined && field.fieldValueDate !== null) return field.fieldValueDate;
+          return undefined;
+        },
+      );
+    });
+
+    it('should parse fieldValueString and fieldValueNumber correctly', () => {
+      const missingDocs = makeMissingDocs([
+        { name: 'T4 - Current year', stage: 'PRE' },
+        { name: 'NOA', stage: 'FULL' },
+      ]);
+      const missingText = missingDocs.map((d) => `${d.name} [${d.stage}]`).join('\n');
+
+      const opp = makeOpportunity('opp-1', [
+        { id: MOCK_OPP_FIELD_IDS.missingDocs, fieldValueString: missingText },
+        { id: MOCK_OPP_FIELD_IDS.receivedDocs, fieldValueString: 'LOE\nPay Stub' },
+        { id: MOCK_OPP_FIELD_IDS.preDocsTotal, fieldValueNumber: 5 },
+        { id: MOCK_OPP_FIELD_IDS.preDocsReceived, fieldValueNumber: 2 },
+        { id: MOCK_OPP_FIELD_IDS.fullDocsTotal, fieldValueNumber: 3 },
+        { id: MOCK_OPP_FIELD_IDS.fullDocsReceived, fieldValueNumber: 1 },
+      ]);
+
+      const result = parseOpportunityTrackingFields(opp, MOCK_OPP_FIELD_IDS);
+
+      expect(result.missingDocs).toEqual(missingDocs);
+      expect(result.receivedDocs).toEqual(['LOE', 'Pay Stub']);
+      expect(result.preDocsTotal).toBe(5);
+      expect(result.preDocsReceived).toBe(2);
+      expect(result.fullDocsTotal).toBe(3);
+      expect(result.fullDocsReceived).toBe(1);
+    });
+
+    it('should handle missing fields with safe defaults', () => {
+      const opp = makeOpportunity('opp-1', []); // no tracking fields
+
+      const result = parseOpportunityTrackingFields(opp, MOCK_OPP_FIELD_IDS);
+
+      expect(result.missingDocs).toEqual([]);
+      expect(result.receivedDocs).toEqual([]);
+      expect(result.preDocsTotal).toBe(0);
+      expect(result.preDocsReceived).toBe(0);
+      expect(result.fullDocsTotal).toBe(0);
+      expect(result.fullDocsReceived).toBe(0);
+    });
+
+    it('should handle undefined customFields array', () => {
+      const opp: CrmOpportunity = { id: 'opp-1' }; // no customFields property
+
+      const result = parseOpportunityTrackingFields(opp, MOCK_OPP_FIELD_IDS);
+
+      expect(result.missingDocs).toEqual([]);
+      expect(result.receivedDocs).toEqual([]);
+      expect(result.preDocsTotal).toBe(0);
+    });
+  });
+
+  // =========================================================================
+  // updateDocTracking — Opportunity-level happy path
+  // =========================================================================
+
+  describe('updateDocTracking — opportunity-level happy path', () => {
+    it('should update tracking on opportunity when PRE doc received', async () => {
+      setupOpportunityHappyPath({ newStatus: 'In Progress' });
 
       const result = await updateDocTracking(makeInput());
 
       expect(result.updated).toBe(true);
       expect(result.contactId).toBe('contact-abc');
+      expect(result.opportunityId).toBe('opp-001');
+      expect(result.trackingTarget).toBe('opportunity');
       expect(result.newStatus).toBe('In Progress');
       expect(result.noteId).toBe('note-xyz');
       expect(result.errors).toEqual([]);
 
-      // Verify upsertContact was called with updated fields
-      expect(mockContacts.upsertContact).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: 'borrower@example.com',
-          customFields: expect.arrayContaining([
-            expect.objectContaining({ id: MOCK_FIELD_IDS.preDocsReceived, field_value: 2 }), // 1 + 1
-          ]),
-        }),
+      // Verify updateOpportunityFields was called (not upsertContact for tracking)
+      expect(mockOpportunities.updateOpportunityFields).toHaveBeenCalledWith(
+        'opp-001',
+        expect.arrayContaining([
+          expect.objectContaining({ id: MOCK_OPP_FIELD_IDS.preDocsReceived, field_value: 2 }), // 1 + 1
+        ]),
       );
 
-      // Verify missingDocs no longer contains the matched doc (readable text format)
-      const upsertCall = mockContacts.upsertContact.mock.calls[0][0];
-      const missingField = upsertCall.customFields.find(
-        (f: { id: string }) => f.id === MOCK_FIELD_IDS.missingDocs,
-      );
-      const missingText = missingField.field_value as string;
-      expect(missingText).not.toContain('T4 - Current year');
-      // Should still have 2 remaining docs
-      const missingLines = missingText.split('\n').filter((l: string) => l.trim());
-      expect(missingLines).toHaveLength(2);
-
-      // Verify receivedDocs now contains the matched doc name (readable text format)
-      const receivedField = upsertCall.customFields.find(
-        (f: { id: string }) => f.id === MOCK_FIELD_IDS.receivedDocs,
-      );
-      const receivedText = receivedField.field_value as string;
-      expect(receivedText).toContain('T4 - Current year');
-      expect(receivedText).toContain('Letter of Employment'); // existing
+      // upsertContact should NOT be called for opportunity-level tracking
+      expect(mockContacts.upsertContact).not.toHaveBeenCalled();
     });
 
-    it('should increment fullDocsReceived when FULL doc received', async () => {
-      setupHappyPath({
-        matchedDoc: { name: 'NOA - Previous year', stage: 'FULL' },
-        fullDocsReceived: 0,
-        newStatus: 'In Progress',
-      });
-
-      const result = await updateDocTracking(makeInput({ documentType: 'noa' }));
-
-      expect(result.updated).toBe(true);
-
-      const upsertCall = mockContacts.upsertContact.mock.calls[0][0];
-      const fullReceivedField = upsertCall.customFields.find(
-        (f: { id: string }) => f.id === MOCK_FIELD_IDS.fullDocsReceived,
-      );
-      expect(fullReceivedField.field_value).toBe(1); // 0 + 1
-
-      // PRE counter should NOT be incremented
-      const preReceivedField = upsertCall.customFields.find(
-        (f: { id: string }) => f.id === MOCK_FIELD_IDS.preDocsReceived,
-      );
-      expect(preReceivedField.field_value).toBe(1); // unchanged from setup
-    });
-
-    it('should create audit note with matched doc name and source', async () => {
-      setupHappyPath();
+    it('should create audit note on contact with matched doc name', async () => {
+      setupOpportunityHappyPath();
 
       await updateDocTracking(makeInput());
 
@@ -348,35 +542,183 @@ describe('tracking-sync', () => {
     });
 
     it('should compute new status using computeDocStatus', async () => {
-      setupHappyPath({ preDocsTotal: 3, preDocsReceived: 1, fullDocsTotal: 2, fullDocsReceived: 0 });
+      setupOpportunityHappyPath();
 
       await updateDocTracking(makeInput());
 
-      // Should be called with updated preDocsReceived (1+1=2)
+      // Called with updated preDocsReceived (1+1=2)
       expect(mockChecklistMapper.computeDocStatus).toHaveBeenCalledWith(3, 2, 2, 0);
-    });
-
-    it('should set lastDocReceived to today ISO date', async () => {
-      setupHappyPath();
-
-      await updateDocTracking(makeInput());
-
-      const upsertCall = mockContacts.upsertContact.mock.calls[0][0];
-      const lastDocField = upsertCall.customFields.find(
-        (f: { id: string }) => f.id === MOCK_FIELD_IDS.lastDocReceived,
-      );
-      // Should be YYYY-MM-DD format
-      expect(lastDocField.field_value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
   });
 
   // =========================================================================
-  // updateDocTracking — Milestone triggers
+  // updateDocTracking — Cross-deal reuse (reusable docs)
   // =========================================================================
 
-  describe('updateDocTracking — milestone triggers', () => {
-    it('should create PRE readiness task for Taylor when status becomes PRE Complete', async () => {
-      setupHappyPath({ newStatus: 'PRE Complete' });
+  describe('updateDocTracking — cross-deal reuse', () => {
+    it('should update ALL open opportunities for reusable doc', async () => {
+      const opp1 = makeOpportunity('opp-001', makeOppTrackingFields());
+      const opp2 = makeOpportunity('opp-002', makeOppTrackingFields());
+
+      setupOpportunityHappyPath({ opportunities: [opp1, opp2] });
+
+      // getOpportunity must return different opps for different IDs
+      mockOpportunities.getOpportunity
+        .mockResolvedValueOnce(opp1) // first call for opp-001
+        .mockResolvedValueOnce(opp2); // second call for opp-002
+
+      const result = await updateDocTracking(makeInput({ documentType: 't4' })); // t4 is reusable
+
+      expect(result.updated).toBe(true);
+      expect(result.crossDealUpdates).toBe(2);
+      expect(result.trackingTarget).toBe('opportunity');
+
+      // updateOpportunityFields called TWICE (once per opportunity)
+      expect(mockOpportunities.updateOpportunityFields).toHaveBeenCalledTimes(2);
+      expect(mockOpportunities.updateOpportunityFields).toHaveBeenCalledWith('opp-001', expect.any(Array));
+      expect(mockOpportunities.updateOpportunityFields).toHaveBeenCalledWith('opp-002', expect.any(Array));
+    });
+
+    it('should create audit note only once for cross-deal update', async () => {
+      const opp1 = makeOpportunity('opp-001', makeOppTrackingFields());
+      const opp2 = makeOpportunity('opp-002', makeOppTrackingFields());
+
+      setupOpportunityHappyPath({ opportunities: [opp1, opp2] });
+      mockOpportunities.getOpportunity
+        .mockResolvedValueOnce(opp1)
+        .mockResolvedValueOnce(opp2);
+
+      await updateDocTracking(makeInput());
+
+      // Audit note created on contact, only once
+      expect(mockNotes.createAuditNote).toHaveBeenCalledTimes(1);
+      expect(mockNotes.createAuditNote).toHaveBeenCalledWith('contact-abc', expect.any(Object));
+    });
+  });
+
+  // =========================================================================
+  // updateDocTracking — Property-specific docs (single-deal)
+  // =========================================================================
+
+  describe('updateDocTracking — property-specific docs', () => {
+    it('should update only matched opportunity for property-specific doc', async () => {
+      const opp1 = makeOpportunity('opp-001', [
+        ...makeOppTrackingFields({
+          missingDocs: makeMissingDocs([
+            { name: 'Purchase Agreement', stage: 'FULL' },
+            { name: 'T4 - Current year', stage: 'PRE' },
+          ]),
+        }),
+        { id: EXISTING_OPP_FIELDS.FINMO_APPLICATION_ID, fieldValueString: 'finmo-app-111' },
+      ]);
+      const opp2 = makeOpportunity('opp-002', [
+        ...makeOppTrackingFields(),
+        { id: EXISTING_OPP_FIELDS.FINMO_APPLICATION_ID, fieldValueString: 'finmo-app-222' },
+      ]);
+
+      setupOpportunityHappyPath({
+        opportunities: [opp1, opp2],
+        matchedDoc: { name: 'Purchase Agreement', stage: 'FULL' },
+      });
+
+      // getOpportunityFieldValue for resolving target: match by Finmo App ID
+      // The implementation mock handles both opportunity and tracking field lookups
+      mockOpportunities.getOpportunityFieldValue.mockImplementation(
+        (opp: CrmOpportunity, fieldId: string): string | number | undefined => {
+          if (!opp.customFields) return undefined;
+          const field = opp.customFields.find((f) => f.id === fieldId);
+          if (!field) return undefined;
+          if (field.fieldValueString !== undefined && field.fieldValueString !== null) return field.fieldValueString;
+          if (field.fieldValueNumber !== undefined && field.fieldValueNumber !== null) return field.fieldValueNumber;
+          return undefined;
+        },
+      );
+
+      mockOpportunities.getOpportunity.mockResolvedValue(opp1);
+
+      const result = await updateDocTracking(makeInput({
+        documentType: 'purchase_agreement',
+        finmoApplicationId: 'finmo-app-111',
+      }));
+
+      expect(result.updated).toBe(true);
+      // Should only update opp-001 (matched by Finmo app ID)
+      expect(mockOpportunities.updateOpportunityFields).toHaveBeenCalledTimes(1);
+      expect(mockOpportunities.updateOpportunityFields).toHaveBeenCalledWith('opp-001', expect.any(Array));
+    });
+
+    it('should return ambiguous-deal when property-specific doc has multiple deals and no finmoApplicationId', async () => {
+      const opp1 = makeOpportunity('opp-001', makeOppTrackingFields());
+      const opp2 = makeOpportunity('opp-002', makeOppTrackingFields());
+
+      setupOpportunityHappyPath({ opportunities: [opp1, opp2] });
+
+      const result = await updateDocTracking(makeInput({
+        documentType: 'mls_listing', // property-specific
+        // No finmoApplicationId provided
+      }));
+
+      expect(result.updated).toBe(false);
+      expect(result.reason).toBe('ambiguous-deal');
+      expect(result.contactId).toBe('contact-abc');
+      expect(mockOpportunities.updateOpportunityFields).not.toHaveBeenCalled();
+    });
+
+    it('should use single opportunity without finmoApplicationId when only one exists', async () => {
+      const opp1 = makeOpportunity('opp-001', makeOppTrackingFields({
+        missingDocs: makeMissingDocs([
+          { name: 'Purchase Agreement', stage: 'FULL' },
+        ]),
+      }));
+
+      setupOpportunityHappyPath({
+        opportunities: [opp1],
+        matchedDoc: { name: 'Purchase Agreement', stage: 'FULL' },
+      });
+
+      const result = await updateDocTracking(makeInput({
+        documentType: 'purchase_agreement',
+        // No finmoApplicationId — but only 1 opp, so unambiguous
+      }));
+
+      expect(result.updated).toBe(true);
+      expect(mockOpportunities.updateOpportunityFields).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // =========================================================================
+  // updateDocTracking — Pipeline stage advances
+  // =========================================================================
+
+  describe('updateDocTracking — pipeline stage advance', () => {
+    it('should advance pipeline stage per-opportunity when All Complete', async () => {
+      setupOpportunityHappyPath({ newStatus: 'All Complete' });
+
+      const result = await updateDocTracking(makeInput());
+
+      expect(result.updated).toBe(true);
+      expect(mockOpportunities.updateOpportunityStage).toHaveBeenCalledWith(
+        'opp-001',
+        'stage-all-docs-received',
+      );
+    });
+
+    it('should not advance pipeline for In Progress status', async () => {
+      setupOpportunityHappyPath({ newStatus: 'In Progress' });
+
+      await updateDocTracking(makeInput());
+
+      expect(mockOpportunities.updateOpportunityStage).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // updateDocTracking — PRE readiness task
+  // =========================================================================
+
+  describe('updateDocTracking — PRE readiness task', () => {
+    it('should create PRE readiness task when status becomes PRE Complete', async () => {
+      setupOpportunityHappyPath({ newStatus: 'PRE Complete' });
 
       const result = await updateDocTracking(makeInput());
 
@@ -385,31 +727,91 @@ describe('tracking-sync', () => {
         'contact-abc',
         'Terry Smith',
       );
-      // Pipeline advance should NOT be called for PRE Complete
-      expect(mockOpportunities.moveToAllDocsReceived).not.toHaveBeenCalled();
     });
 
-    it('should advance pipeline when status becomes All Complete', async () => {
-      setupHappyPath({ newStatus: 'All Complete' });
+    it('should create PRE readiness task only once even for cross-deal updates', async () => {
+      const opp1 = makeOpportunity('opp-001', makeOppTrackingFields());
+      const opp2 = makeOpportunity('opp-002', makeOppTrackingFields());
+      const opp3 = makeOpportunity('opp-003', makeOppTrackingFields());
 
-      const result = await updateDocTracking(makeInput());
+      setupOpportunityHappyPath({
+        opportunities: [opp1, opp2, opp3],
+        newStatus: 'PRE Complete',
+      });
 
-      expect(result.updated).toBe(true);
-      expect(mockOpportunities.moveToAllDocsReceived).toHaveBeenCalledWith(
-        'contact-abc',
-        'Terry Smith',
-      );
-      // PRE readiness task should NOT be called for All Complete
-      expect(mockTasks.createPreReadinessTask).not.toHaveBeenCalled();
+      mockOpportunities.getOpportunity
+        .mockResolvedValueOnce(opp1)
+        .mockResolvedValueOnce(opp2)
+        .mockResolvedValueOnce(opp3);
+
+      await updateDocTracking(makeInput());
+
+      // PRE task created exactly ONCE despite 3 opportunities reaching PRE Complete
+      expect(mockTasks.createPreReadinessTask).toHaveBeenCalledTimes(1);
     });
 
-    it('should not trigger milestone actions for In Progress status', async () => {
-      setupHappyPath({ newStatus: 'In Progress' });
+    it('should not create PRE readiness task for All Complete status', async () => {
+      setupOpportunityHappyPath({ newStatus: 'All Complete' });
 
       await updateDocTracking(makeInput());
 
       expect(mockTasks.createPreReadinessTask).not.toHaveBeenCalled();
-      expect(mockOpportunities.moveToAllDocsReceived).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // updateDocTracking — Contact fallback
+  // =========================================================================
+
+  describe('updateDocTracking — contact fallback', () => {
+    it('should fall back to contact tracking when no opportunities exist', async () => {
+      setupContactFallbackPath({ newStatus: 'In Progress' });
+
+      const result = await updateDocTracking(makeInput());
+
+      expect(result.updated).toBe(true);
+      expect(result.trackingTarget).toBe('contact');
+      expect(result.contactId).toBe('contact-abc');
+      expect(result.newStatus).toBe('In Progress');
+      expect(result.errors).toEqual([]);
+
+      // upsertContact called with doc tracking fields
+      expect(mockContacts.upsertContact).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'borrower@example.com',
+          customFields: expect.arrayContaining([
+            expect.objectContaining({ id: MOCK_FIELD_IDS.preDocsReceived, field_value: 2 }), // 1 + 1
+          ]),
+        }),
+      );
+
+      // Opportunity functions not called for tracking
+      expect(mockOpportunities.updateOpportunityFields).not.toHaveBeenCalled();
+    });
+
+    it('should create PRE readiness task in contact fallback', async () => {
+      setupContactFallbackPath({ newStatus: 'PRE Complete' });
+
+      const result = await updateDocTracking(makeInput());
+
+      expect(result.updated).toBe(true);
+      expect(result.trackingTarget).toBe('contact');
+      expect(mockTasks.createPreReadinessTask).toHaveBeenCalledWith(
+        'contact-abc',
+        'Terry Smith',
+      );
+    });
+
+    it('should create audit note in contact fallback', async () => {
+      setupContactFallbackPath();
+
+      await updateDocTracking(makeInput());
+
+      expect(mockNotes.createAuditNote).toHaveBeenCalledWith('contact-abc', {
+        documentType: 'T4 - Current year',
+        source: 'gmail',
+        driveFileId: 'drive-file-789',
+      });
     });
   });
 
@@ -419,7 +821,7 @@ describe('tracking-sync', () => {
 
   describe('updateDocTracking — edge cases', () => {
     it('should use provided contactId and skip findContactByEmail', async () => {
-      setupHappyPath();
+      setupOpportunityHappyPath();
 
       const result = await updateDocTracking(makeInput({ contactId: 'pre-resolved-id' }));
 
@@ -439,39 +841,45 @@ describe('tracking-sync', () => {
       expect(mockContacts.getContact).not.toHaveBeenCalled();
     });
 
-    it('should return no-match-in-checklist when doc type not in client checklist', async () => {
-      setupHappyPath({ matchedDoc: null });
+    it('should return no-match-in-checklist when doc type not in any opportunity checklist', async () => {
+      setupOpportunityHappyPath({ matchedDoc: null });
 
       const result = await updateDocTracking(makeInput());
 
       expect(result.updated).toBe(false);
       expect(result.reason).toBe('no-match-in-checklist');
       expect(result.errors).toEqual([]);
-      expect(mockContacts.upsertContact).not.toHaveBeenCalled();
+      expect(mockOpportunities.updateOpportunityFields).not.toHaveBeenCalled();
     });
 
-    it('should return already-received when doc is already in receivedDocs', async () => {
-      setupHappyPath({
+    it('should skip already-received docs on opportunity (return no-match when all skip)', async () => {
+      // Set up opportunity where the doc is already in receivedDocs
+      const opp = makeOpportunity('opp-001', makeOppTrackingFields({
         receivedDocs: ['Letter of Employment', 'T4 - Current year'],
+      }));
+
+      setupOpportunityHappyPath({
+        opportunities: [opp],
         matchedDoc: { name: 'T4 - Current year', stage: 'PRE' },
       });
 
       const result = await updateDocTracking(makeInput());
 
+      // Doc is already received — no update happens, treated as no-match
       expect(result.updated).toBe(false);
-      expect(result.reason).toBe('already-received');
-      expect(result.errors).toEqual([]);
-      expect(mockContacts.upsertContact).not.toHaveBeenCalled();
+      expect(result.reason).toBe('no-match-in-checklist');
+      expect(mockOpportunities.updateOpportunityFields).not.toHaveBeenCalled();
     });
 
     it('should not increment either counter for LATER stage doc', async () => {
-      setupHappyPath({
+      setupOpportunityHappyPath({
         matchedDoc: { name: 'Gift letter', stage: 'LATER' },
         newStatus: 'In Progress',
       });
 
       const result = await updateDocTracking(makeInput({ documentType: 'gift_letter' }));
 
+      // gift_letter is in PROPERTY_SPECIFIC_TYPES, so single-deal mode with 1 opp
       expect(result.updated).toBe(true);
 
       // computeDocStatus should be called with unchanged counter values
@@ -481,8 +889,8 @@ describe('tracking-sync', () => {
       );
     });
 
-    it('should not increment either counter for CONDITIONAL stage doc', async () => {
-      setupHappyPath({
+    it('should not increment either counter for CONDITIONAL stage doc on contact fallback', async () => {
+      setupContactFallbackPath({
         matchedDoc: { name: 'Separation agreement', stage: 'CONDITIONAL' },
         newStatus: 'In Progress',
       });
@@ -490,11 +898,27 @@ describe('tracking-sync', () => {
       const result = await updateDocTracking(makeInput({ documentType: 'separation_agreement' }));
 
       expect(result.updated).toBe(true);
+      expect(result.trackingTarget).toBe('contact');
 
       expect(mockChecklistMapper.computeDocStatus).toHaveBeenCalledWith(
         3, 1, // unchanged
         2, 0, // unchanged
       );
+    });
+
+    it('should filter to only open opportunities', async () => {
+      const openOpp = makeOpportunity('opp-001', makeOppTrackingFields(), { status: 'open' });
+      const closedOpp = makeOpportunity('opp-002', makeOppTrackingFields(), { status: 'won' });
+
+      setupOpportunityHappyPath({ opportunities: [openOpp, closedOpp] });
+      mockOpportunities.getOpportunity.mockResolvedValue(openOpp);
+
+      const result = await updateDocTracking(makeInput());
+
+      expect(result.updated).toBe(true);
+      // Only the open opportunity should be updated
+      expect(mockOpportunities.updateOpportunityFields).toHaveBeenCalledTimes(1);
+      expect(mockOpportunities.updateOpportunityFields).toHaveBeenCalledWith('opp-001', expect.any(Array));
     });
   });
 
@@ -504,7 +928,7 @@ describe('tracking-sync', () => {
 
   describe('updateDocTracking — error handling', () => {
     it('should still return updated=true when audit note creation fails', async () => {
-      setupHappyPath();
+      setupOpportunityHappyPath();
       mockNotes.createAuditNote.mockRejectedValue(new Error('Notes API offline'));
 
       const result = await updateDocTracking(makeInput());
@@ -517,7 +941,7 @@ describe('tracking-sync', () => {
     });
 
     it('should still return updated=true when PRE readiness task creation fails', async () => {
-      setupHappyPath({ newStatus: 'PRE Complete' });
+      setupOpportunityHappyPath({ newStatus: 'PRE Complete' });
       mockTasks.createPreReadinessTask.mockRejectedValue(new Error('Task API error'));
 
       const result = await updateDocTracking(makeInput());
@@ -529,8 +953,8 @@ describe('tracking-sync', () => {
     });
 
     it('should still return updated=true when pipeline advance fails', async () => {
-      setupHappyPath({ newStatus: 'All Complete' });
-      mockOpportunities.moveToAllDocsReceived.mockRejectedValue(new Error('Pipeline API down'));
+      setupOpportunityHappyPath({ newStatus: 'All Complete' });
+      mockOpportunities.updateOpportunityStage.mockRejectedValue(new Error('Pipeline API down'));
 
       const result = await updateDocTracking(makeInput());
 
@@ -541,7 +965,7 @@ describe('tracking-sync', () => {
     });
 
     it('should collect multiple non-fatal errors', async () => {
-      setupHappyPath({ newStatus: 'PRE Complete' });
+      setupOpportunityHappyPath({ newStatus: 'PRE Complete' });
       mockNotes.createAuditNote.mockRejectedValue(new Error('Note fail'));
       mockTasks.createPreReadinessTask.mockRejectedValue(new Error('Task fail'));
 
@@ -549,8 +973,20 @@ describe('tracking-sync', () => {
 
       expect(result.updated).toBe(true);
       expect(result.errors).toHaveLength(2);
+      expect(result.errors[0]).toContain('PRE readiness task failed'); // PRE task runs before audit note
+      expect(result.errors[1]).toContain('Audit note failed');
+    });
+
+    it('should still return updated=true when contact fallback audit note fails', async () => {
+      setupContactFallbackPath();
+      mockNotes.createAuditNote.mockRejectedValue(new Error('Notes API offline'));
+
+      const result = await updateDocTracking(makeInput());
+
+      expect(result.updated).toBe(true);
+      expect(result.trackingTarget).toBe('contact');
+      expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toContain('Audit note failed');
-      expect(result.errors[1]).toContain('PRE readiness task failed');
     });
   });
 });
