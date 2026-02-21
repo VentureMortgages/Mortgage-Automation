@@ -153,13 +153,14 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     borrowerLastName: mainBorrower.lastName,
     borrowerPhone: mainBorrower.phone ?? undefined,
     finmoDealId: applicationId,
-    finmoApplicationId: applicationId,
+    finmoApplicationId: finmoApp.application.id,
     preReceivedDocs: preReceivedDocs.length > 0 ? preReceivedDocs : undefined,
   });
 
   console.log('[worker] CRM synced', {
     applicationId,
     contactId: crmResult.contactId,
+    trackingTarget: crmResult.trackingTarget,
     fieldsUpdated: crmResult.fieldsUpdated,
     errors: crmResult.errors.length,
   });

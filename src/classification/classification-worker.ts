@@ -223,12 +223,16 @@ export async function processClassificationJob(
           source,
           receivedAt: job.data.receivedAt,
           ...(contactId ? { contactId } : {}),
+          finmoApplicationId: applicationId ?? undefined,
         });
 
         if (trackingResult.updated) {
           console.log('[classification] CRM tracking updated:', {
             contactId: trackingResult.contactId,
+            opportunityId: trackingResult.opportunityId,
+            trackingTarget: trackingResult.trackingTarget,
             newStatus: trackingResult.newStatus,
+            crossDealUpdates: trackingResult.crossDealUpdates,
           });
         } else {
           console.log('[classification] CRM tracking skipped:', {
