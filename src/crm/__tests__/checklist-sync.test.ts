@@ -3,7 +3,8 @@
 // ============================================================================
 //
 // Tests the syncChecklistToCrm orchestrator with mocked CRM service modules.
-// Verifies correct call order, error handling, and partial failure behavior.
+// Verifies opportunity-level doc tracking, contact fallback, error handling,
+// and correct fieldIds usage.
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type { GeneratedChecklist } from '../../checklist/types/index.js';
@@ -26,8 +27,19 @@ vi.mock('../config.js', () => ({
       fullDocsReceived: 'f-full-received',
       lastDocReceived: 'f-last-doc',
     },
+    opportunityFieldIds: {
+      docStatus: 'opp-status',
+      docRequestSent: 'opp-sent',
+      missingDocs: 'opp-missing',
+      receivedDocs: 'opp-received',
+      preDocsTotal: 'opp-pre-total',
+      preDocsReceived: 'opp-pre-received',
+      fullDocsTotal: 'opp-full-total',
+      fullDocsReceived: 'opp-full-received',
+      lastDocReceived: 'opp-last-doc',
+    },
     userIds: { cat: 'cat-id', taylor: 'taylor-id' },
-    stageIds: { collectingDocuments: 'stage-id' },
+    stageIds: { collectingDocuments: 'stage-collecting' },
     locationId: 'loc-id',
     apiKey: 'test-key',
     baseUrl: 'https://test.example.com',
@@ -46,7 +58,9 @@ vi.mock('../tasks.js', () => ({
 }));
 
 vi.mock('../opportunities.js', () => ({
-  moveToCollectingDocs: vi.fn().mockResolvedValue('test-opp-101'),
+  findOpportunityByFinmoId: vi.fn().mockResolvedValue({ id: 'opp-123', name: 'Test Opp' }),
+  updateOpportunityFields: vi.fn().mockResolvedValue(undefined),
+  updateOpportunityStage: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../checklist-mapper.js', () => ({
@@ -61,7 +75,7 @@ vi.mock('../checklist-mapper.js', () => ({
 import { syncChecklistToCrm } from '../checklist-sync.js';
 import { upsertContact } from '../contacts.js';
 import { createReviewTask } from '../tasks.js';
-import { moveToCollectingDocs } from '../opportunities.js';
+import { findOpportunityByFinmoId, updateOpportunityFields, updateOpportunityStage } from '../opportunities.js';
 import { mapChecklistToFields, buildChecklistSummary } from '../checklist-mapper.js';
 
 // ============================================================================
@@ -93,6 +107,7 @@ const defaultInput = {
   borrowerFirstName: 'John',
   borrowerLastName: 'Doe',
   borrowerPhone: '555-1234',
+  finmoApplicationId: 'app-uuid-123',
 };
 
 // ============================================================================
@@ -102,35 +117,247 @@ const defaultInput = {
 describe('syncChecklistToCrm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Re-set default mock return values (clearAllMocks resets implementations in Vitest)
+    vi.mocked(upsertContact).mockResolvedValue({ contactId: 'test-contact-123', isNew: true });
+    vi.mocked(createReviewTask).mockResolvedValue('test-task-456');
+    vi.mocked(findOpportunityByFinmoId).mockResolvedValue({ id: 'opp-123', name: 'Test Opp' });
+    vi.mocked(updateOpportunityFields).mockResolvedValue(undefined);
+    vi.mocked(updateOpportunityStage).mockResolvedValue(undefined);
+    vi.mocked(mapChecklistToFields).mockReturnValue([
+      { id: 'f1', field_value: 'In Progress' },
+      { id: 'f2', field_value: 5 },
+    ]);
+    vi.mocked(buildChecklistSummary).mockReturnValue('Test summary');
   });
 
-  test('calls upsertContact with borrower details', async () => {
-    await syncChecklistToCrm(defaultInput);
+  // --------------------------------------------------------------------------
+  // Happy path: opportunity found
+  // --------------------------------------------------------------------------
 
-    expect(upsertContact).toHaveBeenCalledWith(
-      expect.objectContaining({
-        email: 'test@example.com',
-        firstName: 'John',
-        lastName: 'Doe',
-        phone: '555-1234',
-      }),
-    );
-  });
+  describe('when opportunity is found', () => {
+    test('calls findOpportunityByFinmoId with correct args', async () => {
+      await syncChecklistToCrm(defaultInput);
 
-  test('passes mapped field updates to contact upsert', async () => {
-    await syncChecklistToCrm(defaultInput);
+      expect(findOpportunityByFinmoId).toHaveBeenCalledWith(
+        'test-contact-123',
+        expect.any(String), // PIPELINE_IDS.LIVE_DEALS
+        'app-uuid-123',
+      );
+    });
 
-    expect(upsertContact).toHaveBeenCalledWith(
-      expect.objectContaining({
-        customFields: [
+    test('writes doc tracking fields to opportunity', async () => {
+      await syncChecklistToCrm(defaultInput);
+
+      expect(updateOpportunityFields).toHaveBeenCalledWith(
+        'opp-123',
+        [
           { id: 'f1', field_value: 'In Progress' },
           { id: 'f2', field_value: 5 },
         ],
-      }),
-    );
+      );
+    });
+
+    test('sets stage to Collecting Documents on opportunity', async () => {
+      await syncChecklistToCrm(defaultInput);
+
+      expect(updateOpportunityStage).toHaveBeenCalledWith(
+        'opp-123',
+        'stage-collecting',
+      );
+    });
+
+    test('upserts contact WITHOUT doc tracking custom fields', async () => {
+      await syncChecklistToCrm(defaultInput);
+
+      // First call is the initial upsert (borrower details only, no customFields)
+      const firstCall = vi.mocked(upsertContact).mock.calls[0][0];
+      expect(firstCall.customFields).toBeUndefined();
+      expect(firstCall.email).toBe('test@example.com');
+      expect(firstCall.firstName).toBe('John');
+      expect(firstCall.lastName).toBe('Doe');
+      expect(firstCall.phone).toBe('555-1234');
+    });
+
+    test('returns trackingTarget = "opportunity"', async () => {
+      const result = await syncChecklistToCrm(defaultInput);
+
+      expect(result.trackingTarget).toBe('opportunity');
+    });
+
+    test('returns opportunityId in result', async () => {
+      const result = await syncChecklistToCrm(defaultInput);
+
+      expect(result.opportunityId).toBe('opp-123');
+    });
+
+    test('returns complete result with all fields', async () => {
+      const result = await syncChecklistToCrm(defaultInput);
+
+      expect(result).toEqual({
+        contactId: 'test-contact-123',
+        taskId: 'test-task-456',
+        opportunityId: 'opp-123',
+        fieldsUpdated: 2,
+        trackingTarget: 'opportunity',
+        errors: [],
+      });
+    });
+
+    test('calls mapChecklistToFields with opportunityFieldIds', async () => {
+      await syncChecklistToCrm(defaultInput);
+
+      // The first call should use opportunityFieldIds
+      expect(mapChecklistToFields).toHaveBeenCalledWith(
+        mockChecklist,
+        {
+          fieldIds: {
+            docStatus: 'opp-status',
+            docRequestSent: 'opp-sent',
+            missingDocs: 'opp-missing',
+            receivedDocs: 'opp-received',
+            preDocsTotal: 'opp-pre-total',
+            preDocsReceived: 'opp-pre-received',
+            fullDocsTotal: 'opp-full-total',
+            fullDocsReceived: 'opp-full-received',
+            lastDocReceived: 'opp-last-doc',
+          },
+        },
+        undefined,
+      );
+    });
   });
 
-  test('creates review task for Cat', async () => {
+  // --------------------------------------------------------------------------
+  // Fallback: no opportunity found
+  // --------------------------------------------------------------------------
+
+  describe('when no opportunity is found', () => {
+    beforeEach(() => {
+      vi.mocked(findOpportunityByFinmoId).mockResolvedValue(null);
+    });
+
+    test('does NOT call updateOpportunityFields', async () => {
+      await syncChecklistToCrm(defaultInput);
+
+      expect(updateOpportunityFields).not.toHaveBeenCalled();
+    });
+
+    test('does NOT call updateOpportunityStage', async () => {
+      await syncChecklistToCrm(defaultInput);
+
+      expect(updateOpportunityStage).not.toHaveBeenCalled();
+    });
+
+    test('falls back to writing doc tracking to contact', async () => {
+      await syncChecklistToCrm(defaultInput);
+
+      // Second upsertContact call should include customFields (fallback)
+      expect(upsertContact).toHaveBeenCalledTimes(2);
+      const secondCall = vi.mocked(upsertContact).mock.calls[1][0];
+      expect(secondCall.customFields).toBeDefined();
+      expect(secondCall.customFields).toHaveLength(2);
+    });
+
+    test('returns trackingTarget = "contact"', async () => {
+      const result = await syncChecklistToCrm(defaultInput);
+
+      expect(result.trackingTarget).toBe('contact');
+    });
+
+    test('returns opportunityId as undefined', async () => {
+      const result = await syncChecklistToCrm(defaultInput);
+
+      expect(result.opportunityId).toBeUndefined();
+    });
+
+    test('logs warning about fallback', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await syncChecklistToCrm(defaultInput);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('No Finmo opportunity found'),
+      );
+
+      warnSpy.mockRestore();
+    });
+
+    test('calls mapChecklistToFields with contact fieldIds for fallback', async () => {
+      await syncChecklistToCrm(defaultInput);
+
+      // Second call (for contact fallback) should use contact fieldIds
+      expect(mapChecklistToFields).toHaveBeenCalledTimes(2);
+      const secondCall = vi.mocked(mapChecklistToFields).mock.calls[1];
+      expect(secondCall[1]).toEqual({
+        fieldIds: {
+          docStatus: 'f-status',
+          docRequestSent: 'f-sent',
+          missingDocs: 'f-missing',
+          receivedDocs: 'f-received',
+          preDocsTotal: 'f-pre-total',
+          preDocsReceived: 'f-pre-received',
+          fullDocsTotal: 'f-full-total',
+          fullDocsReceived: 'f-full-received',
+          lastDocReceived: 'f-last-doc',
+        },
+      });
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // No finmoApplicationId provided (backward compat)
+  // --------------------------------------------------------------------------
+
+  describe('when finmoApplicationId is not provided', () => {
+    test('skips opportunity search and falls back to contact', async () => {
+      const inputWithoutAppId = { ...defaultInput, finmoApplicationId: undefined };
+
+      const result = await syncChecklistToCrm(inputWithoutAppId);
+
+      expect(findOpportunityByFinmoId).not.toHaveBeenCalled();
+      expect(result.trackingTarget).toBe('contact');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Contact upsert always gets borrower details
+  // --------------------------------------------------------------------------
+
+  describe('contact upsert gets borrower details in both paths', () => {
+    test('includes borrower details when opportunity found', async () => {
+      await syncChecklistToCrm(defaultInput);
+
+      expect(upsertContact).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'test@example.com',
+          firstName: 'John',
+          lastName: 'Doe',
+          phone: '555-1234',
+        }),
+      );
+    });
+
+    test('includes borrower details when falling back to contact', async () => {
+      vi.mocked(findOpportunityByFinmoId).mockResolvedValue(null);
+
+      await syncChecklistToCrm(defaultInput);
+
+      // Both calls should have borrower details
+      const calls = vi.mocked(upsertContact).mock.calls;
+      for (const call of calls) {
+        expect(call[0].email).toBe('test@example.com');
+        expect(call[0].firstName).toBe('John');
+        expect(call[0].lastName).toBe('Doe');
+      }
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Review task still created on contact
+  // --------------------------------------------------------------------------
+
+  test('creates review task on contact (not opportunity)', async () => {
     await syncChecklistToCrm(defaultInput);
 
     expect(createReviewTask).toHaveBeenCalledWith(
@@ -140,51 +367,80 @@ describe('syncChecklistToCrm', () => {
     );
   });
 
-  test('moves pipeline to Collecting Documents', async () => {
+  test('creates review task even when opportunity is found', async () => {
     await syncChecklistToCrm(defaultInput);
 
-    expect(moveToCollectingDocs).toHaveBeenCalledWith('test-contact-123', 'John Doe');
-  });
-
-  test('returns complete result', async () => {
-    const result = await syncChecklistToCrm(defaultInput);
-
-    expect(result).toEqual({
-      contactId: 'test-contact-123',
-      taskId: 'test-task-456',
-      opportunityId: 'test-opp-101',
-      fieldsUpdated: 2,
-      errors: [],
-    });
-  });
-
-  test('handles contact upsert failure', async () => {
-    vi.mocked(upsertContact).mockRejectedValueOnce(new Error('API error'));
-
-    await expect(syncChecklistToCrm(defaultInput)).rejects.toThrow('API error');
-  });
-
-  test('handles task creation failure gracefully', async () => {
-    vi.mocked(createReviewTask).mockRejectedValueOnce(new Error('Task API error'));
-
-    const result = await syncChecklistToCrm(defaultInput);
-
-    expect(result.contactId).toBe('test-contact-123');
-    expect(result.taskId).toBeUndefined();
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]).toContain('Task creation failed');
-  });
-
-  test('handles opportunity failure gracefully', async () => {
-    vi.mocked(moveToCollectingDocs).mockRejectedValueOnce(
-      new Error('Opportunity API error'),
+    expect(createReviewTask).toHaveBeenCalledTimes(1);
+    expect(createReviewTask).toHaveBeenCalledWith(
+      'test-contact-123',
+      expect.any(String),
+      expect.any(String),
     );
+  });
 
-    const result = await syncChecklistToCrm(defaultInput);
+  // --------------------------------------------------------------------------
+  // Error handling
+  // --------------------------------------------------------------------------
 
-    expect(result.contactId).toBe('test-contact-123');
-    expect(result.opportunityId).toBeUndefined();
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]).toContain('Opportunity upsert failed');
+  describe('error handling', () => {
+    test('contact upsert failure aborts entire operation', async () => {
+      vi.mocked(upsertContact).mockRejectedValueOnce(new Error('API error'));
+
+      await expect(syncChecklistToCrm(defaultInput)).rejects.toThrow('API error');
+    });
+
+    test('opportunity search failure is non-fatal, falls back to contact', async () => {
+      vi.mocked(findOpportunityByFinmoId).mockRejectedValueOnce(new Error('Search API error'));
+
+      const result = await syncChecklistToCrm(defaultInput);
+
+      expect(result.contactId).toBe('test-contact-123');
+      expect(result.trackingTarget).toBe('contact');
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Opportunity search failed');
+    });
+
+    test('opportunity field update failure is non-fatal, captured in errors', async () => {
+      vi.mocked(updateOpportunityFields).mockRejectedValueOnce(new Error('Field API error'));
+
+      const result = await syncChecklistToCrm(defaultInput);
+
+      expect(result.contactId).toBe('test-contact-123');
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Opportunity field update failed');
+    });
+
+    test('stage update failure is non-fatal, captured in errors', async () => {
+      vi.mocked(updateOpportunityStage).mockRejectedValueOnce(new Error('Stage API error'));
+
+      const result = await syncChecklistToCrm(defaultInput);
+
+      expect(result.contactId).toBe('test-contact-123');
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Stage update failed');
+    });
+
+    test('task creation failure is non-fatal, captured in errors', async () => {
+      vi.mocked(createReviewTask).mockRejectedValueOnce(new Error('Task API error'));
+
+      const result = await syncChecklistToCrm(defaultInput);
+
+      expect(result.contactId).toBe('test-contact-123');
+      expect(result.taskId).toBeUndefined();
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain('Task creation failed');
+    });
+
+    test('falls back to contact when opportunity field update fails', async () => {
+      vi.mocked(updateOpportunityFields).mockRejectedValueOnce(new Error('Field API error'));
+
+      const result = await syncChecklistToCrm(defaultInput);
+
+      // trackingTarget stays 'contact' because opportunity field write failed
+      expect(result.trackingTarget).toBe('contact');
+
+      // Should have called upsertContact a second time with customFields (fallback)
+      expect(upsertContact).toHaveBeenCalledTimes(2);
+    });
   });
 });

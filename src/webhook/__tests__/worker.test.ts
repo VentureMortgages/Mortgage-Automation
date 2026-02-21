@@ -367,6 +367,7 @@ describe('processJob', () => {
       borrowerLastName: 'Doe',
       borrowerPhone: '555-0100',
       finmoDealId: 'app-123',
+      finmoApplicationId: 'app-123',
     });
   });
 
