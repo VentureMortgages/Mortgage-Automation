@@ -14,12 +14,14 @@ import { getTaxYears } from '../utils/tax-years.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Check if borrower has salary/hourly employment income */
+/** Check if borrower has salary/hourly employment income.
+ *  Finmo sends payType as 'salaried', 'hourly_guaranted', or 'hourly_non_guaranted'
+ *  so we use startsWith('hourly') to catch all hourly variants. */
 function hasSalaryOrHourly(ctx: RuleContext): boolean {
   return ctx.borrowerIncomes.some(
     (inc) =>
       inc.source === 'employed' &&
-      (inc.payType === 'salaried' || inc.payType === 'hourly')
+      (inc.payType === 'salaried' || inc.payType?.startsWith('hourly'))
   );
 }
 

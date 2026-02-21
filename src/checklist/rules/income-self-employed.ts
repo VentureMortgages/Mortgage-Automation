@@ -21,9 +21,15 @@ import { getTaxYears } from '../utils/tax-years.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Finmo sends source as 'self-employed' (hyphen) but our code originally
+ *  used 'self_employed' (underscore). Accept both variants. */
+function isSelfEmployedSource(source: string | null | undefined): boolean {
+  return source === 'self_employed' || source === 'self-employed';
+}
+
 /** Check if borrower has any self-employment income */
 function isSelfEmployed(ctx: RuleContext): boolean {
-  return ctx.borrowerIncomes.some((inc) => inc.source === 'self_employed');
+  return ctx.borrowerIncomes.some((inc) => isSelfEmployedSource(inc.source));
 }
 
 /**
@@ -38,7 +44,7 @@ function isSelfEmployed(ctx: RuleContext): boolean {
  */
 function isIncorporated(ctx: RuleContext): boolean {
   return ctx.borrowerIncomes.some((inc) => {
-    if (inc.source !== 'self_employed') return false;
+    if (!isSelfEmployedSource(inc.source)) return false;
 
     // Check businessType field
     if (inc.businessType) {
@@ -87,7 +93,7 @@ function isSoleProprietor(ctx: RuleContext): boolean {
  */
 function isIncorporatedWithSalary(ctx: RuleContext): boolean {
   return ctx.borrowerIncomes.some((inc) => {
-    if (inc.source !== 'self_employed') return false;
+    if (!isSelfEmployedSource(inc.source)) return false;
     if (!isIncorporated(ctx)) return false;
 
     // Check selfPayType for salary

@@ -11,6 +11,7 @@ import { getTaxYears } from '../utils/tax-years.js';
 import type { FinmoApplicationResponse } from '../types/index.js';
 import {
   employedPurchase,
+  selfEmployedRefi,
   minimalApplication,
 } from './fixtures/index.js';
 
@@ -101,6 +102,58 @@ describe('Edge cases', () => {
     // Shared items are still evaluated (using main borrower context which is null)
     // Engine should not crash
     expect(result.warnings).toBeDefined();
+  });
+
+  test('Finmo hourly_guaranted payType triggers salary/hourly rules', () => {
+    const fixture: FinmoApplicationResponse = {
+      ...employedPurchase,
+      incomes: [
+        {
+          ...employedPurchase.incomes[0],
+          payType: 'hourly_guaranted',
+        },
+      ],
+    };
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s1_paystub');
+    expect(ruleIds).toContain('s1_loe');
+    expect(ruleIds).toContain('s1_t4_previous');
+    expect(ruleIds).toContain('s1_t4_current');
+  });
+
+  test('Finmo hourly_non_guaranted payType triggers salary/hourly rules', () => {
+    const fixture: FinmoApplicationResponse = {
+      ...employedPurchase,
+      incomes: [
+        {
+          ...employedPurchase.incomes[0],
+          payType: 'hourly_non_guaranted',
+        },
+      ],
+    };
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s1_paystub');
+    expect(ruleIds).toContain('s1_loe');
+  });
+
+  test('Finmo self-employed source (hyphen) triggers SE rules', () => {
+    const fixture: FinmoApplicationResponse = {
+      ...selfEmployedRefi,
+      incomes: [
+        {
+          ...selfEmployedRefi.incomes[0],
+          source: 'self-employed',
+        },
+      ],
+    };
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s3_t1_current');
+    expect(ruleIds).toContain('s3_t1_previous');
+    expect(ruleIds).toContain('s3_noa_current');
+    expect(ruleIds).toContain('s3_noa_previous');
   });
 
   test('tax year calculation is dynamic based on date', () => {
