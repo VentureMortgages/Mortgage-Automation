@@ -46,21 +46,14 @@ describe('SC1: Employed borrower', () => {
     expect(ruleIds).toContain('s1_t4_current');
   });
 
-  test('borrower items include NOAs (current + previous year)', () => {
-    const ruleIds = borrower!.items.map((i) => i.ruleId);
-    expect(ruleIds).toContain('s1_noa_previous');
-    expect(ruleIds).toContain('s1_noa_current');
-  });
-
-  test('shared items include 90-day bank statements for savings', () => {
+  test('shared items include consolidated DP bank statement', () => {
     const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
-    expect(sharedRuleIds).toContain('s14_savings_bank');
+    expect(sharedRuleIds).toContain('s14_dp_bank_statement');
   });
 
   test('base pack items present for borrower', () => {
     const ruleIds = borrower!.items.map((i) => i.ruleId);
-    expect(ruleIds).toContain('s0_photo_id');
-    expect(ruleIds).toContain('s0_second_id');
+    expect(ruleIds).toContain('s0_id');
   });
 
   test('shared items include void cheque (base pack)', () => {
@@ -98,9 +91,9 @@ describe('SC2: Self-employed borrower', () => {
     expect(internalRuleIds).toContain('s4_t2125_check');
   });
 
-  test('shared items do NOT include savings bank statements (refinance = no DP needed)', () => {
+  test('shared items do NOT include DP bank statement (refinance = no DP needed)', () => {
     const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
-    expect(sharedRuleIds).not.toContain('s14_savings_bank');
+    expect(sharedRuleIds).not.toContain('s14_dp_bank_statement');
   });
 
   test('shared items include refinance docs', () => {
@@ -135,10 +128,13 @@ describe('SC6: All PRE and FULL in single output', () => {
     expect(fullItems.length).toBeGreaterThan(0);
   });
 
-  test('both PRE and FULL items coexist in same arrays (not separated)', () => {
-    // Borrower items should contain both stages
-    const borrowerItems = result.borrowerChecklists[0].items;
-    const stages = new Set(borrowerItems.map((i) => i.stage));
+  test('both PRE and FULL items coexist in output (not separated)', () => {
+    // Shared and borrower items combined should contain both stages
+    const allItems = [
+      ...result.borrowerChecklists.flatMap((bc) => bc.items),
+      ...result.sharedItems,
+    ];
+    const stages = new Set(allItems.map((i) => i.stage));
     expect(stages.has('PRE')).toBe(true);
     expect(stages.has('FULL')).toBe(true);
   });
@@ -183,7 +179,7 @@ describe('CHKL-01: Generates personalized checklist from Finmo data', () => {
 // ---------------------------------------------------------------------------
 
 describe('CHKL-02: Rules match DOC_CHECKLIST_RULES_V2', () => {
-  test('base pack has exactly 3 items (2 IDs + void cheque)', () => {
+  test('base pack has exactly 2 items (1 ID + void cheque)', () => {
     const result = generateChecklist(employedPurchase, undefined, TEST_DATE);
     const borrowerBasePack = result.borrowerChecklists[0].items.filter(
       (i) => i.section === '0_base_pack'
@@ -191,17 +187,17 @@ describe('CHKL-02: Rules match DOC_CHECKLIST_RULES_V2', () => {
     const sharedBasePack = result.sharedItems.filter(
       (i) => i.section === '0_base_pack'
     );
-    // 2 per-borrower (photo_id, second_id) + 1 shared (void_cheque)
-    expect(borrowerBasePack.length).toBe(2);
+    // 1 per-borrower (consolidated ID) + 1 shared (void_cheque)
+    expect(borrowerBasePack.length).toBe(1);
     expect(sharedBasePack.length).toBe(1);
   });
 
-  test('employed salary produces 6 income items (paystub, LOE, 2 T4s, 2 NOAs)', () => {
+  test('employed salary produces 4 income items (paystub, LOE, 2 T4s)', () => {
     const result = generateChecklist(employedPurchase, undefined, TEST_DATE);
     const section1Items = result.borrowerChecklists[0].items.filter(
       (i) => i.section === '1_income_employed_salary'
     );
-    expect(section1Items.length).toBe(6);
+    expect(section1Items.length).toBe(4);
   });
 
   test('retired produces pension letter, CPP T4As, bank statements, T5s', () => {
@@ -248,10 +244,11 @@ describe('CHKL-03: PRE + FULL upfront', () => {
   test('no filtering or separation by stage in the output', () => {
     // The output is a flat array per borrower/shared, not split by stage
     const result = generateChecklist(employedPurchase, undefined, TEST_DATE);
-    // Verify borrowerChecklists[0].items has both PRE and FULL
-    const borrowerStages = new Set(
-      result.borrowerChecklists[0].items.map((i) => i.stage)
-    );
-    expect(borrowerStages.size).toBeGreaterThanOrEqual(2);
+    // Combined output has both PRE and FULL items
+    const allStages = new Set([
+      ...result.borrowerChecklists.flatMap((bc) => bc.items.map((i) => i.stage)),
+      ...result.sharedItems.map((i) => i.stage),
+    ]);
+    expect(allStages.size).toBeGreaterThanOrEqual(2);
   });
 });

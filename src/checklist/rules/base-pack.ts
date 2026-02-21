@@ -15,21 +15,11 @@ export const basePackRules: ChecklistRule[] = [
   // Section 0: Identification
   // -------------------------------------------------------------------------
   {
-    id: 's0_photo_id',
+    id: 's0_id',
     section: '0_base_pack',
-    document: 'Government-issued photo ID',
+    document: 'Two pieces of government-issued ID',
     displayName:
-      'Government-issued photo ID — driver\'s license or passport',
-    stage: 'PRE',
-    scope: 'per_borrower',
-    condition: () => true,
-  },
-  {
-    id: 's0_second_id',
-    section: '0_base_pack',
-    document: 'Second form of ID',
-    displayName:
-      'Second form of ID (passport, credit card, PR card, SIN card, birth certificate, or firearms license)',
+      'Two pieces of government-issued ID (e.g., driver\'s license, passport, PR card, credit card, SIN card, birth certificate, or firearms license)',
     stage: 'PRE',
     scope: 'per_borrower',
     condition: () => true,

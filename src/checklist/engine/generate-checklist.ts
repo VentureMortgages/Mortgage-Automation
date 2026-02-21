@@ -45,7 +45,8 @@ function buildPropertyDescription(
   addresses: FinmoAddress[],
   addressId: string | null,
   isSubjectProperty: boolean,
-  index: number
+  nonSubjectIndex: number,
+  nonSubjectCount: number
 ): string {
   if (addressId) {
     const addr = addresses.find((a) => a.id === addressId);
@@ -67,7 +68,10 @@ function buildPropertyDescription(
     }
   }
 
-  return isSubjectProperty ? 'Subject Property' : `Property ${index + 1}`;
+  if (isSubjectProperty) return 'Subject Property';
+  return nonSubjectCount > 1
+    ? `Additional Property ${nonSubjectIndex + 1}`
+    : 'Additional Property';
 }
 
 /**
@@ -111,7 +115,7 @@ function evaluateRule(
     document: rule.document,
     displayName: rule.displayName,
     stage: rule.stage,
-    forEmail: !rule.internalOnly,
+    forEmail: !rule.internalOnly && rule.stage !== 'LENDER_CONDITION',
     section: rule.section,
   };
 
@@ -229,6 +233,11 @@ export function generateChecklist(
   // 5. Evaluate per-property rules FOR EACH property
   const mainBorrowerCtx = borrowerContexts[0];
   if (mainBorrowerCtx) {
+    const nonSubjectProperties = response.properties.filter(
+      (p) => p.id !== response.application.propertyId
+    );
+    let nonSubjectIdx = 0;
+
     for (let i = 0; i < response.properties.length; i++) {
       const property = response.properties[i];
       const isSubject = property.id === response.application.propertyId;
@@ -239,8 +248,10 @@ export function generateChecklist(
         response.addresses,
         property.addressId,
         isSubject,
-        i
+        isSubject ? 0 : nonSubjectIdx,
+        nonSubjectProperties.length
       );
+      if (!isSubject) nonSubjectIdx++;
 
       // Reuse main borrower context for property rule evaluation
       const rawItems: ChecklistItem[] = [];

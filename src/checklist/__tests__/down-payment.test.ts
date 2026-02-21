@@ -16,22 +16,20 @@ import {
 const TEST_DATE = new Date('2026-02-15');
 
 // ---------------------------------------------------------------------------
-// Down payment source detection
+// Consolidated DP bank statement (B1)
 // ---------------------------------------------------------------------------
 
-describe('Down payment rules', () => {
-  test('cash savings triggers 90-day bank statement', () => {
+describe('Down payment rules — consolidated bank statement', () => {
+  test('cash savings triggers consolidated DP bank statement', () => {
     const result = generateChecklist(employedPurchase, undefined, TEST_DATE);
     const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
-    expect(sharedRuleIds).toContain('s14_savings_bank');
+    expect(sharedRuleIds).toContain('s14_dp_bank_statement');
   });
 
-  test('RRSP triggers RRSP statement', () => {
-    // Add RRSP asset to fixture
+  test('RRSP asset triggers consolidated DP bank statement', () => {
     const rrspFixture: FinmoApplicationResponse = {
       ...employedPurchase,
       assets: [
-        ...employedPurchase.assets,
         {
           id: 'asset-rrsp',
           applicationId: employedPurchase.application.id,
@@ -46,11 +44,10 @@ describe('Down payment rules', () => {
     };
     const result = generateChecklist(rrspFixture, undefined, TEST_DATE);
     const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
-    expect(sharedRuleIds).toContain('s14_rrsp_statement');
+    expect(sharedRuleIds).toContain('s14_dp_bank_statement');
   });
 
-  test('TFSA triggers TFSA statement', () => {
-    // Add TFSA asset (typed as tfsa)
+  test('TFSA asset triggers consolidated DP bank statement', () => {
     const tfsaFixture: FinmoApplicationResponse = {
       ...employedPurchase,
       assets: [
@@ -68,11 +65,10 @@ describe('Down payment rules', () => {
     };
     const result = generateChecklist(tfsaFixture, undefined, TEST_DATE);
     const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
-    expect(sharedRuleIds).toContain('s14_tfsa_statement');
+    expect(sharedRuleIds).toContain('s14_dp_bank_statement');
   });
 
   test('TFSA detected from description when type is cash_savings', () => {
-    // Type is cash_savings but description says TFSA
     const tfsaDescFixture: FinmoApplicationResponse = {
       ...employedPurchase,
       assets: [
@@ -90,7 +86,51 @@ describe('Down payment rules', () => {
     };
     const result = generateChecklist(tfsaDescFixture, undefined, TEST_DATE);
     const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
-    expect(sharedRuleIds).toContain('s14_tfsa_statement');
+    expect(sharedRuleIds).toContain('s14_dp_bank_statement');
+  });
+
+  test('only ONE bank statement request fires regardless of asset types', () => {
+    // Multiple asset types: savings + RRSP + TFSA
+    const multiAssetFixture: FinmoApplicationResponse = {
+      ...employedPurchase,
+      assets: [
+        ...employedPurchase.assets,
+        {
+          id: 'asset-rrsp',
+          applicationId: employedPurchase.application.id,
+          type: 'rrsp',
+          value: 30000,
+          downPayment: 25000,
+          description: 'RRSP at TestBank',
+          owners: ['borrower-001'],
+          visibility: null,
+        },
+        {
+          id: 'asset-tfsa',
+          applicationId: employedPurchase.application.id,
+          type: 'tfsa',
+          value: 15000,
+          downPayment: 15000,
+          description: 'TFSA',
+          owners: ['borrower-001'],
+          visibility: null,
+        },
+      ],
+    };
+    const result = generateChecklist(multiAssetFixture, undefined, TEST_DATE);
+    const bankStmtItems = result.sharedItems.filter(
+      (i) => i.ruleId === 's14_dp_bank_statement'
+    );
+    expect(bankStmtItems).toHaveLength(1);
+  });
+
+  test('old individual rules no longer fire', () => {
+    const result = generateChecklist(employedPurchase, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).not.toContain('s14_savings_bank');
+    expect(sharedRuleIds).not.toContain('s14_rrsp_statement');
+    expect(sharedRuleIds).not.toContain('s14_tfsa_statement');
+    expect(sharedRuleIds).not.toContain('s14_fhsa_statement');
   });
 });
 
@@ -109,12 +149,18 @@ describe('CHKL-06: Gift letter handling', () => {
     expect(giftDonorInfo!.forEmail).toBe(true);
   });
 
-  test('gift amount is in shared items (forEmail: true)', () => {
+  test('gift amount is in shared items with updated text (B4)', () => {
     const giftAmount = result.sharedItems.find(
       (i) => i.ruleId === 's14_gift_amount'
     );
     expect(giftAmount).toBeDefined();
     expect(giftAmount!.forEmail).toBe(true);
+    expect(giftAmount!.displayName).toBe('Confirmed amount of the gift');
+  });
+
+  test('gift savings note is removed (B2)', () => {
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).not.toContain('s14_gift_savings_note');
   });
 
   test('gift letter is in internalFlags, NOT in shared items or borrower items', () => {

@@ -37,41 +37,14 @@ function hasBankruptcy(_ctx: RuleContext): boolean {
 function divorceRules(): ChecklistRule[] {
   return [
     {
-      id: 's12_separation',
+      id: 's12_separation_agreement',
       section: '12_situations_divorce',
-      document: 'Separation agreement (signed)',
-      displayName: 'Separation agreement (signed)',
+      document: 'Separation/Divorce agreement',
+      displayName:
+        'Separation/Divorce agreement outlining any child/spousal support obligations',
       stage: 'PRE',
       scope: 'per_borrower',
       condition: isDivorcedOrSeparated,
-    },
-    {
-      id: 's12_divorce_decree',
-      section: '12_situations_divorce',
-      document: 'Divorce decree / certificate',
-      displayName: 'Divorce decree or certificate',
-      stage: 'FULL',
-      scope: 'per_borrower',
-      condition: isDivorcedOrSeparated,
-    },
-    {
-      id: 's12_property_settlement',
-      section: '12_situations_divorce',
-      document: 'Property settlement docs',
-      displayName: 'Property settlement documents',
-      stage: 'FULL',
-      scope: 'per_borrower',
-      condition: isDivorcedOrSeparated,
-    },
-    {
-      id: 's12_spousal_buyout',
-      section: '12_situations_divorce',
-      document: 'Spousal buyout agreement',
-      displayName: 'Spousal buyout agreement',
-      stage: 'FULL',
-      scope: 'per_borrower',
-      condition: isDivorcedOrSeparated,
-      notes: 'If applicable',
     },
   ];
 }

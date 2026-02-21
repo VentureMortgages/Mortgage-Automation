@@ -5,18 +5,18 @@
  * Also exports individual rule arrays for testing and selective use.
  *
  * Rule counts by file:
- * - base-pack:              3 rules  (Section 0)
- * - income-employed:        9 rules  (Sections 1-2)
+ * - base-pack:              2 rules  (Section 0)  — consolidated ID
+ * - income-employed:        7 rules  (Sections 1-2)  — removed NOAs for salary
  * - income-self-employed:  14 rules  (Sections 3-6)
  * - income-other:           9 rules  (Sections 7-9)
- * - variable-income:       16 rules  (Section 10)
- * - liabilities:            3 rules  (Section 11)
- * - situations:             7 rules  (Sections 12-13)
- * - down-payment:          15 rules  (Section 14)
- * - property:              11 rules  (Section 15)
+ * - variable-income:       14 rules  (Section 10)  — removed bonus T4s, added CCB
+ * - liabilities:            1 rule   (Section 11)  — removed mortgage stmts + support
+ * - situations:             4 rules  (Sections 12-13)  — consolidated divorce
+ * - down-payment:          11 rules  (Section 14)  — consolidated DP bank, removed gift note
+ * - property:               9 rules  (Section 15)  — removed investment income proof
  * - residency:             15 rules  (Sections 16-17)
  * ---
- * Total:                  ~102 rules
+ * Total:                  ~86 rules
  */
 
 import type { ChecklistRule } from '../types/index.js';
@@ -81,6 +81,10 @@ export const manualFlagSections = [
   {
     section: '10_variable_income_support',
     description: 'Support Income (Receiving) — not auto-detectable from Finmo',
+  },
+  {
+    section: '10_variable_income_ccb',
+    description: 'Canada Child Benefit (CCB) — not auto-detectable from Finmo',
   },
   {
     section: '10_variable_income_other',

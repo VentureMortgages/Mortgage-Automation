@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Venture Mortgages Automation — Technical Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            background: #fff;
+            padding: 40px;
+            max-width: 850px;
+            margin: 0 auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            padding-bottom: 25px;
+            border-bottom: 3px solid #2563eb;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .photo {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #2563eb;
+        }
+
+        .brand-info h1 {
+            font-size: 22px;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .brand-info .tagline {
+            color: #2563eb;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .brand-info .contact {
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .brand-info .contact a {
+            color: #64748b;
+            text-decoration: none;
+        }
+
+        .report-title {
+            text-align: right;
+        }
+
+        .report-title h2 {
+            font-size: 28px;
+            color: #2563eb;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .report-title .meta {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 6px;
+        }
+
+        .addresses {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .address-block {
+            flex: 1;
+        }
+
+        .address-block h3 {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        .address-block p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #475569;
+        }
+
+        .address-block .company {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Section headers */
+        .section {
+            margin-bottom: 28px;
+            page-break-inside: avoid;
+        }
+
+        .section h2 {
+            font-size: 16px;
+            color: #1e293b;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #2563eb;
+        }
+
+        .section h3 {
+            font-size: 13px;
+            color: #1e293b;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .section p {
+            font-size: 13px;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .section ul {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+
+        .section ul li {
+            font-size: 12px;
+            color: #475569;
+            margin-bottom: 4px;
+            line-height: 1.5;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+
+        thead th {
+            background: #f8fafc;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #64748b;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        tbody td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 12px;
+            color: #475569;
+            vertical-align: top;
+        }
+
+        tbody tr:hover {
+            background: #fafbfc;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Highlight box */
+        .highlight-box {
+            background: #f0f7ff;
+            border-left: 4px solid #2563eb;
+            padding: 14px 18px;
+            margin: 14px 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .highlight-box p {
+            font-size: 12px;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+
+        .highlight-box p:last-child {
+            margin-bottom: 0;
+        }
+
+        .highlight-box strong {
+            color: #1e293b;
+        }
+
+        /* Blockquote / note */
+        .note {
+            background: #f8fafc;
+            padding: 14px 18px;
+            border-radius: 6px;
+            margin: 14px 0;
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .note strong {
+            color: #1e293b;
+        }
+
+        /* Comparison row */
+        .comparison-highlight {
+            background: #f0f7ff;
+            font-weight: 600;
+        }
+
+        .comparison-highlight td {
+            color: #1e293b;
+        }
+
+        /* Page break hints */
+        .page-break {
+            page-break-before: always;
+        }
+
+        /* Divider */
+        hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 24px 0;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            color: #94a3b8;
+            font-size: 11px;
+        }
+
+        /* Status badges */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-yellow { background: #fef9c3; color: #854d0e; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <div class="header">
+        <div class="brand">
+            <img src="file:///C:/Users/lucac/projects/taylor_atkinson/photo-small.jpg" alt="Lucas Senechal" class="photo">
+            <div class="brand-info">
+                <h1>Lucas Senechal</h1>
+                <div class="tagline">AI & Automation</div>
+                <div class="contact">
+                    <a href="mailto:lucache95@gmail.com">lucache95@gmail.com</a> | (306) 571-9041
+                </div>
+            </div>
+        </div>
+        <div class="report-title">
+            <h2>Report</h2>
+            <div class="meta">February 18, 2026</div>
+            <div class="meta">Project Duration: 10 days</div>
+        </div>
+    </div>
+
+    <div class="addresses">
+        <div class="address-block">
+            <h3>Prepared By</h3>
+            <p>
+                <span class="company">Lucas Senechal</span><br>
+                201 - 1660 Old Ferry Wharf Road<br>
+                West Kelowna, BC V1Z0C4<br>
+                Canada
+            </p>
+        </div>
+        <div class="address-block">
+            <h3>Prepared For</h3>
+            <p>
+                <span class="company">Taylor Atkinson</span><br>
+                Venture Mortgages<br>
+                585 Sarsons Rd<br>
+                Kelowna, BC V1W 2X3<br>
+                Canada
+            </p>
+        </div>
+    </div>
+
+    <!-- 1. STATS AT A GLANCE -->
+    <div class="section">
+        <h2>1. Project Stats at a Glance</h2>
+        <table>
+            <thead>
+                <tr><th>Metric</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="stat-value">Total lines of code</td><td class="stat-value">26,099</td></tr>
+                <tr><td>Production code</td><td>12,809 lines</td></tr>
+                <tr><td>Automated tests</td><td>10,451 lines</td></tr>
+                <tr><td>E2E test scripts</td><td>2,839 lines</td></tr>
+                <tr><td class="stat-value">Source files</td><td class="stat-value">142 TypeScript files</td></tr>
+                <tr><td class="stat-value">Automated tests passing</td><td class="stat-value">592</td></tr>
+                <tr><td class="stat-value">Source modules</td><td class="stat-value">9</td></tr>
+                <tr><td class="stat-value">Git commits</td><td class="stat-value">117</td></tr>
+                <tr><td class="stat-value">E2E test scripts</td><td class="stat-value">16</td></tr>
+                <tr><td class="stat-value">External API integrations</td><td class="stat-value">7</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 2. APIS -->
+    <div class="section">
+        <h2>2. Technical Services & APIs Integrated</h2>
+        <table>
+            <thead>
+                <tr><th>Service</th><th>Purpose</th><th>API</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="stat-value">Finmo</td><td>Mortgage application data (borrowers, income, properties, assets)</td><td>REST API v1</td></tr>
+                <tr><td class="stat-value">Google Drive</td><td>Document filing, folder management, budget sheet storage</td><td>Drive API v3</td></tr>
+                <tr><td class="stat-value">Google Sheets</td><td>Budget sheet creation and pre-filling</td><td>Sheets API v4</td></tr>
+                <tr><td class="stat-value">Gmail</td><td>Email drafting, sending, attachment monitoring</td><td>Gmail API</td></tr>
+                <tr><td class="stat-value">Google Gemini 2.0 Flash</td><td>AI document classification (identify doc types from PDFs)</td><td>Generative AI API</td></tr>
+                <tr><td class="stat-value">MyBrokerPro (GoHighLevel)</td><td>CRM — contact management, custom fields, doc tracking</td><td>GHL API v2</td></tr>
+                <tr><td class="stat-value">Redis + BullMQ</td><td>Job queues with retry, dead-letter, and concurrency control</td><td>BullMQ v5</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Infrastructure Stack</h3>
+        <table>
+            <thead>
+                <tr><th>Component</th><th>Technology</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Language</td><td>TypeScript (strict mode)</td></tr>
+                <tr><td>Runtime</td><td>Node.js 22</td></tr>
+                <tr><td>HTTP server</td><td>Express 5</td></tr>
+                <tr><td>Job queue</td><td>BullMQ + Redis (ioredis)</td></tr>
+                <tr><td>AI classification</td><td>Google Gemini 2.0 Flash</td></tr>
+                <tr><td>PDF processing</td><td>pdf-lib</td></tr>
+                <tr><td>Schema validation</td><td>Zod 4</td></tr>
+                <tr><td>Testing</td><td>Vitest</td></tr>
+                <tr><td>Auth</td><td>Google OAuth2 + Service Account with domain-wide delegation</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3. FEATURE BREAKDOWN -->
+    <div class="section page-break">
+        <h2>3. What Was Built (Feature Breakdown)</h2>
+
+        <h3>Phase 1: Webhook Foundation</h3>
+        <ul>
+            <li>Express webhook receiver with Finmo signature verification</li>
+            <li>BullMQ async job queue with exponential backoff retries</li>
+            <li>Dead-letter queue for failed jobs (manual review)</li>
+            <li>PII sanitizer — no sensitive borrower data in logs</li>
+            <li>Global kill switch via environment variable</li>
+            <li>Health check endpoint</li>
+        </ul>
+
+        <h3>Phase 2-3: Checklist Generation Engine</h3>
+        <ul>
+            <li>103 rules implementing the full Canadian mortgage doc checklist</li>
+            <li>Handles: employed, self-employed, pension, commission, rental income</li>
+            <li>Co-borrower support with per-borrower doc separation</li>
+            <li>Down payment source detection (savings, RRSP, FHSA, TFSA, gift, sale proceeds)</li>
+            <li>Property-specific docs (purchase agreement, MLS, tax bills)</li>
+            <li>Situational docs (separation, divorce, bankruptcy, non-resident)</li>
+            <li>PRE vs FULL staging (internal tracking)</li>
+            <li>Deduplication of multi-income items</li>
+        </ul>
+
+        <h3>Phase 4: CRM Integration</h3>
+        <ul>
+            <li>Contact upsert from Finmo application data</li>
+            <li>Custom field mapping for checklist tracking (received/missing/total counts)</li>
+            <li>Stage-aware status computation</li>
+            <li>Name-based CRM contact lookup (fallback for forwarded emails)</li>
+            <li>Sender domain filtering for security</li>
+        </ul>
+
+        <h3>Phase 5: Email Drafting</h3>
+        <ul>
+            <li>HTML email generation with professional formatting</li>
+            <li>Per-borrower doc request sections</li>
+            <li>"Already on file" section for returning clients</li>
+            <li>BCC send tracking</li>
+            <li>Draft-first workflow (Cat reviews before sending)</li>
+            <li>Cat's formatting feedback incorporated</li>
+        </ul>
+
+        <h3>Phase 6: Document Intake Monitor</h3>
+        <ul>
+            <li>Gmail polling for docs@venturemortgages.com inbox</li>
+            <li>Attachment extraction (PDF, images, Word docs)</li>
+            <li>Clients email admin@ or taylor@ — Cat/Taylor forward to docs@ for processing</li>
+            <li>Only processes emails forwarded from @venturemortgages.com senders</li>
+            <li>PDF conversion for non-PDF attachments</li>
+            <li>Encrypted PDF handling</li>
+        </ul>
+
+        <h3>Phase 7: AI Classification & Filing</h3>
+        <ul>
+            <li>Gemini 2.0 Flash classifies documents into 30+ types</li>
+            <li>Confidence scoring with manual review queue for low confidence</li>
+            <li>Filename generation following Cat's naming convention</li>
+            <li>Subfolder routing (person, subject property, down payment, etc.)</li>
+            <li>Document versioning (update existing vs. upload new)</li>
+            <li>CRM tracking auto-update on filing</li>
+        </ul>
+
+        <h3>Phase 8: Tracking Integration</h3>
+        <ul>
+            <li>Real-time CRM updates as documents arrive</li>
+            <li>Doc-type matcher maps classified docs to checklist items</li>
+            <li>Audit trail via CRM notes</li>
+            <li>PRE-readiness milestone detection</li>
+        </ul>
+
+        <h3>Drive-Aware Checklist (Post-Phase 8)</h3>
+        <ul>
+            <li>Scans returning client Drive folders for existing documents</li>
+            <li>Filename parser handles Cat's naming convention + shorthand aliases</li>
+            <li>Document expiry rules (30-day, 90-day, 1-year, 5-year, tax-year, never-expires)</li>
+            <li>Property-specific docs excluded (always re-requested per deal)</li>
+            <li>Flexible fallback parsing for non-standard filenames</li>
+            <li>Filters checklist to remove on-file items from email</li>
+            <li>Pre-marks received docs in CRM</li>
+        </ul>
+
+        <h3>Budget Sheet Automation</h3>
+        <ul>
+            <li>Copies master template (9 tabs) to client Drive folder</li>
+            <li>Tab selection based on goal + use (Purchase, Refinance, Sell+Buy, Investment, Debt Consolidation)</li>
+            <li>Pre-fills: purchase price, down payment, amortization, FTHB status, province/location, condo fees, insurance, utilities, property taxes</li>
+            <li>Dedup check (skips if budget already exists)</li>
+            <li>Kill switch support</li>
+        </ul>
+    </div>
+
+    <!-- 4. TEST COVERAGE -->
+    <div class="section">
+        <h2>4. Test Coverage</h2>
+        <table>
+            <thead>
+                <tr><th>Module</th><th>Tests</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Checklist engine</td><td>230+</td></tr>
+                <tr><td>CRM integration</td><td>80+</td></tr>
+                <tr><td>Email generation</td><td>50+</td></tr>
+                <tr><td>Drive scanner + filter</td><td>68</td></tr>
+                <tr><td>Classification worker</td><td>18</td></tr>
+                <tr><td>Budget sheet</td><td>30+</td></tr>
+                <tr><td>Webhook worker</td><td>25+</td></tr>
+                <tr><td>Other modules</td><td>90+</td></tr>
+                <tr class="comparison-highlight"><td class="stat-value">Total</td><td class="stat-value">592</td></tr>
+            </tbody>
+        </table>
+        <p>Every feature has automated tests. Tests run in under 2 seconds.</p>
+    </div>
+
+    <!-- 5. TIME INVESTMENT -->
+    <div class="section">
+        <h2>5. Time Investment</h2>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Hours</th><th>Category</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Jan 7</td><td>1.5</td><td>Meeting + strategy</td></tr>
+                <tr><td>Jan 19</td><td>1.0</td><td>Planning session</td></tr>
+                <tr><td>Jan 21</td><td>1.5</td><td>In-person meeting</td></tr>
+                <tr><td>Jan 22</td><td>1.3</td><td>Strategy + research</td></tr>
+                <tr><td>Feb 9</td><td>1.0</td><td>Strategy + checklist review</td></tr>
+                <tr><td>Feb 10</td><td>1.0</td><td>Project init + roadmap</td></tr>
+                <tr><td>Feb 11</td><td>0.5</td><td>Build</td></tr>
+                <tr><td>Feb 12</td><td>1.0</td><td>Build</td></tr>
+                <tr><td>Feb 13</td><td>3.0</td><td>Build</td></tr>
+                <tr><td>Feb 15</td><td>0.5</td><td>Build</td></tr>
+                <tr><td>Feb 16</td><td>8.0</td><td>Build</td></tr>
+                <tr><td>Feb 17</td><td>2.0</td><td>Build</td></tr>
+                <tr><td>Feb 18</td><td>0.5</td><td>Build</td></tr>
+                <tr class="comparison-highlight"><td class="stat-value">Total</td><td class="stat-value">22.8</td><td></td></tr>
+            </tbody>
+        </table>
+        <div class="highlight-box">
+            <p><strong>Strategy, meetings, research:</strong> 7.3 hours</p>
+            <p><strong>Building + testing:</strong> 15.5 hours</p>
+        </div>
+    </div>
+
+    <!-- 6. SPEED COMPARISON -->
+    <div class="section page-break">
+        <h2>6. Development Speed Comparison</h2>
+
+        <h3>What Was Delivered</h3>
+        <ul>
+            <li>9 integrated modules spanning 7 external APIs</li>
+            <li>12,800+ lines of production code</li>
+            <li>592 automated tests</li>
+            <li>16 E2E integration test scripts</li>
+            <li>Full Canadian mortgage domain logic (103 checklist rules)</li>
+            <li>AI-powered document classification pipeline</li>
+            <li>Real-time CRM sync</li>
+        </ul>
+
+        <h3>Typical Industry Timeline for Equivalent Scope</h3>
+        <table>
+            <thead>
+                <tr><th>Work Area</th><th>Typical Hours</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Discovery & requirements</td><td>40–80</td><td>Stakeholder interviews, mortgage domain research, workflow mapping</td></tr>
+                <tr><td>Architecture & design</td><td>30–50</td><td>System design, API evaluation, security planning</td></tr>
+                <tr><td>API integrations (7 services)</td><td>100–180</td><td>Each API requires auth setup, error handling, rate limit management, testing</td></tr>
+                <tr><td>Checklist engine (103 rules)</td><td>60–100</td><td>Canadian mortgage doc requirements — employment types, co-borrowers, down payment sources</td></tr>
+                <tr><td>Email drafting system</td><td>30–50</td><td>HTML generation, per-borrower sections, template logic, draft/send flow</td></tr>
+                <tr><td>AI classification pipeline</td><td>80–120</td><td>Prompt engineering, confidence tuning, filename generation, subfolder routing</td></tr>
+                <tr><td>CRM integration</td><td>50–80</td><td>Custom field mapping, contact upsert, status computation, tracking sync</td></tr>
+                <tr><td>Drive integration</td><td>40–70</td><td>Folder scanning, filename parsing, expiry rules, checklist filtering</td></tr>
+                <tr><td>Budget sheet automation</td><td>20–40</td><td>Template copying, tab selection, cell mapping, dedup</td></tr>
+                <tr><td>Test suite (592 tests)</td><td>80–140</td><td>Unit tests, integration tests, mock setups, edge cases</td></tr>
+                <tr><td>E2E testing & verification</td><td>30–50</td><td>Real API integration scripts, debugging, iteration</td></tr>
+                <tr><td>Documentation & SOPs</td><td>20–40</td><td>Per-automation documentation, troubleshooting guides</td></tr>
+            </tbody>
+        </table>
+
+        <table>
+            <thead>
+                <tr><th>Approach</th><th>Estimated Hours</th><th>Calendar Time</th><th>Estimated Cost</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Solo senior developer</td><td>500–700 hours</td><td>4–6 months</td><td>$75k–$120k</td></tr>
+                <tr><td>Small team (2-3 devs)</td><td>500–800 hours</td><td>2–4 months</td><td>$75k–$150k</td></tr>
+                <tr><td>Outsourced/agency</td><td>800–1,200 hours</td><td>4–8 months</td><td>$120k–$250k</td></tr>
+                <tr class="comparison-highlight"><td class="stat-value">This project</td><td class="stat-value">22.8 hours</td><td class="stat-value">10 days</td><td class="stat-value">—</td></tr>
+            </tbody>
+        </table>
+        <p style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Cost estimates based on $125–$175/hr for senior developers, $150–$250/hr for agencies.</p>
+
+        <div class="note">
+            <strong>Note on the solo dev estimate:</strong> Honestly, 350–500 hours would be conservative for a solo dev. Consider what they'd actually face:
+            <br><br>
+            <strong>Domain learning curve</strong> — they don't know what a T4A is, what FTHB means, that T2125 lives inside the T1 package, or that gift letters are collected later when the lender is picked. That knowledge took multiple meetings with you and Cat plus research. A new dev would need weeks of back-and-forth just to get the 103 checklist rules right.
+            <br><br>
+            <strong>7 API integrations from scratch</strong> — Finmo's API isn't well-documented. GoHighLevel V2 has quirks. Google's auth setup (OAuth2 + service account + domain-wide delegation) is notoriously painful. Each integration is easily 2-3 days of trial and error.
+            <br><br>
+            <strong>Cat's naming conventions</strong> — a dev wouldn't just know that "YE Pay Stub" means year-end pay stub, or that "CRA SOA" means CRA Statement of Account. We only figured that out by scanning real folders.
+            <br><br>
+            <strong>592 tests</strong> — that's easily 100+ hours of test writing alone at normal dev speed.
+            <br><br>
+            500–700 hours is more honest for a solo senior dev.
+        </div>
+
+        <h3>Why the Difference</h3>
+        <p>The primary multiplier is AI-assisted development (Claude Code), which handles:</p>
+        <ul>
+            <li>Boilerplate generation and API integration code</li>
+            <li>Test writing (592 tests would typically take 80-140 hours alone)</li>
+            <li>Domain research (Canadian mortgage doc requirements, tax rules, expiry logic)</li>
+            <li>Cross-module refactoring and consistency</li>
+            <li>Real-time debugging and code review</li>
+            <li>Documentation and type safety enforcement</li>
+        </ul>
+
+        <div class="highlight-box">
+            <p><strong>Effective speedup: ~15-22x</strong> compared to a skilled solo developer, <strong>~22-35x</strong> compared to a typical team engagement.</p>
+        </div>
+
+        <h3>What the Hours Don't Include</h3>
+        <ul>
+            <li>The AI tool cost (Claude Code subscription)</li>
+            <li>Your existing domain expertise (mortgage industry knowledge that would take a new team weeks to acquire)</li>
+            <li>Google Workspace setup and admin configuration (done separately)</li>
+            <li>The fact that a new team would need to learn Taylor and Cat's specific workflows, naming conventions, and preferences</li>
+        </ul>
+    </div>
+
+    <!-- 7. ARCHITECTURE QUALITY -->
+    <div class="section">
+        <h2>7. Architecture Quality Indicators</h2>
+        <table>
+            <thead>
+                <tr><th>Indicator</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Type safety</td><td><span class="badge badge-green">Full TypeScript strict mode</span></td></tr>
+                <tr><td>Test coverage</td><td><span class="badge badge-green">592 tests, all passing</span></td></tr>
+                <tr><td>Security</td><td><span class="badge badge-green">PII sanitization, input escaping, domain filtering</span></td></tr>
+                <tr><td>Reliability</td><td><span class="badge badge-green">Retry with backoff, dead-letter queue, kill switches</span></td></tr>
+                <tr><td>Human-in-the-loop</td><td><span class="badge badge-green">All client emails drafted for review</span></td></tr>
+                <tr><td>Modularity</td><td><span class="badge badge-green">9 independent modules with clean interfaces</span></td></tr>
+                <tr><td>Observability</td><td><span class="badge badge-green">Structured logging (metadata only, no PII)</span></td></tr>
+                <tr><td>Idempotency</td><td><span class="badge badge-green">Webhook dedup, budget sheet dedup, doc versioning</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 8. VERIFICATION -->
+    <div class="section page-break">
+        <h2>8. What Still Needs to Be Adjusted & Verified</h2>
+        <p>The system is built and tested against real data, but going from "built" to "running in your day-to-day business" requires validation and tuning.</p>
+
+        <h3>Cat's Review (Blocking)</h3>
+        <table>
+            <thead>
+                <tr><th>Item</th><th>What We Need</th><th>Why It Matters</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="stat-value">Draft email review</td><td>Cat reviews the 11 draft emails sitting in admin@ Gmail</td><td>Tone, wording, and completeness need to match how Cat would write them</td></tr>
+                <tr><td class="stat-value">Checklist accuracy</td><td>Cat spot-checks a few checklists against what she'd request manually</td><td>Real applications may surface gaps in our 103 rules</td></tr>
+                <tr><td class="stat-value">Naming convention coverage</td><td>Cat confirms the scanner handles her patterns</td><td>We tested 5 real folders, but she may have other variations</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Taylor's Review</h3>
+        <table>
+            <thead>
+                <tr><th>Item</th><th>What We Need</th><th>Why It Matters</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="stat-value">Budget sheet accuracy</td><td>Open a test budget sheet and check values are in the right cells</td><td>Cell positions are based on the current template</td></tr>
+                <tr><td class="stat-value">Budget defaults</td><td>Confirm: 30yr amortization, $100 insurance, $200 utilities</td><td>From analyzing 10 historical sheets — preferences may have shifted</td></tr>
+                <tr><td class="stat-value">Tab selection logic</td><td>Verify: purchase → Purchase Budget, rental → Investment, refinance → Refinance, sell+buy → Sell+Buy</td><td>One wrong mapping means the wrong tab gets populated</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Real-World Verification (First Few Weeks Live)</h3>
+        <table>
+            <thead>
+                <tr><th>Area</th><th>What Could Need Adjustment</th><th>How We'll Know</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="stat-value">Checklist rules</td><td>Some docs requested that shouldn't be, or missing docs that should be</td><td>Cat flags during email review</td></tr>
+                <tr><td class="stat-value">Doc expiry rules</td><td>Pay stubs 30 days, bank statements 90 days — right thresholds?</td><td>Returning client gets wrong request</td></tr>
+                <tr><td class="stat-value">AI classification</td><td>Gemini may misclassify unusual documents or low-quality scans</td><td>Docs in wrong folders or too many in manual review</td></tr>
+                <tr><td class="stat-value">Confidence threshold</td><td>Currently 70% — below that goes to manual review</td><td>Too low = bad files auto-filed. Too high = too much manual review</td></tr>
+                <tr><td class="stat-value">CRM field mapping</td><td>Custom fields may need renaming or restructuring</td><td>Cat finds tracking fields confusing</td></tr>
+                <tr><td class="stat-value">Drive folder edge cases</td><td>Files without borrower names can't be attributed</td><td>~15-20% of files use non-standard naming</td></tr>
+                <tr><td class="stat-value">Email formatting</td><td>HTML rendering varies across email clients</td><td>Email looks broken on mobile or Outlook</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Operational Readiness</h3>
+        <table>
+            <thead>
+                <tr><th>Item</th><th>Status</th><th>What's Needed</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="stat-value">Production server</td><td><span class="badge badge-green">Set up</span></td><td>Verify webhook endpoint is receiving Finmo events</td></tr>
+                <tr><td class="stat-value">Redis instance</td><td><span class="badge badge-green">Set up</span></td><td>Verify job queue is processing</td></tr>
+                <tr><td class="stat-value">Monitoring & alerts</td><td><span class="badge badge-red">Not set up</span></td><td>Need to know when jobs fail or confidence drops</td></tr>
+                <tr><td class="stat-value">Error notification</td><td><span class="badge badge-yellow">Logs only</span></td><td>Should alert Cat/Taylor when manual attention needed</td></tr>
+                <tr><td class="stat-value">Cat's workflow training</td><td><span class="badge badge-red">Not done</span></td><td>30 min walkthrough of the new process</td></tr>
+                <tr><td class="stat-value">Kill switch test</td><td><span class="badge badge-yellow">Not tested live</span></td><td>Flip the switch, confirm everything stops</td></tr>
+                <tr><td class="stat-value">Backup/rollback</td><td><span class="badge badge-green">Documented</span></td><td>Kill switch stops everything instantly</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Known Limitations (By Design)</h3>
+        <ul>
+            <li><strong>Emails are always drafts</strong> — Cat must review and send. This is the safety net.</li>
+            <li><strong>Files without borrower names are skipped</strong> by the Drive scanner — Cat can rename them to fix this.</li>
+            <li><strong>Property-specific docs are always re-requested</strong> — deal-specific, never reused across applications.</li>
+            <li><strong>Gift letters not requested upfront</strong> — collected later when lender is picked.</li>
+            <li><strong>No auto-reminders yet</strong> — Phase 9 on hold. Cat handles follow-ups manually.</li>
+        </ul>
+
+        <h3>Known Edge Cases (Flagged for Future)</h3>
+        <p>These are scenarios the system doesn't fully handle yet. None are blockers for going live — they'll be addressed as usage grows.</p>
+        <table>
+            <thead>
+                <tr><th>Edge Case</th><th>What Happens</th><th>Risk</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="stat-value">Returning client, new app</td><td>CRM checklist fields overwritten. Previous tracking data lost.</td><td><span class="badge badge-yellow">Medium</span></td></tr>
+                <tr><td class="stat-value">Two apps back to back</td><td>Second overwrites first's CRM. Two drafts created. Budget sheet skipped.</td><td><span class="badge badge-yellow">Medium</span></td></tr>
+                <tr><td class="stat-value">Email draft accumulation</td><td>Re-processed job creates duplicate drafts. Cat sees multiples.</td><td><span class="badge badge-blue">Low</span></td></tr>
+                <tr><td class="stat-value">Borrower with no email</td><td>CRM upsert and email draft both fail. Job goes to dead-letter.</td><td><span class="badge badge-blue">Low</span></td></tr>
+                <tr><td class="stat-value">Drive folder name mismatch</td><td>System creates new folder instead of finding Cat's existing one.</td><td><span class="badge badge-yellow">Medium</span></td></tr>
+                <tr><td class="stat-value">Budget template changes</td><td>If Taylor modifies template structure, data written to wrong cells silently.</td><td><span class="badge badge-yellow">Medium</span></td></tr>
+                <tr><td class="stat-value">Doc filing to root folder</td><td>Classified docs file to Drive root, not client subfolder. Known TODO.</td><td><span class="badge badge-yellow">Medium</span></td></tr>
+                <tr><td class="stat-value">Missed Finmo webhooks</td><td>Application never processed. No catch-up mechanism.</td><td><span class="badge badge-blue">Low</span></td></tr>
+                <tr><td class="stat-value">Multi-client forwarded email</td><td>All docs attributed to same source. Can't split across clients.</td><td><span class="badge badge-blue">Low</span></td></tr>
+                <tr><td class="stat-value">Co-borrower as separate contact</td><td>Co-borrower's own CRM contact stays stale on current deal.</td><td><span class="badge badge-blue">Low</span></td></tr>
+            </tbody>
+        </table>
+
+        <h3>Not Yet Tested End-to-End</h3>
+        <table>
+            <thead>
+                <tr><th>Pipeline</th><th>Unit Tested</th><th>Live Tested</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Finmo webhook → checklist → CRM → email draft</td><td><span class="badge badge-green">Yes (592 tests)</span></td><td><span class="badge badge-yellow">Partial</span></td></tr>
+                <tr><td>Doc forwarding → intake → classification → filing</td><td><span class="badge badge-green">Yes</span></td><td><span class="badge badge-red">No</span></td></tr>
+                <tr><td>Budget sheet creation</td><td><span class="badge badge-green">Yes (unit + E2E)</span></td><td><span class="badge badge-green">E2E verified</span></td></tr>
+                <tr><td>Returning client Drive scan → filtered email</td><td><span class="badge badge-green">Yes (unit + E2E)</span></td><td><span class="badge badge-green">E2E verified</span></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 9. NEXT STEPS -->
+    <div class="section">
+        <h2>9. Current Status & Next Steps</h2>
+
+        <div class="highlight-box">
+            <p><strong>Waiting on:</strong> Cat's review of 11 draft emails (sent to admin@ Gmail on Feb 16)</p>
+        </div>
+
+        <h3>Roadmap</h3>
+        <table>
+            <thead>
+                <tr><th>#</th><th>Step</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td>Incorporate Cat's email feedback and adjust checklist/template as needed</td></tr>
+                <tr><td>2</td><td>Taylor reviews a test budget sheet for accuracy</td></tr>
+                <tr><td>3</td><td>Full pipeline E2E verification with a live Finmo application</td></tr>
+                <tr><td>4</td><td>Test the doc forwarding → classification → filing pipeline end-to-end</td></tr>
+                <tr><td>5</td><td>Cat workflow training — 30 min walkthrough of the new process</td></tr>
+                <tr><td>6</td><td>Monitor first 2 weeks of live usage, tune rules and thresholds</td></tr>
+                <tr><td>7</td><td>Custom GPTs for Taylor</td></tr>
+                <tr><td>8</td><td>Email automation for Taylor</td></tr>
+                <tr><td>9</td><td>Phase 9: Automated reminders (on hold pending Taylor's go-ahead)</td></tr>
+                <tr><td>10</td><td>Address flagged edge cases as they come up in real usage</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        Prepared by Lucas Senechal — AI & Automation | lucache95@gmail.com | (306) 571-9041
+    </div>
+</body>
+</html>

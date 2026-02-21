@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice #02182026-01</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            background: #fff;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 3px solid #2563eb;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .photo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #2563eb;
+        }
+
+        .brand-info h1 {
+            font-size: 24px;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .brand-info .tagline {
+            color: #2563eb;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .brand-info .contact {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .brand-info .contact a {
+            color: #64748b;
+            text-decoration: none;
+        }
+
+        .invoice-title {
+            text-align: right;
+        }
+
+        .invoice-title h2 {
+            font-size: 36px;
+            color: #2563eb;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+        }
+
+        .invoice-title .invoice-number {
+            font-size: 14px;
+            color: #64748b;
+            margin-top: 8px;
+        }
+
+        .invoice-title .invoice-date {
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .addresses {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+
+        .address-block {
+            flex: 1;
+        }
+
+        .address-block h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+        }
+
+        .address-block p {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #475569;
+        }
+
+        .address-block .company {
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        thead th {
+            background: #f8fafc;
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        thead th:last-child {
+            text-align: right;
+        }
+
+        tbody td {
+            padding: 16px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 14px;
+            color: #475569;
+        }
+
+        tbody td:last-child {
+            text-align: right;
+            font-family: 'Consolas', monospace;
+        }
+
+        tbody tr:hover {
+            background: #fafbfc;
+        }
+
+        .hours-detail {
+            margin-bottom: 40px;
+        }
+
+        .hours-detail h3 {
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .hours-table {
+            font-size: 12px;
+        }
+
+        .hours-table th {
+            font-size: 10px;
+            padding: 10px 12px;
+        }
+
+        .hours-table td {
+            padding: 10px 12px;
+            font-size: 12px;
+        }
+
+        .totals {
+            margin-left: auto;
+            width: 300px;
+        }
+
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .totals-row.subtotal {
+            color: #64748b;
+        }
+
+        .totals-row.tax {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .totals-row.total {
+            border-bottom: none;
+            border-top: 2px solid #2563eb;
+            margin-top: 10px;
+            padding-top: 15px;
+            font-size: 20px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .totals-row .label {
+            color: #64748b;
+        }
+
+        .totals-row.total .label {
+            color: #1e293b;
+        }
+
+        .totals-row .amount {
+            font-family: 'Consolas', monospace;
+        }
+
+        .payment-info {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 40px;
+        }
+
+        .payment-info h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .payment-info p {
+            font-size: 14px;
+            color: #475569;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #94a3b8;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="brand">
+            <img src="file:///C:/Users/lucac/projects/taylor_atkinson/photo-small.jpg" alt="Lucas Senechal" class="photo">
+            <div class="brand-info">
+                <h1>Lucas Senechal</h1>
+                <div class="tagline">AI & Automation</div>
+                <div class="contact">
+                    <a href="mailto:lucache95@gmail.com">lucache95@gmail.com</a> | (306) 571-9041
+                </div>
+            </div>
+        </div>
+        <div class="invoice-title">
+            <h2>Invoice</h2>
+            <div class="invoice-number">#02182026-01</div>
+            <div class="invoice-date">February 18, 2026</div>
+        </div>
+    </div>
+
+    <div class="addresses">
+        <div class="address-block">
+            <h3>From</h3>
+            <p>
+                <span class="company">Lucas Senechal</span><br>
+                201 - 1660 Old Ferry Wharf Road<br>
+                West Kelowna, BC V1Z0C4<br>
+                Canada
+            </p>
+        </div>
+        <div class="address-block">
+            <h3>Bill To</h3>
+            <p>
+                <span class="company">Taylor Atkinson</span><br>
+                Venture Mortgages<br>
+                585 Sarsons Rd<br>
+                Kelowna, BC V1W 2X3<br>
+                Canada
+            </p>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Hours</th>
+                <th>Rate</th>
+                <th>Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>AI & Automation Consulting — January/February 2026</td>
+                <td>22.8</td>
+                <td>$100.00/hr</td>
+                <td>$2,280.00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="hours-detail">
+        <h3>Hours Detail — January/February 2026</h3>
+        <table class="hours-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Hours</th>
+                    <th>Work Performed</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Jan 7</td>
+                    <td>1.50</td>
+                    <td>Meeting + strategy</td>
+                </tr>
+                <tr>
+                    <td>Jan 19</td>
+                    <td>1.00</td>
+                    <td>Planning session</td>
+                </tr>
+                <tr>
+                    <td>Jan 21</td>
+                    <td>1.50</td>
+                    <td>In-person meeting</td>
+                </tr>
+                <tr>
+                    <td>Jan 22</td>
+                    <td>1.30</td>
+                    <td>Strategy + research</td>
+                </tr>
+                <tr>
+                    <td>Feb 9</td>
+                    <td>1.00</td>
+                    <td>Strategy + checklist review</td>
+                </tr>
+                <tr>
+                    <td>Feb 10</td>
+                    <td>1.00</td>
+                    <td>Project init + roadmap</td>
+                </tr>
+                <tr>
+                    <td>Feb 11</td>
+                    <td>0.50</td>
+                    <td>Build — webhook foundation, Finmo API integration</td>
+                </tr>
+                <tr>
+                    <td>Feb 12</td>
+                    <td>1.00</td>
+                    <td>Build — checklist engine, doc rules</td>
+                </tr>
+                <tr>
+                    <td>Feb 13</td>
+                    <td>3.00</td>
+                    <td>Build — CRM integration, email drafting, classification pipeline</td>
+                </tr>
+                <tr>
+                    <td>Feb 15</td>
+                    <td>0.50</td>
+                    <td>Build — intake monitor, doc filing</td>
+                </tr>
+                <tr>
+                    <td>Feb 16</td>
+                    <td>8.00</td>
+                    <td>Build — tracking integration, Drive scanner, returning client detection, 11 draft emails generated</td>
+                </tr>
+                <tr>
+                    <td>Feb 17</td>
+                    <td>2.00</td>
+                    <td>Build — budget sheet automation, E2E testing</td>
+                </tr>
+                <tr>
+                    <td>Feb 18</td>
+                    <td>0.50</td>
+                    <td>Build — reports, edge case analysis, invoice</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="totals">
+        <div class="totals-row subtotal">
+            <span class="label">Subtotal</span>
+            <span class="amount">$2,280.00</span>
+        </div>
+        <div class="totals-row tax">
+            <span class="label">GST (5%)</span>
+            <span class="amount">$114.00</span>
+        </div>
+        <div class="totals-row total">
+            <span class="label">Total Due</span>
+            <span class="amount">$2,394.00 CAD</span>
+        </div>
+    </div>
+
+    <div class="payment-info">
+        <h3>Payment Information</h3>
+        <p>Interac e-Transfer to <strong>lucache95@gmail.com</strong></p>
+    </div>
+
+    <div class="footer">
+        Thank you for your business.
+    </div>
+</body>
+</html>

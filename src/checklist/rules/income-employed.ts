@@ -81,33 +81,6 @@ function salaryHourlyRules(): ChecklistRule[] {
       notes:
         'If not yet available, provide last pay stub of the previous year showing year-end earnings',
     },
-    {
-      id: 's1_noa_previous',
-      section: '1_income_employed_salary',
-      document: 'NOA — Previous year',
-      get displayName() {
-        const { previousTaxYear } = getTaxYears(new Date());
-        return `${previousTaxYear} Notice of Assessment (NOA)`;
-      },
-      stage: 'FULL',
-      scope: 'per_borrower',
-      condition: hasSalaryOrHourly,
-      notes: 'May not be needed if 2 years of T4s are provided',
-    },
-    {
-      id: 's1_noa_current',
-      section: '1_income_employed_salary',
-      document: 'NOA — Current year',
-      get displayName() {
-        const { currentTaxYear } = getTaxYears(new Date());
-        return `${currentTaxYear} Notice of Assessment (NOA)`;
-      },
-      stage: 'FULL',
-      scope: 'per_borrower',
-      condition: hasSalaryOrHourly,
-      notes:
-        'If NOA shows amount owing, also provide CRA Statement of Account showing taxes paid to zero',
-    },
   ];
 }
 

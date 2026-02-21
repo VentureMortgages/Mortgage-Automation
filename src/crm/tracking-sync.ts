@@ -18,7 +18,14 @@
 import { findContactByEmail, getContact, upsertContact } from './contacts.js';
 import { createAuditNote } from './notes.js';
 import { findMatchingChecklistDoc } from './doc-type-matcher.js';
-import { computeDocStatus } from './checklist-mapper.js';
+import {
+  computeDocStatus,
+  formatMissingDocsForCrm,
+  formatReceivedDocsForCrm,
+  parseMissingDocsText,
+  parseReceivedDocsText,
+} from './checklist-mapper.js';
+import type { DocEntry } from './checklist-mapper.js';
 import { createPreReadinessTask } from './tasks.js';
 import { moveToAllDocsReceived } from './opportunities.js';
 import { crmConfig } from './config.js';
@@ -67,7 +74,8 @@ export interface ParsedTrackingFields {
  * Extracts and parses tracking field values from a CRM contact record.
  *
  * Pure function for testability. Handles missing fields (defaults to
- * empty/zero) and malformed JSON (defaults to empty arrays).
+ * empty/zero), and supports both legacy JSON and new text formats
+ * for missingDocs/receivedDocs fields (backward compatible).
  *
  * @param contact - The CRM contact record with customFields
  * @param fieldIds - The field ID mapping from config
@@ -81,14 +89,12 @@ export function parseContactTrackingFields(
     contact.customFields.map((f) => [f.id, f.value]),
   );
 
-  // Parse JSON array fields with safe defaults
-  const missingDocs = parseJsonArray<MissingDocEntry>(
+  // Parse missingDocs/receivedDocs — supports both JSON and text formats
+  const missingDocs = parseMissingDocsText(
     fieldMap.get(fieldIds.missingDocs),
-    [],
-  );
-  const receivedDocs = parseJsonArray<string>(
+  ) as MissingDocEntry[];
+  const receivedDocs = parseReceivedDocsText(
     fieldMap.get(fieldIds.receivedDocs),
-    [],
   );
 
   // Parse numeric fields with safe defaults
@@ -175,14 +181,14 @@ export async function updateDocTracking(
     newFullReceived,
   );
 
-  // 7. Write updated fields to contact
+  // 7. Write updated fields to contact (human-readable format)
   await upsertContact({
     email: contact.email,
     firstName: contact.firstName,
     lastName: contact.lastName,
     customFields: [
-      { id: fieldIds.missingDocs, field_value: JSON.stringify(updatedMissing) },
-      { id: fieldIds.receivedDocs, field_value: JSON.stringify(updatedReceived) },
+      { id: fieldIds.missingDocs, field_value: formatMissingDocsForCrm(updatedMissing) },
+      { id: fieldIds.receivedDocs, field_value: formatReceivedDocsForCrm(updatedReceived) },
       { id: fieldIds.preDocsReceived, field_value: newPreReceived },
       { id: fieldIds.fullDocsReceived, field_value: newFullReceived },
       { id: fieldIds.docStatus, field_value: newStatus },
@@ -232,17 +238,6 @@ export async function updateDocTracking(
 // ============================================================================
 // Internal helpers
 // ============================================================================
-
-/** Safely parse a JSON string into an array, returning defaultValue on failure */
-function parseJsonArray<T>(value: unknown, defaultValue: T[]): T[] {
-  if (typeof value !== 'string') return defaultValue;
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : defaultValue;
-  } catch {
-    return defaultValue;
-  }
-}
 
 /** Safely parse a numeric value, returning defaultValue on failure */
 function parseNumeric(value: unknown, defaultValue: number): number {

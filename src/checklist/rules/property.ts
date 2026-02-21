@@ -171,15 +171,6 @@ function multiUnitRules(): ChecklistRule[] {
 function investmentRules(): ChecklistRule[] {
   return [
     {
-      id: 's15_investment_income_proof',
-      section: '15_property_investment',
-      document: 'Proof of other income (beyond rental)',
-      displayName: 'Proof of other income (beyond rental income)',
-      stage: 'PRE',
-      scope: 'shared',
-      condition: isInvestment,
-    },
-    {
       id: 's15_investment_appraisal',
       section: '15_property_investment',
       document: 'Appraisal (lender ordered)',

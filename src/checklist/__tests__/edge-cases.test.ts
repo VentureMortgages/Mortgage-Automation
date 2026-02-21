@@ -26,8 +26,7 @@ describe('Edge cases', () => {
 
     // Base pack items present
     const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
-    expect(ruleIds).toContain('s0_photo_id');
-    expect(ruleIds).toContain('s0_second_id');
+    expect(ruleIds).toContain('s0_id');
 
     // No income-specific items (no income data)
     expect(ruleIds).not.toContain('s1_paystub');
@@ -53,7 +52,7 @@ describe('Edge cases', () => {
     expect(result.borrowerChecklists).toHaveLength(1);
     const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
     // Base pack still present
-    expect(ruleIds).toContain('s0_photo_id');
+    expect(ruleIds).toContain('s0_id');
     // No employed/SE/retired items
     expect(ruleIds).not.toContain('s1_paystub');
     expect(ruleIds).not.toContain('s3_t1_current');

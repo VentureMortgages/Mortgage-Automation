@@ -97,18 +97,6 @@ function commissionRules(): ChecklistRule[] {
 function bonusRules(): ChecklistRule[] {
   return [
     {
-      id: 's10_bonus_t4s',
-      section: '10_variable_income_bonus',
-      document: 'T4 history (2 years showing bonus)',
-      get displayName() {
-        const { currentTaxYear, previousTaxYear } = getTaxYears(new Date());
-        return `${previousTaxYear} and ${currentTaxYear} T4s (showing bonus income)`;
-      },
-      stage: 'PRE',
-      scope: 'per_borrower',
-      condition: hasBonus,
-    },
-    {
       id: 's10_bonus_letter',
       section: '10_variable_income_bonus',
       document: 'Letter confirming bonus structure',
@@ -143,6 +131,8 @@ function rentalRules(): ChecklistRule[] {
       stage: 'PRE',
       scope: 'per_property',
       condition: hasRentalIncome,
+      excludeWhen: (ctx) =>
+        ctx.properties.filter((p) => p.rentalIncome > 0).every((p) => p.isSelling === true),
     },
     {
       id: 's10_rental_t1',
@@ -208,6 +198,32 @@ function supportReceivingRules(): ChecklistRule[] {
 }
 
 // ---------------------------------------------------------------------------
+// Canada Child Benefit (CCB) — dormant (manual flag)
+// ---------------------------------------------------------------------------
+
+/**
+ * CCB is NOT auto-detectable from Finmo data.
+ * Always returns false — requires Cat's manual activation.
+ */
+function hasChildBenefit(_ctx: RuleContext): boolean {
+  return false;
+}
+
+function ccbRules(): ChecklistRule[] {
+  return [
+    {
+      id: 's10_ccb_proof',
+      section: '10_variable_income_ccb',
+      document: 'Canada Child Benefit (CCB) statement',
+      displayName: 'Canada Child Benefit (CCB) statement from CRA',
+      stage: 'PRE',
+      scope: 'per_borrower',
+      condition: hasChildBenefit,
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
 // Other Income — dormant
 // ---------------------------------------------------------------------------
 
@@ -260,6 +276,7 @@ export const variableIncomeRules: ChecklistRule[] = [
   ...commissionRules(),
   ...bonusRules(),
   ...rentalRules(),
+  ...ccbRules(),
   ...supportReceivingRules(),
   ...otherIncomeRules(),
 ];

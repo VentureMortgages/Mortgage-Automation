@@ -14,6 +14,10 @@ import {
   mapChecklistToDocEntries,
   computeDocStatus,
   buildChecklistSummary,
+  formatMissingDocsForCrm,
+  formatReceivedDocsForCrm,
+  parseMissingDocsText,
+  parseReceivedDocsText,
 } from '../checklist-mapper.js';
 import type { ChecklistItem, GeneratedChecklist } from '../../checklist/types/index.js';
 
@@ -83,27 +87,28 @@ describe('mapChecklistToFields', () => {
     expect(fullReceivedField?.field_value).toBe(0);
   });
 
-  test('missing docs JSON contains structured MissingDocEntry objects', () => {
+  test('missing docs field contains readable text with stage tags', () => {
     const result = mapChecklistToFields(checklist, { fieldIds: mockFieldIds });
 
     const missingDocsField = result.find((f) => f.id === 'test-missing');
     expect(missingDocsField).toBeDefined();
 
-    const parsed = JSON.parse(missingDocsField!.field_value as string) as Array<{ name: string; stage: string }>;
-    expect(parsed.length).toBeGreaterThan(0);
-
-    // All entries should be MissingDocEntry objects with name and stage
-    for (const item of parsed) {
-      expect(typeof item.name).toBe('string');
-      expect(['PRE', 'FULL', 'LATER', 'CONDITIONAL', 'LENDER_CONDITION']).toContain(item.stage);
+    const text = missingDocsField!.field_value as string;
+    // Should be newline-separated readable text, NOT JSON
+    expect(text.startsWith('[')).toBe(false);
+    // Each line should have a [STAGE] tag
+    const lines = text.split('\n').filter((l) => l.trim().length > 0);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      expect(line).toMatch(/\[(PRE|FULL|LATER|CONDITIONAL|LENDER_CONDITION)\]$/);
     }
   });
 
-  test('received docs JSON is empty array initially', () => {
+  test('received docs field is empty string initially', () => {
     const result = mapChecklistToFields(checklist, { fieldIds: mockFieldIds });
 
     const receivedDocsField = result.find((f) => f.id === 'test-received');
-    expect(receivedDocsField?.field_value).toBe('[]');
+    expect(receivedDocsField?.field_value).toBe('');
   });
 
   test('doc request sent date is today', () => {
@@ -276,5 +281,87 @@ describe('buildChecklistSummary', () => {
       const summary = buildChecklistSummary(checklist);
       expect(summary).toContain('Warnings:');
     }
+  });
+});
+
+// ============================================================================
+// CRM Display Formatting
+// ============================================================================
+
+describe('formatMissingDocsForCrm', () => {
+  test('formats entries as readable lines with stage tags', () => {
+    const result = formatMissingDocsForCrm([
+      { name: 'T4 — Current year', stage: 'PRE' },
+      { name: 'Void cheque', stage: 'FULL' },
+    ]);
+    expect(result).toBe('T4 — Current year [PRE]\nVoid cheque [FULL]');
+  });
+
+  test('returns empty string for empty array', () => {
+    expect(formatMissingDocsForCrm([])).toBe('');
+  });
+});
+
+describe('formatReceivedDocsForCrm', () => {
+  test('formats names as newline-separated text', () => {
+    const result = formatReceivedDocsForCrm(['T4 — Current year', 'Letter of Employment']);
+    expect(result).toBe('T4 — Current year\nLetter of Employment');
+  });
+
+  test('returns empty string for empty array', () => {
+    expect(formatReceivedDocsForCrm([])).toBe('');
+  });
+});
+
+describe('parseMissingDocsText', () => {
+  test('parses new text format', () => {
+    const result = parseMissingDocsText('T4 — Current year [PRE]\nVoid cheque [FULL]');
+    expect(result).toEqual([
+      { name: 'T4 — Current year', stage: 'PRE' },
+      { name: 'Void cheque', stage: 'FULL' },
+    ]);
+  });
+
+  test('parses legacy JSON format', () => {
+    const json = JSON.stringify([
+      { name: 'T4 — Current year', stage: 'PRE' },
+      { name: 'NOA', stage: 'FULL' },
+    ]);
+    const result = parseMissingDocsText(json);
+    expect(result).toEqual([
+      { name: 'T4 — Current year', stage: 'PRE' },
+      { name: 'NOA', stage: 'FULL' },
+    ]);
+  });
+
+  test('returns empty array for empty/null input', () => {
+    expect(parseMissingDocsText('')).toEqual([]);
+    expect(parseMissingDocsText(null)).toEqual([]);
+    expect(parseMissingDocsText(undefined)).toEqual([]);
+  });
+
+  test('handles malformed JSON by falling through to text parsing', () => {
+    const result = parseMissingDocsText('[not valid json');
+    // Falls through to text parsing — "[not valid json" has no stage tag, defaults to PRE
+    expect(result).toHaveLength(1);
+    expect(result[0].stage).toBe('PRE');
+  });
+});
+
+describe('parseReceivedDocsText', () => {
+  test('parses new text format', () => {
+    const result = parseReceivedDocsText('T4 — Current year\nLetter of Employment');
+    expect(result).toEqual(['T4 — Current year', 'Letter of Employment']);
+  });
+
+  test('parses legacy JSON format', () => {
+    const json = JSON.stringify(['T4', 'LOE']);
+    const result = parseReceivedDocsText(json);
+    expect(result).toEqual(['T4', 'LOE']);
+  });
+
+  test('returns empty array for empty/null input', () => {
+    expect(parseReceivedDocsText('')).toEqual([]);
+    expect(parseReceivedDocsText(null)).toEqual([]);
   });
 });

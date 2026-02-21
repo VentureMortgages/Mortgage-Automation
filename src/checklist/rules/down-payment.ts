@@ -26,37 +26,24 @@ function isNotRefinance(ctx: RuleContext): boolean {
   return ctx.application.goal !== 'refinance';
 }
 
-/** Check if application has savings assets (excluded for refinances) */
-function hasSavings(ctx: RuleContext): boolean {
-  if (!isNotRefinance(ctx)) return false;
-  return ctx.assets.some((a) => a.type === 'cash_savings');
-}
-
-/** Check if application has RRSP assets (excluded for refinances) */
-function hasRRSP(ctx: RuleContext): boolean {
-  if (!isNotRefinance(ctx)) return false;
-  return ctx.assets.some((a) => a.type === 'rrsp');
-}
-
 /**
- * Check if application has TFSA assets (excluded for refinances).
- * Can be typed as "tfsa" or described as "TFSA" in a cash_savings asset.
+ * Check if application has any down-payment-related assets (excluded for refinances).
+ * Fires when any DP-relevant asset exists: cash_savings, rrsp, tfsa, fhsa,
+ * or any non-gift/non-sale asset.
  */
-function hasTFSA(ctx: RuleContext): boolean {
+function hasDownPaymentAssets(ctx: RuleContext): boolean {
   if (!isNotRefinance(ctx)) return false;
   return ctx.assets.some(
     (a) =>
+      a.type === 'cash_savings' ||
+      a.type === 'rrsp' ||
       a.type === 'tfsa' ||
-      (a.type === 'cash_savings' &&
-        a.description?.toUpperCase().includes('TFSA'))
-  );
-}
-
-/** Check if application has FHSA assets (excluded for refinances) */
-function hasFHSA(ctx: RuleContext): boolean {
-  if (!isNotRefinance(ctx)) return false;
-  return ctx.assets.some(
-    (a) => a.description?.toUpperCase().includes('FHSA')
+      a.description?.toUpperCase().includes('FHSA') ||
+      (a.type !== 'cash_savings' &&
+        !a.description?.toLowerCase().includes('gift') &&
+        !a.description?.toLowerCase().includes('inheritance') &&
+        !a.description?.toLowerCase().includes('borrow') &&
+        a.value > 0)
   );
 }
 
@@ -106,85 +93,31 @@ function hasBorrowedDownPayment(ctx: RuleContext): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Savings
+// Down Payment Bank Statements (consolidated — B1)
 // ---------------------------------------------------------------------------
 
-function savingsRules(): ChecklistRule[] {
+function dpBankStatementRules(): ChecklistRule[] {
   return [
     {
-      id: 's14_savings_bank',
-      section: '14_down_payment_savings',
+      id: 's14_dp_bank_statement',
+      section: '14_down_payment',
       document: '90-day bank statement history',
       displayName:
         '90-day bank statement history for the account(s) currently holding your down payment funds (must show account ownership — name and account number)',
       stage: 'PRE',
       scope: 'shared',
-      condition: hasSavings,
+      condition: hasDownPaymentAssets,
     },
     {
       id: 's14_large_deposit',
-      section: '14_down_payment_savings',
+      section: '14_down_payment',
       document: 'Large deposit explanations',
       displayName: 'Explanation for any deposits over $5k that aren\'t from your payroll',
       stage: 'FULL',
       scope: 'shared',
-      condition: hasSavings,
+      condition: hasDownPaymentAssets,
       notes:
         'If transfer from other account, we will need 90-day statement showing the transfer',
-    },
-  ];
-}
-
-// ---------------------------------------------------------------------------
-// RRSP
-// ---------------------------------------------------------------------------
-
-function rrspRules(): ChecklistRule[] {
-  return [
-    {
-      id: 's14_rrsp_statement',
-      section: '14_down_payment_rrsp',
-      document: 'RRSP statement (90 days)',
-      displayName: 'RRSP statement (90-day history)',
-      stage: 'PRE',
-      scope: 'shared',
-      condition: hasRRSP,
-    },
-  ];
-}
-
-// ---------------------------------------------------------------------------
-// TFSA
-// ---------------------------------------------------------------------------
-
-function tfsaRules(): ChecklistRule[] {
-  return [
-    {
-      id: 's14_tfsa_statement',
-      section: '14_down_payment_tfsa',
-      document: 'TFSA statement (90 days)',
-      displayName: 'TFSA statement (90-day history)',
-      stage: 'PRE',
-      scope: 'shared',
-      condition: hasTFSA,
-    },
-  ];
-}
-
-// ---------------------------------------------------------------------------
-// FHSA
-// ---------------------------------------------------------------------------
-
-function fhsaRules(): ChecklistRule[] {
-  return [
-    {
-      id: 's14_fhsa_statement',
-      section: '14_down_payment_fhsa',
-      document: 'FHSA statement',
-      displayName: 'First Home Savings Account (FHSA) statement',
-      stage: 'PRE',
-      scope: 'shared',
-      condition: hasFHSA,
     },
   ];
 }
@@ -209,17 +142,7 @@ function giftRules(): ChecklistRule[] {
       id: 's14_gift_amount',
       section: '14_down_payment_gift',
       document: 'Amount of gift',
-      displayName: 'Confirmed gift amount',
-      stage: 'PRE',
-      scope: 'shared',
-      condition: hasGift,
-    },
-    {
-      id: 's14_gift_savings_note',
-      section: '14_down_payment_gift',
-      document: 'Bank statements for savings used alongside gift',
-      displayName:
-        '90-day bank statement history if you\'ll also be using some of your savings in addition to the gifted funds',
+      displayName: 'Confirmed amount of the gift',
       stage: 'PRE',
       scope: 'shared',
       condition: hasGift,
@@ -346,10 +269,7 @@ function borrowedRules(): ChecklistRule[] {
 // ---------------------------------------------------------------------------
 
 export const downPaymentRules: ChecklistRule[] = [
-  ...savingsRules(),
-  ...rrspRules(),
-  ...tfsaRules(),
-  ...fhsaRules(),
+  ...dpBankStatementRules(),
   ...giftRules(),
   ...saleOfPropertyRules(),
   ...inheritanceRules(),

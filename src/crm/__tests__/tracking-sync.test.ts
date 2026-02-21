@@ -43,7 +43,13 @@ const mockChecklistMapper = vi.hoisted(() => ({
   computeDocStatus: vi.fn(),
 }));
 
-vi.mock('../checklist-mapper.js', () => mockChecklistMapper);
+vi.mock('../checklist-mapper.js', async (importOriginal) => {
+  const actual = await importOriginal() as Record<string, unknown>;
+  return {
+    ...actual,
+    ...mockChecklistMapper,
+  };
+});
 
 const mockTasks = vi.hoisted(() => ({
   createPreReadinessTask: vi.fn(),
@@ -216,7 +222,7 @@ describe('tracking-sync', () => {
       expect(result.fullDocsReceived).toBe(0);
     });
 
-    it('should handle malformed JSON gracefully with defaults', () => {
+    it('should handle malformed JSON gracefully — parses as text fallback', () => {
       const contact = makeContact([
         { id: MOCK_FIELD_IDS.missingDocs, value: 'not-valid-json{' },
         { id: MOCK_FIELD_IDS.receivedDocs, value: '{ bad }' },
@@ -226,8 +232,9 @@ describe('tracking-sync', () => {
 
       const result = parseContactTrackingFields(contact, MOCK_FIELD_IDS);
 
-      expect(result.missingDocs).toEqual([]);
-      expect(result.receivedDocs).toEqual([]);
+      // Text parser treats non-JSON as plain text lines (backward-compatible fallback)
+      expect(result.missingDocs).toHaveLength(1); // 'not-valid-json{' parsed as one line
+      expect(result.receivedDocs).toHaveLength(1); // '{ bad }' parsed as one line
       expect(result.preDocsTotal).toBe(0); // 'abc' -> NaN -> 0
       expect(result.preDocsReceived).toBe(0); // null -> 0
     });
@@ -244,7 +251,7 @@ describe('tracking-sync', () => {
       expect(result.fullDocsReceived).toBe(3);
     });
 
-    it('should return default when JSON field contains non-array value', () => {
+    it('should parse non-JSON text as plain text lines', () => {
       const contact = makeContact([
         { id: MOCK_FIELD_IDS.missingDocs, value: '"just a string"' },
         { id: MOCK_FIELD_IDS.receivedDocs, value: '42' },
@@ -252,8 +259,9 @@ describe('tracking-sync', () => {
 
       const result = parseContactTrackingFields(contact, MOCK_FIELD_IDS);
 
-      expect(result.missingDocs).toEqual([]);
-      expect(result.receivedDocs).toEqual([]);
+      // Text parser treats these as plain text (one line each)
+      expect(result.missingDocs).toHaveLength(1);
+      expect(result.receivedDocs).toHaveLength(1);
     });
   });
 
@@ -283,22 +291,24 @@ describe('tracking-sync', () => {
         }),
       );
 
-      // Verify missingDocs no longer contains the matched doc
+      // Verify missingDocs no longer contains the matched doc (readable text format)
       const upsertCall = mockContacts.upsertContact.mock.calls[0][0];
       const missingField = upsertCall.customFields.find(
         (f: { id: string }) => f.id === MOCK_FIELD_IDS.missingDocs,
       );
-      const updatedMissing = JSON.parse(missingField.field_value as string);
-      expect(updatedMissing).toHaveLength(2); // was 3, removed 1
-      expect(updatedMissing.find((d: MissingDocEntry) => d.name === 'T4 - Current year')).toBeUndefined();
+      const missingText = missingField.field_value as string;
+      expect(missingText).not.toContain('T4 - Current year');
+      // Should still have 2 remaining docs
+      const missingLines = missingText.split('\n').filter((l: string) => l.trim());
+      expect(missingLines).toHaveLength(2);
 
-      // Verify receivedDocs now contains the matched doc name
+      // Verify receivedDocs now contains the matched doc name (readable text format)
       const receivedField = upsertCall.customFields.find(
         (f: { id: string }) => f.id === MOCK_FIELD_IDS.receivedDocs,
       );
-      const updatedReceived = JSON.parse(receivedField.field_value as string);
-      expect(updatedReceived).toContain('T4 - Current year');
-      expect(updatedReceived).toContain('Letter of Employment'); // existing
+      const receivedText = receivedField.field_value as string;
+      expect(receivedText).toContain('T4 - Current year');
+      expect(receivedText).toContain('Letter of Employment'); // existing
     });
 
     it('should increment fullDocsReceived when FULL doc received', async () => {

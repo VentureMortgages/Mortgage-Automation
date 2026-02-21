@@ -39,8 +39,7 @@ describe('CHKL-04: Co-borrower duplication', () => {
   test('both borrowers get base pack items', () => {
     for (const bc of result.borrowerChecklists) {
       const ruleIds = bc.items.map((i) => i.ruleId);
-      expect(ruleIds).toContain('s0_photo_id');
-      expect(ruleIds).toContain('s0_second_id');
+      expect(ruleIds).toContain('s0_id');
     }
   });
 
@@ -73,12 +72,10 @@ describe('CHKL-04: Co-borrower duplication', () => {
     const aliceRuleIds = alice!.items.map((i) => i.ruleId);
     const bobRuleIds = bob!.items.map((i) => i.ruleId);
 
-    // Bob (bonuses:true) should have bonus items
-    expect(bobRuleIds).toContain('s10_bonus_t4s');
+    // Bob (bonuses:true) should have bonus letter (bonus T4s removed per B9)
     expect(bobRuleIds).toContain('s10_bonus_letter');
 
     // Alice (bonuses:false) should NOT have bonus items
-    expect(aliceRuleIds).not.toContain('s10_bonus_t4s');
     expect(aliceRuleIds).not.toContain('s10_bonus_letter');
   });
 });
