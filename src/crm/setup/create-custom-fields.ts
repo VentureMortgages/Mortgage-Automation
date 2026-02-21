@@ -83,7 +83,7 @@ async function createField(
     name: payload.name,
     dataType: payload.dataType,
     model: payload.model,
-    parentId: payload.parentId,
+    ...(payload.parentId ? { parentId: payload.parentId } : {}),
   };
 
   if (payload.options && payload.options.length > 0) {
@@ -131,8 +131,15 @@ async function createField(
 
 const DOC_TRACKING_GROUP_NAME = 'Doc Tracking';
 
-async function findOrCreateOppFieldGroup(): Promise<string> {
-  // Check if a "Doc Tracking" group already exists on opportunities
+/**
+ * Known opportunity field group: Finmo Integration (already exists in GHL).
+ * GHL API does not support creating field groups (dataType='GROUP') on opportunities,
+ * so we use this existing group. If it doesn't work, fields are created without a group.
+ */
+const OPP_FINMO_INTEGRATION_GROUP_ID = 'FULgVWPY3FAigzC5MLP3';
+
+async function findOppFieldGroup(): Promise<string> {
+  // Verify the known group exists
   const listUrl = `${BASE_URL}/locations/${LOCATION_ID}/customFields?model=opportunity`;
   const listResponse = await fetch(listUrl, { headers });
 
@@ -143,39 +150,27 @@ async function findOrCreateOppFieldGroup(): Promise<string> {
 
   const listData = (await listResponse.json()) as CustomFieldsListResponse;
 
-  // Groups are custom fields with dataType === 'GROUP'
-  const existingGroup = listData.customFields.find(
-    (f) => f.dataType === 'GROUP' && f.name === DOC_TRACKING_GROUP_NAME
+  // Look for existing Doc Tracking group first
+  const docTrackingGroup = listData.customFields.find(
+    (f) => f.name === DOC_TRACKING_GROUP_NAME && !f.parentId
   );
-
-  if (existingGroup) {
-    console.log(`Found existing "${DOC_TRACKING_GROUP_NAME}" group: ${existingGroup.id}`);
-    return existingGroup.id;
+  if (docTrackingGroup) {
+    console.log(`Found existing "${DOC_TRACKING_GROUP_NAME}" group: ${docTrackingGroup.id}`);
+    return docTrackingGroup.id;
   }
 
-  // Create a new group
-  console.log(`Creating "${DOC_TRACKING_GROUP_NAME}" field group on opportunities...`);
-  const createUrl = `${BASE_URL}/locations/${LOCATION_ID}/customFields`;
-  const createResponse = await fetch(createUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      name: DOC_TRACKING_GROUP_NAME,
-      dataType: 'GROUP',
-      model: 'opportunity',
-    }),
-  });
-
-  if (!createResponse.ok) {
-    const body = await createResponse.text();
-    throw new Error(
-      `Failed to create "${DOC_TRACKING_GROUP_NAME}" group (${createResponse.status}): ${body}`
-    );
+  // Fall back to Finmo Integration group
+  const finmoGroup = listData.customFields.find(
+    (f) => f.id === OPP_FINMO_INTEGRATION_GROUP_ID
+  );
+  if (finmoGroup) {
+    console.log(`Using existing "Finmo Integration" group: ${OPP_FINMO_INTEGRATION_GROUP_ID}`);
+    return OPP_FINMO_INTEGRATION_GROUP_ID;
   }
 
-  const createData = (await createResponse.json()) as CreateFieldResponse;
-  console.log(`Created "${DOC_TRACKING_GROUP_NAME}" group: ${createData.customField.id}`);
-  return createData.customField.id;
+  // No group found — create fields without parentId
+  console.log('WARNING: No suitable field group found. Fields will be created at root level.');
+  return '';
 }
 
 // ---------------------------------------------------------------------------
@@ -194,7 +189,7 @@ async function main(): Promise<void> {
   // Resolve the parent group ID
   let parentId: string;
   if (model === 'opportunity') {
-    parentId = await findOrCreateOppFieldGroup();
+    parentId = await findOppFieldGroup();
   } else {
     parentId = FIELD_GROUP_ID;
   }
