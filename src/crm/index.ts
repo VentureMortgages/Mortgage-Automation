@@ -19,6 +19,8 @@ export type {
   CrmContact,
   MissingDocEntry,
   CrmNoteInput,
+  CrmOpportunity,
+  CrmOpportunityCustomField,
 } from './types/index.js';
 
 export {
@@ -27,6 +29,9 @@ export {
   PIPELINE_IDS,
   LOCATION_ID,
   DOC_TRACKING_FIELD_DEFS,
+  EXISTING_OPP_FIELDS,
+  OPP_DOC_TRACKING_FIELD_DEFS,
+  OPP_FIELD_GROUP_ID,
 } from './types/index.js';
 
 // Configuration
@@ -38,7 +43,18 @@ export { upsertContact, findContactByEmail, findContactByName, resolveContactId,
 export type { ResolveContactResult } from './contacts.js';
 export { createAuditNote } from './notes.js';
 export { createReviewTask, createPreReadinessTask, addBusinessDays } from './tasks.js';
-export { upsertOpportunity, moveToCollectingDocs, moveToAllDocsReceived } from './opportunities.js';
+export {
+  searchOpportunities,
+  getOpportunity,
+  updateOpportunityFields,
+  updateOpportunityStage,
+  findOpportunityByFinmoId,
+  getOpportunityFieldValue,
+  // Deprecated — kept for backward compatibility until Plan 10-05
+  upsertOpportunity,
+  moveToCollectingDocs,
+  moveToAllDocsReceived,
+} from './opportunities.js';
 
 // Checklist-to-CRM mapper
 export {
