@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 10-opportunity-centric-architecture
-Plan: 04
-Status: Ready to execute 10-04 (tracking-sync refactor)
-Last activity: 2026-02-21 — 10-03 complete (checklist-sync refactored for opportunity-level tracking)
+Plan: 05
+Status: Ready to execute 10-05 (cleanup + barrel exports)
+Last activity: 2026-02-21 — 10-04 complete (tracking-sync refactored for opportunity-level tracking with cross-deal reuse)
 
 Progress: [████████░░] 82% (core pipeline complete, Phase 10 in progress)
 
@@ -25,9 +25,9 @@ Progress: [████████░░] 82% (core pipeline complete, Phase 10
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 26
+- Total plans completed: 27
 - Average duration: 4 min
-- Total execution time: 1.83 hours
+- Total execution time: 1.93 hours
 
 **By Phase:**
 
@@ -41,10 +41,10 @@ Progress: [████████░░] 82% (core pipeline complete, Phase 10
 | 07-classification-filing | 5/5 | 20 min | 4 min |
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 
-| 10-opportunity-centric-architecture | 2/? | 9 min | 5 min |
+| 10-opportunity-centric-architecture | 3/? | 15 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 08-01 (6 min), 08-02 (4 min), 10-02 (5 min), 10-03 (4 min)
+- Last 5 plans: 08-02 (4 min), 10-02 (5 min), 10-03 (4 min), 10-04 (6 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -153,6 +153,12 @@ Progress: [████████░░] 82% (core pipeline complete, Phase 10
 - Opportunity field update failure triggers contact-level fallback (belt-and-suspenders reliability)
 - finmoApplicationId is the same UUID as applicationId from webhook job data
 - Vitest 4 clearAllMocks resets mock implementations (unlike Jest), requiring explicit re-setup in beforeEach
+- PROPERTY_SPECIFIC_TYPES imported from drive/doc-expiry.ts (single source of truth for single-deal vs cross-deal routing)
+- Audit note created on contact (not opportunity) because GHL notes are contact-scoped
+- PRE readiness task fires once per doc receipt even when updating multiple opportunities
+- ambiguous-deal returns updated:false (safe failure) rather than guessing which opportunity
+- Contact-level fallback in tracking-sync preserves backward compat for clients without opportunities
+- firstMatchedDocName tracked via loop variable for efficient audit note (no re-fetch needed)
 
 ### Pending Todos
 
@@ -219,15 +225,16 @@ None yet.
 - 10-01 complete: opportunity types, config, API functions (27 tests)
 - 10-02 complete: setup scripts updated for --model=opportunity + live CRM setup
 - 10-03 complete: checklist-sync refactored for opportunity-level doc tracking (26 tests, 679 total)
-- Next: 10-04 (tracking-sync refactor), 10-05 (cleanup + barrel exports)
+- 10-04 complete: tracking-sync refactored for opportunity-level tracking with cross-deal reuse (36 tests, 692 total)
+- Next: 10-05 (cleanup + barrel exports)
 
 ## Session Continuity
 
-Last session: 2026-02-21 (10-03 execution)
-Stopped at: Completed 10-03-PLAN.md
+Last session: 2026-02-21 (10-04 execution)
+Stopped at: Completed 10-04-PLAN.md
 Resume file: None
-Next: Execute 10-04 (tracking-sync refactor for opportunity-level tracking)
+Next: Execute 10-05 (cleanup + barrel exports)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-21 (10-03 complete, checklist-sync refactored for opportunity-level tracking)*
+*Last updated: 2026-02-21 (10-04 complete, tracking-sync refactored with cross-deal document reuse)*

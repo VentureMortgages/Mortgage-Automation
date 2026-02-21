@@ -198,7 +198,7 @@ Plans:
 - [x] 10-01-PLAN.md — Opportunity types, config, and API functions (search, get, update, stage)
 - [x] 10-02-PLAN.md — Setup scripts for opportunity-scoped custom fields (has checkpoint)
 - [x] 10-03-PLAN.md — Checklist sync refactor: write doc tracking to opportunity
-- [ ] 10-04-PLAN.md — Tracking sync refactor: read/write opportunity + cross-deal reuse
+- [x] 10-04-PLAN.md — Tracking sync refactor: read/write opportunity + cross-deal reuse
 - [ ] 10-05-PLAN.md — Wire workers, update barrel export, clean up deprecated code
 
 ### Phase 11: Drive Folder Linking + Deal Subfolders
