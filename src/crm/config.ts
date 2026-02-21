@@ -24,6 +24,18 @@ export interface CrmConfig {
     fullDocsReceived: string;
     lastDocReceived: string;
   };
+  /** Opportunity-level doc tracking field IDs (same shape as fieldIds, loaded from GHL_OPP_FIELD_* env vars) */
+  opportunityFieldIds: {
+    docStatus: string;
+    docRequestSent: string;
+    missingDocs: string;
+    receivedDocs: string;
+    preDocsTotal: string;
+    preDocsReceived: string;
+    fullDocsTotal: string;
+    fullDocsReceived: string;
+    lastDocReceived: string;
+  };
   stageIds: {
     applicationReceived: string;
     collectingDocuments: string;
@@ -70,6 +82,17 @@ export const crmConfig: CrmConfig = {
     fullDocsReceived: optionalEnv('GHL_FIELD_FULL_RECEIVED_ID'),
     lastDocReceived: optionalEnv('GHL_FIELD_LAST_DOC_RECEIVED_ID'),
   },
+  opportunityFieldIds: {
+    docStatus: optionalEnv('GHL_OPP_FIELD_DOC_STATUS_ID'),
+    docRequestSent: optionalEnv('GHL_OPP_FIELD_DOC_REQUEST_SENT_ID'),
+    missingDocs: optionalEnv('GHL_OPP_FIELD_MISSING_DOCS_ID'),
+    receivedDocs: optionalEnv('GHL_OPP_FIELD_RECEIVED_DOCS_ID'),
+    preDocsTotal: optionalEnv('GHL_OPP_FIELD_PRE_TOTAL_ID'),
+    preDocsReceived: optionalEnv('GHL_OPP_FIELD_PRE_RECEIVED_ID'),
+    fullDocsTotal: optionalEnv('GHL_OPP_FIELD_FULL_TOTAL_ID'),
+    fullDocsReceived: optionalEnv('GHL_OPP_FIELD_FULL_RECEIVED_ID'),
+    lastDocReceived: optionalEnv('GHL_OPP_FIELD_LAST_DOC_RECEIVED_ID'),
+  },
   stageIds: {
     applicationReceived: optionalEnv('GHL_STAGE_APP_RECEIVED_ID'),
     collectingDocuments: optionalEnv('GHL_STAGE_COLLECTING_DOCS_ID'),
@@ -111,6 +134,22 @@ export function validateConfig(): void {
       `  npx tsx src/crm/setup/create-custom-fields.ts`
     );
   }
+
+  // Opportunity field IDs: warn but don't throw (populated after setup script runs with --model=opportunity)
+  const oppWarnings: string[] = [];
+  for (const [key, value] of Object.entries(crmConfig.opportunityFieldIds)) {
+    if (!value) {
+      const envKey = oppFieldIdToEnvKey(key);
+      oppWarnings.push(envKey);
+    }
+  }
+
+  if (oppWarnings.length > 0) {
+    console.warn(
+      '[CRM config] Opportunity field IDs not yet configured (run setup script with --model=opportunity):',
+      oppWarnings,
+    );
+  }
 }
 
 /** In dev mode, prefixes strings with [TEST] so they are visible and filterable in CRM */
@@ -140,6 +179,22 @@ function stageIdToEnvKey(camelKey: string): string {
     applicationReceived: 'GHL_STAGE_APP_RECEIVED_ID',
     collectingDocuments: 'GHL_STAGE_COLLECTING_DOCS_ID',
     allDocsReceived: 'GHL_STAGE_ALL_DOCS_RECEIVED_ID',
+  };
+  return map[camelKey] ?? camelKey;
+}
+
+// Helper: convert camelCase opportunityFieldIds key to GHL_OPP_FIELD_*_ID env key
+function oppFieldIdToEnvKey(camelKey: string): string {
+  const map: Record<string, string> = {
+    docStatus: 'GHL_OPP_FIELD_DOC_STATUS_ID',
+    docRequestSent: 'GHL_OPP_FIELD_DOC_REQUEST_SENT_ID',
+    missingDocs: 'GHL_OPP_FIELD_MISSING_DOCS_ID',
+    receivedDocs: 'GHL_OPP_FIELD_RECEIVED_DOCS_ID',
+    preDocsTotal: 'GHL_OPP_FIELD_PRE_TOTAL_ID',
+    preDocsReceived: 'GHL_OPP_FIELD_PRE_RECEIVED_ID',
+    fullDocsTotal: 'GHL_OPP_FIELD_FULL_TOTAL_ID',
+    fullDocsReceived: 'GHL_OPP_FIELD_FULL_RECEIVED_ID',
+    lastDocReceived: 'GHL_OPP_FIELD_LAST_DOC_RECEIVED_ID',
   };
   return map[camelKey] ?? camelKey;
 }

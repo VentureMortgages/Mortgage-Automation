@@ -141,3 +141,65 @@ export interface CrmNoteInput {
   source: string;
   driveFileId: string;
 }
+
+// ============================================================================
+// Opportunity Types — Opportunity-scoped custom fields have a different format
+// ============================================================================
+
+/** Custom field on an opportunity (response format differs from contacts) */
+export interface CrmOpportunityCustomField {
+  id: string;
+  fieldValueString?: string;
+  fieldValueNumber?: number;
+  fieldValueDate?: number;
+  type?: string;
+}
+
+/** CRM opportunity record returned by GET /opportunities/:id or search */
+export interface CrmOpportunity {
+  id: string;
+  name?: string;
+  contactId?: string;
+  pipelineId?: string;
+  pipelineStageId?: string;
+  status?: string;
+  customFields?: CrmOpportunityCustomField[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// ============================================================================
+// Opportunity Constants — Known field IDs on opportunities
+// ============================================================================
+
+/**
+ * Existing custom fields on opportunities created by Finmo.
+ * IMPORTANT: These IDs are DIFFERENT from the contact-level EXISTING_FIELDS.
+ * Same field names, different IDs because they are scoped to the opportunity model.
+ */
+export const EXISTING_OPP_FIELDS = {
+  FINMO_APPLICATION_ID: 'ezhN6WKQLzY7MvqIKSY9',
+  FINMO_DEAL_ID: 'oQacgWtfN4YntLChYcvn',
+  FINMO_DEAL_LINK: 'lp7dunT6sJY0ZmXAIasi',
+  TRANSACTION_TYPE: 'tuUFgUp9pAPeOoorOrrn',
+} as const;
+
+/** Custom field group ID for doc tracking fields on opportunities. Populated after running setup script. */
+export const OPP_FIELD_GROUP_ID = '';  // Populated after running setup script
+
+/**
+ * Definitions for the 9 custom fields needed for document tracking on opportunities.
+ * Same structure as DOC_TRACKING_FIELD_DEFS but with OPP_ prefixed envKey names.
+ * Used by the create-custom-fields setup script with model='opportunity'.
+ */
+export const OPP_DOC_TRACKING_FIELD_DEFS = [
+  { envKey: 'GHL_OPP_FIELD_DOC_STATUS_ID', name: 'Doc Collection Status', dataType: 'SINGLE_OPTIONS' as const, options: ['Not Started', 'In Progress', 'PRE Complete', 'All Complete'] },
+  { envKey: 'GHL_OPP_FIELD_DOC_REQUEST_SENT_ID', name: 'Doc Request Sent Date', dataType: 'DATE' as const },
+  { envKey: 'GHL_OPP_FIELD_MISSING_DOCS_ID', name: 'Missing Docs', dataType: 'LARGE_TEXT' as const },
+  { envKey: 'GHL_OPP_FIELD_RECEIVED_DOCS_ID', name: 'Received Docs', dataType: 'LARGE_TEXT' as const },
+  { envKey: 'GHL_OPP_FIELD_PRE_TOTAL_ID', name: 'PRE Docs Total', dataType: 'NUMERICAL' as const },
+  { envKey: 'GHL_OPP_FIELD_PRE_RECEIVED_ID', name: 'PRE Docs Received', dataType: 'NUMERICAL' as const },
+  { envKey: 'GHL_OPP_FIELD_FULL_TOTAL_ID', name: 'FULL Docs Total', dataType: 'NUMERICAL' as const },
+  { envKey: 'GHL_OPP_FIELD_FULL_RECEIVED_ID', name: 'FULL Docs Received', dataType: 'NUMERICAL' as const },
+  { envKey: 'GHL_OPP_FIELD_LAST_DOC_RECEIVED_ID', name: 'Last Doc Received Date', dataType: 'DATE' as const },
+] as const;
