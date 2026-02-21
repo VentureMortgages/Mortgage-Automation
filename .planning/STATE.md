@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 10 - Opportunity-Centric Architecture (IN PROGRESS)
+**Current focus:** Phase 10 - Opportunity-Centric Architecture (COMPLETE)
 
 ## Current Position
 
 Phase: 10-opportunity-centric-architecture
-Plan: 05
-Status: Ready to execute 10-05 (cleanup + barrel exports)
-Last activity: 2026-02-21 — 10-04 complete (tracking-sync refactored for opportunity-level tracking with cross-deal reuse)
+Plan: 05 (COMPLETE)
+Status: Phase 10 complete — all 5 plans executed
+Last activity: 2026-02-21 — 10-05 complete (workers wired, barrel cleaned, contact fields deprecated)
 
-Progress: [████████░░] 82% (core pipeline complete, Phase 10 in progress)
+Progress: [█████████░] 90% (core pipeline complete, Phase 10 complete)
 
 ### Completed outside GSD:
 - **Feedback Loop (RAG)** — Phase 8.1, implemented + E2E verified (2026-02-21)
@@ -25,9 +25,9 @@ Progress: [████████░░] 82% (core pipeline complete, Phase 10
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27
+- Total plans completed: 28
 - Average duration: 4 min
-- Total execution time: 1.93 hours
+- Total execution time: 2.0 hours
 
 **By Phase:**
 
@@ -41,10 +41,10 @@ Progress: [████████░░] 82% (core pipeline complete, Phase 10
 | 07-classification-filing | 5/5 | 20 min | 4 min |
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 
-| 10-opportunity-centric-architecture | 3/? | 15 min | 5 min |
+| 10-opportunity-centric-architecture | 5/5 | 19 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 08-02 (4 min), 10-02 (5 min), 10-03 (4 min), 10-04 (6 min)
+- Last 5 plans: 10-02 (5 min), 10-03 (4 min), 10-04 (6 min), 10-05 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -159,6 +159,10 @@ Progress: [████████░░] 82% (core pipeline complete, Phase 10
 - ambiguous-deal returns updated:false (safe failure) rather than guessing which opportunity
 - Contact-level fallback in tracking-sync preserves backward compat for clients without opportunities
 - firstMatchedDocName tracked via loop variable for efficient audit note (no re-fetch needed)
+- finmoApplicationId sourced from finmoApp.application.id (canonical) in webhook worker
+- Deprecated functions (upsertOpportunity, moveToCollectingDocs, moveToAllDocsReceived) kept in opportunities.ts for direct import by sent-detector.ts, removed from barrel
+- Contact-level fieldIds validation downgraded from throw to warning (deprecated, fallback-only)
+- Setup script --deprecate-contact-fields renames via PUT API (field IDs remain valid after rename)
 
 ### Pending Todos
 
@@ -221,20 +225,22 @@ None yet.
 - updateDocTracking reads contact, matches doc, updates fields, creates note, triggers PRE task / pipeline advance
 - Non-fatal pattern: tracking failure never blocks document filing
 
-**Phase 10 (Opportunity-Centric Architecture):** IN PROGRESS
+**Phase 10 (Opportunity-Centric Architecture):** COMPLETE
 - 10-01 complete: opportunity types, config, API functions (27 tests)
 - 10-02 complete: setup scripts updated for --model=opportunity + live CRM setup
 - 10-03 complete: checklist-sync refactored for opportunity-level doc tracking (26 tests, 679 total)
 - 10-04 complete: tracking-sync refactored for opportunity-level tracking with cross-deal reuse (36 tests, 692 total)
-- Next: 10-05 (cleanup + barrel exports)
+- 10-05 complete: workers wired with finmoApplicationId, barrel cleaned, contact fields deprecated (692 total)
+- End-to-end pipeline uses opportunity-level tracking
+- Contact-level doc tracking deprecated (setup script can rename, config warns, types annotated)
 
 ## Session Continuity
 
-Last session: 2026-02-21 (10-04 execution)
-Stopped at: Completed 10-04-PLAN.md
+Last session: 2026-02-21 (10-05 execution)
+Stopped at: Completed 10-05-PLAN.md (Phase 10 complete)
 Resume file: None
-Next: Execute 10-05 (cleanup + barrel exports)
+Next: Phase 10 complete — ready for next phase or end-to-end testing
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-21 (10-04 complete, tracking-sync refactored with cross-deal document reuse)*
+*Last updated: 2026-02-21 (10-05 complete, Phase 10 opportunity-centric architecture complete)*

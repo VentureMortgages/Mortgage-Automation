@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Classification & Filing** - Classify, rename, convert, and file docs to Google Drive
 - [x] **Phase 8: Tracking Integration** - Update checklist status and notify on PRE-readiness
 - [x] **Phase 8.1: Feedback Loop (RAG)** - Capture Cat's email edits and auto-apply to future similar applications (INSERTED)
-- [ ] **Phase 10: Opportunity-Centric Architecture** - Move doc tracking from contact to opportunity level, support multi-deal clients
+- [x] **Phase 10: Opportunity-Centric Architecture** - Move doc tracking from contact to opportunity level, support multi-deal clients
 - [ ] **Phase 11: Drive Folder Linking + Deal Subfolders** - Store folder IDs, create deal-specific subfolders, file deal docs correctly
 - [ ] **Phase 12: Original Document Preservation** - Always store originals, make renamed copy for filing
 - [ ] **Phase 13: Email Wording & Notifications** - Fix client-facing email, add PRE Complete + unexpected doc alerts
@@ -199,7 +199,7 @@ Plans:
 - [x] 10-02-PLAN.md — Setup scripts for opportunity-scoped custom fields (has checkpoint)
 - [x] 10-03-PLAN.md — Checklist sync refactor: write doc tracking to opportunity
 - [x] 10-04-PLAN.md — Tracking sync refactor: read/write opportunity + cross-deal reuse
-- [ ] 10-05-PLAN.md — Wire workers, update barrel export, clean up deprecated code
+- [x] 10-05-PLAN.md — Wire workers, update barrel export, clean up deprecated code
 
 ### Phase 11: Drive Folder Linking + Deal Subfolders
 **Goal**: Client folder ID stored on CRM, deal-specific subfolders for property docs, correct filing everywhere
@@ -321,7 +321,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Classification & Filing | 5/5 | Complete | 2026-02-15 |
 | 8. Tracking Integration | 2/2 | Complete | 2026-02-16 |
 | 8.1 Feedback Loop (RAG) | N/A | Complete (outside GSD) | 2026-02-21 |
-| 10. Opportunity-Centric Architecture | 1/5 | In Progress (10-02 paused at checkpoint) | - |
+| 10. Opportunity-Centric Architecture | 5/5 | Complete | 2026-02-21 |
 | 11. Drive Folder Linking + Deal Subfolders | 0/TBD | Not started (blocked by 10) | - |
 | 12. Original Doc Preservation | 0/TBD | Not started (blocked by 11) | - |
 | 13. Email Wording & Notifications | 0/TBD | Not started | - |
@@ -340,4 +340,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-21 (10-02 Task 1 complete, checkpoint at Task 2)*
+*Last updated: 2026-02-21 (Phase 10 complete — all 5 plans executed)*
