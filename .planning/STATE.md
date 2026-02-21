@@ -5,23 +5,29 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 8 - Tracking Integration (COMPLETE)
+**Current focus:** Phase 10 - Opportunity-Centric Architecture (IN PROGRESS)
 
 ## Current Position
 
-Phase: 8 of 9 (Tracking Integration)
-Plan: 2 of 2 complete
-Status: Phase Complete
-Last activity: 2026-02-16 — Completed 08-02 (tracking-sync orchestrator + classification worker integration)
+Phase: 10-opportunity-centric-architecture
+Plan: 02 (paused at checkpoint — Task 2 human-action)
+Status: Task 1 complete, awaiting live CRM setup execution
+Last activity: 2026-02-21 — 10-02 Task 1 executed (setup scripts updated for opportunity model)
 
-Progress: [█████████░] 90% (Phase 8 complete, Phase 9 next)
+Progress: [████████░░] 82% (core pipeline complete, Phase 10 in progress)
+
+### Completed outside GSD:
+- **Feedback Loop (RAG)** — Phase 8.1, implemented + E2E verified (2026-02-21)
+- **Budget Sheet Automation** — auto-create from template on new Finmo app (2026-02-17)
+- **Sender-to-borrower matching** — name-based CRM lookup fallback (2026-02-16)
+- **11 draft emails** from real Finmo apps → admin@ Gmail for Cat review (2026-02-16)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24
+- Total plans completed: 25
 - Average duration: 4 min
-- Total execution time: 1.69 hours
+- Total execution time: 1.77 hours
 
 **By Phase:**
 
@@ -35,8 +41,10 @@ Progress: [█████████░] 90% (Phase 8 complete, Phase 9 next)
 | 07-classification-filing | 5/5 | 20 min | 4 min |
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 
+| 10-opportunity-centric-architecture | 1/? | 5 min | 5 min |
+
 **Recent Trend:**
-- Last 5 plans: 07-04 (4 min), 07-05 (4 min), 08-01 (6 min), 08-02 (4 min)
+- Last 5 plans: 07-05 (4 min), 08-01 (6 min), 08-02 (4 min), 10-02 (5 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -138,6 +146,9 @@ Progress: [█████████░] 90% (Phase 8 complete, Phase 9 next)
 - LATER/CONDITIONAL/LENDER_CONDITION stage docs don't increment PRE or FULL counters
 - Tracking call in classification worker wrapped in own try/catch (non-fatal to filing)
 - parseContactTrackingFields exported as pure function for independent testability
+- Legacy API (POST /locations/:locationId/customFields) with model='opportunity' for opportunity-scoped field creation (V2 API only supports Custom Objects and Company)
+- Separate "Doc Tracking" field group on opportunities (not reusing contact-level "Finmo Integration" group)
+- ReadonlySet<string> annotation to widen as-const literal union for Set.has() compatibility
 
 ### Pending Todos
 
@@ -200,13 +211,18 @@ None yet.
 - updateDocTracking reads contact, matches doc, updates fields, creates note, triggers PRE task / pipeline advance
 - Non-fatal pattern: tracking failure never blocks document filing
 
+**Phase 10 (Opportunity-Centric Architecture):** IN PROGRESS
+- 10-02 Task 1 complete: setup scripts updated for --model=opportunity (commit f8e7f6d)
+- 10-02 Task 2 pending: run setup script against live CRM to create opportunity fields
+- Blocked: downstream plans 10-03 through 10-05 need field IDs from Task 2
+
 ## Session Continuity
 
-Last session: 2026-02-16 (plan execution)
-Stopped at: Completed 08-02-PLAN.md — tracking-sync orchestrator + classification worker integration
+Last session: 2026-02-21 (10-02 execution)
+Stopped at: 10-02 checkpoint — Task 2 human-action (run setup scripts against live CRM)
 Resume file: None
-Next: Phase 9 (Orchestration) — final integration and deployment
+Next: Execute Task 2 (run setup scripts), then continue with 10-03
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-16 (08-02 complete, Phase 8 complete)*
+*Last updated: 2026-02-21 (10-02 Task 1 complete, checkpoint at Task 2)*
