@@ -153,6 +153,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     borrowerLastName: mainBorrower.lastName,
     borrowerPhone: mainBorrower.phone ?? undefined,
     finmoDealId: applicationId,
+    finmoApplicationId: applicationId,
     preReceivedDocs: preReceivedDocs.length > 0 ? preReceivedDocs : undefined,
   });
 

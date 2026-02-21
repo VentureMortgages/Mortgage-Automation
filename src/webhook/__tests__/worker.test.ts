@@ -263,6 +263,7 @@ function createMockCrmResult(): SyncChecklistResult {
     taskId: 'task-789',
     opportunityId: 'opp-101',
     fieldsUpdated: 5,
+    trackingTarget: 'opportunity',
     errors: [],
   };
 }
