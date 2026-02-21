@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 10-opportunity-centric-architecture
-Plan: 02 (paused at checkpoint — Task 2 human-action)
-Status: Task 1 complete, awaiting live CRM setup execution
-Last activity: 2026-02-21 — 10-02 Task 1 executed (setup scripts updated for opportunity model)
+Plan: 04
+Status: Ready to execute 10-04 (tracking-sync refactor)
+Last activity: 2026-02-21 — 10-03 complete (checklist-sync refactored for opportunity-level tracking)
 
 Progress: [████████░░] 82% (core pipeline complete, Phase 10 in progress)
 
@@ -25,9 +25,9 @@ Progress: [████████░░] 82% (core pipeline complete, Phase 10
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 25
+- Total plans completed: 26
 - Average duration: 4 min
-- Total execution time: 1.77 hours
+- Total execution time: 1.83 hours
 
 **By Phase:**
 
@@ -41,10 +41,10 @@ Progress: [████████░░] 82% (core pipeline complete, Phase 10
 | 07-classification-filing | 5/5 | 20 min | 4 min |
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 
-| 10-opportunity-centric-architecture | 1/? | 5 min | 5 min |
+| 10-opportunity-centric-architecture | 2/? | 9 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 07-05 (4 min), 08-01 (6 min), 08-02 (4 min), 10-02 (5 min)
+- Last 5 plans: 08-01 (6 min), 08-02 (4 min), 10-02 (5 min), 10-03 (4 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -149,6 +149,10 @@ Progress: [████████░░] 82% (core pipeline complete, Phase 10
 - Legacy API (POST /locations/:locationId/customFields) with model='opportunity' for opportunity-scoped field creation (V2 API only supports Custom Objects and Company)
 - Separate "Doc Tracking" field group on opportunities (not reusing contact-level "Finmo Integration" group)
 - ReadonlySet<string> annotation to widen as-const literal union for Set.has() compatibility
+- Contact upsert excludes doc tracking custom fields when opportunity is the tracking target (clean separation)
+- Opportunity field update failure triggers contact-level fallback (belt-and-suspenders reliability)
+- finmoApplicationId is the same UUID as applicationId from webhook job data
+- Vitest 4 clearAllMocks resets mock implementations (unlike Jest), requiring explicit re-setup in beforeEach
 
 ### Pending Todos
 
@@ -212,17 +216,18 @@ None yet.
 - Non-fatal pattern: tracking failure never blocks document filing
 
 **Phase 10 (Opportunity-Centric Architecture):** IN PROGRESS
-- 10-02 Task 1 complete: setup scripts updated for --model=opportunity (commit f8e7f6d)
-- 10-02 Task 2 pending: run setup script against live CRM to create opportunity fields
-- Blocked: downstream plans 10-03 through 10-05 need field IDs from Task 2
+- 10-01 complete: opportunity types, config, API functions (27 tests)
+- 10-02 complete: setup scripts updated for --model=opportunity + live CRM setup
+- 10-03 complete: checklist-sync refactored for opportunity-level doc tracking (26 tests, 679 total)
+- Next: 10-04 (tracking-sync refactor), 10-05 (cleanup + barrel exports)
 
 ## Session Continuity
 
-Last session: 2026-02-21 (10-02 execution)
-Stopped at: 10-02 checkpoint — Task 2 human-action (run setup scripts against live CRM)
+Last session: 2026-02-21 (10-03 execution)
+Stopped at: Completed 10-03-PLAN.md
 Resume file: None
-Next: Execute Task 2 (run setup scripts), then continue with 10-03
+Next: Execute 10-04 (tracking-sync refactor for opportunity-level tracking)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-21 (10-02 Task 1 complete, checkpoint at Task 2)*
+*Last updated: 2026-02-21 (10-03 complete, checklist-sync refactored for opportunity-level tracking)*
