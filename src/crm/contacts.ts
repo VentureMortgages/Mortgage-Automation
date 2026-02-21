@@ -54,6 +54,10 @@ const FINMO_MANAGED_FIELD_IDS: ReadonlySet<string> = new Set([
  * CRITICAL: Finmo-managed fields (Deal ID, Application ID, Deal Link)
  * are stripped from customFields before the API call to prevent overwriting
  * values managed by Finmo's own sync.
+ *
+ * NOTE (Phase 10): Doc tracking fields are now stored on opportunities,
+ * not contacts. Contact upsert should only receive borrower details
+ * (name, email, phone) and non-doc-tracking custom fields.
  */
 export async function upsertContact(input: UpsertContactInput): Promise<UpsertContactResult> {
   // Strip any Finmo-managed fields from the custom fields array

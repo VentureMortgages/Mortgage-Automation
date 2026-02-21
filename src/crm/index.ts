@@ -50,10 +50,6 @@ export {
   updateOpportunityStage,
   findOpportunityByFinmoId,
   getOpportunityFieldValue,
-  // Deprecated — kept for backward compatibility until Plan 10-05
-  upsertOpportunity,
-  moveToCollectingDocs,
-  moveToAllDocsReceived,
 } from './opportunities.js';
 
 // Checklist-to-CRM mapper
