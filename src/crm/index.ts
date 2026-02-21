@@ -69,7 +69,7 @@ export {
 export { findMatchingChecklistDoc } from './doc-type-matcher.js';
 
 // Tracking sync orchestrator (Phase 8) — document-received CRM updates
-export { updateDocTracking, parseContactTrackingFields } from './tracking-sync.js';
+export { updateDocTracking, parseContactTrackingFields, parseOpportunityTrackingFields } from './tracking-sync.js';
 export type { TrackingUpdateInput, TrackingUpdateResult } from './tracking-sync.js';
 
 // Orchestrator — main entry point for webhook handler
