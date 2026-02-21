@@ -62,6 +62,17 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **TRACK-02**: System maintains audit trail (who uploaded/accessed what, when) for compliance
 - [ ] **TRACK-03**: Cat can view per-client doc status in MyBrokerPro dashboard (received/missing/pending review)
 
+### Opportunity-Centric Architecture
+
+- [ ] **OPP-01**: System finds Finmo's existing opportunity (by Finmo application ID) instead of creating its own
+- [ ] **OPP-02**: Doc tracking fields (missingDocs, receivedDocs, docStatus, counters) live on the opportunity, not the contact
+- [ ] **OPP-03**: Two simultaneous deals for the same client have independent checklists that don't overwrite each other
+- [ ] **OPP-04**: Reusable docs (IDs, T4s, bank statements) from the client folder are applied across all active deals
+- [ ] **OPP-05**: Property-specific docs (purchase agreement, MLS, gift letter) are NOT reused across deals
+- [ ] **OPP-06**: Pipeline stage advances per-opportunity (not per-contact)
+- [ ] **OPP-07**: Contact-level custom fields for doc tracking are deprecated / removed
+- [ ] **OPP-08**: Existing single-deal clients continue to work (backward compatible)
+
 ### Reminders
 
 - [ ] **REMIND-01**: System has scheduled reminder infrastructure for missing documents (e.g., 3 days, 7 days after initial request)
@@ -156,12 +167,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REMIND-02 | Phase 9 | Pending |
 | REMIND-03 | Phase 9 | Pending |
 | REMIND-04 | Phase 9 | Pending |
+| OPP-01 | Phase 10 | Pending |
+| OPP-02 | Phase 10 | Pending |
+| OPP-03 | Phase 10 | Pending |
+| OPP-04 | Phase 10 | Pending |
+| OPP-05 | Phase 10 | Pending |
+| OPP-06 | Phase 10 | Pending |
+| OPP-07 | Phase 10 | Pending |
+| OPP-08 | Phase 10 | Pending |
 
 **Coverage:**
-- v1 requirements: 38 total
-- Mapped to phases: 38
+- v1 requirements: 46 total
+- Mapped to phases: 46
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after roadmap creation*
+*Last updated: 2026-02-21 (Phase 10 OPP requirements added)*

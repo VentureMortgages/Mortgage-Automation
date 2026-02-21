@@ -20,7 +20,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Document Intake** - Monitor email and Finmo for incoming client documents
 - [x] **Phase 7: Classification & Filing** - Classify, rename, convert, and file docs to Google Drive
 - [x] **Phase 8: Tracking Integration** - Update checklist status and notify on PRE-readiness
-- [ ] **Phase 9: Automated Reminders** - Context-aware follow-ups for missing documents (disabled by default)
+- [x] **Phase 8.1: Feedback Loop (RAG)** - Capture Cat's email edits and auto-apply to future similar applications (INSERTED)
+- [ ] **Phase 10: Opportunity-Centric Architecture** - Move doc tracking from contact to opportunity level, support multi-deal clients
+- [ ] **Phase 11: Drive Folder Linking + Deal Subfolders** - Store folder IDs, create deal-specific subfolders, file deal docs correctly
+- [ ] **Phase 12: Original Document Preservation** - Always store originals, make renamed copy for filing
+- [ ] **Phase 13: Email Wording & Notifications** - Fix client-facing email, add PRE Complete + unexpected doc alerts
+- [ ] **Phase 14: CRM Views & Kill Switch** - MBP smart lists for doc tracking + automation toggle field
+- [ ] **Phase 15: Automated Reminders** - Escalating follow-ups with educational content and CRM trigger (tabled)
+- [ ] **Phase 16: Cat Onboarding SOP** - Create SOP document + walkthrough for Cat
+- [ ] **Phase 17: Test Cleanup & Production Switch** - Remove [TEST] records, switch APP_ENV, final verification
 
 ## Phase Details
 
@@ -159,19 +167,143 @@ Plans:
 - [x] 08-01-PLAN.md — CRM extensions (getContact, notes, doc-type matcher) + missingDocs stage format
 - [x] 08-02-PLAN.md — Tracking sync orchestrator, classification worker integration, barrel export
 
-### Phase 9: Automated Reminders
-**Goal**: System generates context-aware reminder drafts for clients with missing documents (disabled by default)
+### Phase 8.1: Feedback Loop (RAG) — INSERTED
+**Goal**: Capture Cat's email edits and use RAG to auto-apply similar past edits to future applications
 **Depends on**: Phase 8
-**Requirements**: REMIND-01, REMIND-02, REMIND-03, REMIND-04
 **Success Criteria** (what must be TRUE):
-  1. Scheduled job infrastructure exists to check for clients with missing documents (e.g., 3 days, 7 days after initial request)
-  2. Generated reminder email references specific missing documents by name (not generic "you have missing docs")
-  3. Reminders are disabled by default (global toggle OFF plus per-client toggle capability)
-  4. When Cat enables reminders for a client, reminder emails are drafted for Cat's review before sending (not auto-sent)
+  1. When Cat sends a draft email (via BCC detection), original vs sent HTML is diffed by Gemini
+  2. Feedback records (removed/added/reworded items + application context) stored in JSON
+  3. On new applications, similar past feedback is retrieved via embeddings + cosine similarity
+  4. Checklist items consistently removed across 2+ similar matches are auto-removed from new checklists
+  5. E2E verified: create draft → edit → send → capture feedback → verify stored record
+**Status**: COMPLETE (2026-02-21)
+
+### Phase 10: Opportunity-Centric Architecture
+**Goal**: Move doc tracking from contact-level to opportunity-level, supporting multi-deal clients naturally
+**Depends on**: Phase 8
+**Context**: Finmo already creates opportunities in GHL with rich custom fields (deal ID, link, borrower info, co-borrower info, transaction type). Our automation currently creates duplicate opportunities and stores doc tracking on the contact — which breaks when a client has multiple deals.
+**Success Criteria** (what must be TRUE):
+  1. System finds Finmo's existing opportunity (by Finmo deal ID) instead of creating its own
+  2. Doc tracking fields (missingDocs, receivedDocs, docStatus, counters) live on the opportunity, not the contact
+  3. Two simultaneous deals for the same client have independent checklists that don't overwrite each other
+  4. Document reuse still works: reusable docs (IDs, T4s, bank statements) from the client folder are applied across deals
+  5. Property-specific docs (purchase agreement, MLS, gift letter) are NOT reused across deals
+  6. Pipeline stage advances per-opportunity (not per-contact)
+  7. Contact-level custom fields for doc tracking are deprecated / removed
+  8. Existing single-deal clients continue to work (backward compatible)
+**Requirements**: OPP-01, OPP-02, OPP-03, OPP-04, OPP-05, OPP-06, OPP-07, OPP-08
+**Plans:** 5 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Opportunity types, config, and API functions (search, get, update, stage)
+- [ ] 10-02-PLAN.md — Setup scripts for opportunity-scoped custom fields (has checkpoint)
+- [ ] 10-03-PLAN.md — Checklist sync refactor: write doc tracking to opportunity
+- [ ] 10-04-PLAN.md — Tracking sync refactor: read/write opportunity + cross-deal reuse
+- [ ] 10-05-PLAN.md — Wire workers, update barrel export, clean up deprecated code
+
+### Phase 11: Drive Folder Linking + Deal Subfolders
+**Goal**: Client folder ID stored on CRM, deal-specific subfolders for property docs, correct filing everywhere
+**Depends on**: Phase 10 (opportunity-centric architecture)
+**Success Criteria** (what must be TRUE):
+  1. Client Drive folder ID stored on CRM contact when created (webhook worker)
+  2. Classification worker reads folder ID from contact before filing
+  3. Deal-specific subfolder created per Finmo application (e.g., `BRXM-F050382/Property/`)
+  4. Reusable docs (income, IDs, bank statements) filed at client folder level (shared across deals)
+  5. Deal-specific docs (purchase agreement, MLS, gift letter) filed in deal subfolder
+  6. Drive scanner checks both client folder (reusable) and deal subfolder (deal-specific) when building checklist
+  7. Falls back to DRIVE_ROOT_FOLDER_ID if no folder ID on contact (backward compat)
 **Plans**: TBD
 
 Plans:
-- [ ] 09-01: TBD during planning
+- [ ] 11-01: TBD during planning
+
+### Phase 12: Original Document Preservation
+**Goal**: Every received document is preserved in its original form, with a renamed copy filed using Cat's naming conventions
+**Depends on**: Phase 11 (needs correct client folder + deal subfolders)
+**Success Criteria** (what must be TRUE):
+  1. Every document received (email or Finmo) is uploaded to `ClientFolder/Originals/` with its original filename
+  2. A copy is made, renamed using Cat's naming conventions, and filed in the proper subfolder
+  3. Low-confidence documents are stored in Originals (not deleted from temp storage as today)
+  4. Cat can find the original file even if AI misclassified it
+  5. Document replacement: new version of same doc type updates the renamed copy but original is preserved as new file
+**Plans**: TBD
+
+Plans:
+- [ ] 12-01: TBD during planning
+
+### Phase 13: Email Wording & Notifications
+**Goal**: Client-facing emails direct to admin@, Cat receives key alerts, unexpected docs flagged
+**Depends on**: Phase 10 (opportunity-centric for correct alert context)
+**Success Criteria** (what must be TRUE):
+  1. Doc request email tells clients to send docs to admin@venturemortgages.com (not docs@ or dev@)
+  2. If docs@ receives an email from a non-@venturemortgages.com domain, alert email sent to admin@ for Cat
+  3. When all PRE documents are received (docStatus = "PRE Complete"), email sent to admin@ for Cat to review before passing to Taylor
+  4. When an incoming doc is classified but doesn't match any checklist item (no-match-in-checklist), alert Cat at admin@ ("Unexpected doc received: [type] for [client] — not on checklist, filed to Drive")
+  5. No alert for normal doc arrivals via email (Cat already sees those in admin@)
+**Note**: Finmo "smart docs" is currently OFF — no Finmo doc upload alerts needed unless they turn it on
+**Plans**: TBD
+
+Plans:
+- [ ] 13-01: TBD during planning
+
+### Phase 14: CRM Views & Kill Switch
+**Goal**: Cat can track missing docs in MBP views + automation can be toggled per-client or globally from MBP
+**Depends on**: Phase 10 (opportunity-centric — views show per-deal status)
+**Success Criteria** (what must be TRUE):
+  1. MyBrokerPro smart list or pipeline view shows opportunities grouped by docStatus (In Progress / PRE Complete / All Complete)
+  2. Cat can see which specific docs are missing for each deal from the CRM view
+  3. Leverages existing MyBrokerPro features (smart lists, pipeline views, custom field filters) — no custom dashboard
+  4. "Doc Automation" toggle field on contact or opportunity — webhook worker checks this before processing
+  5. Global kill switch also exposed as a MBP field (so Taylor/Cat can disable without server access)
+**Plans**: TBD
+
+Plans:
+- [ ] 14-01: TBD during planning
+
+### Phase 15: Automated Reminders (Tabled)
+**Goal**: Escalating context-aware follow-ups for missing documents with educational content
+**Depends on**: Phase 13, Phase 14
+**Success Criteria** (what must be TRUE):
+  1. Reminder tone/content escalates over time as client delays (friendly → firmer → urgent)
+  2. Reminders link to Venture Mortgages website pages explaining how to obtain each document type
+  3. CRM trigger button: Cat clicks → system reads missingDocs → generates follow-up draft in Gmail
+  4. Follow-up drafts go through same BCC feedback loop (RAG learns from Cat's edits to follow-ups too)
+  5. Reminders disabled by default (global + per-client toggle via Phase 14)
+  6. Cat can trigger from MyBrokerPro or Gmail — TBD based on Cat's preference
+**Status**: Tabled — requirements captured, will implement after verification of Phases 10-14
+**Plans**: TBD
+
+Plans:
+- [ ] 15-01: TBD during planning
+
+### Phase 16: Cat Onboarding SOP
+**Goal**: Create documentation and walkthrough for Cat to use the system
+**Depends on**: Phases 10-14 (system should be stable before onboarding)
+**Success Criteria** (what must be TRUE):
+  1. SOP document covers: where drafts appear, how to edit/send, what CRM fields mean, what to do on manual review tasks
+  2. Document explains the feedback loop (why editing drafts directly matters)
+  3. Troubleshooting section: what to do if something looks wrong, how to disable
+  4. 15-minute walkthrough session with Cat (Taylor to schedule)
+**Plans**: TBD
+
+Plans:
+- [ ] 16-01: TBD during planning
+
+### Phase 17: Test Cleanup & Production Switch
+**Goal**: Clean up dev artifacts, remove [TEST] records, verify production readiness
+**Depends on**: Phase 16 (onboarding done, ready to go live)
+**Success Criteria** (what must be TRUE):
+  1. All [TEST] prefixed opportunities, tasks, and contacts cleaned up from MBP
+  2. Railway APP_ENV verified as production
+  3. EMAIL_BCC set to docs@venturemortgages.com
+  4. EMAIL_SENDER set to admin@venturemortgages.com
+  5. SPF/DKIM/DMARC verified on venturemortgages.com (Taylor action item — flagged if not done)
+  6. End-to-end test with one real Finmo application in production mode
+  7. data/feedback-records.json test data cleared
+**Plans**: TBD
+
+Plans:
+- [ ] 17-01: TBD during planning
 
 ## Progress
 
@@ -188,8 +320,24 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Document Intake | 4/4 | Complete | 2026-02-14 |
 | 7. Classification & Filing | 5/5 | Complete | 2026-02-15 |
 | 8. Tracking Integration | 2/2 | Complete | 2026-02-16 |
-| 9. Automated Reminders | 0/TBD | Not started | - |
+| 8.1 Feedback Loop (RAG) | N/A | Complete (outside GSD) | 2026-02-21 |
+| 10. Opportunity-Centric Architecture | 0/5 | Planned | - |
+| 11. Drive Folder Linking + Deal Subfolders | 0/TBD | Not started (blocked by 10) | - |
+| 12. Original Doc Preservation | 0/TBD | Not started (blocked by 11) | - |
+| 13. Email Wording & Notifications | 0/TBD | Not started | - |
+| 14. CRM Views & Kill Switch | 0/TBD | Not started | - |
+| 15. Automated Reminders | 0/TBD | Tabled | - |
+| 16. Cat Onboarding SOP | 0/TBD | Not started (after 10-14) | - |
+| 17. Test Cleanup & Production Switch | 0/TBD | Not started (last phase) | - |
+
+### Action Items (Non-Code)
+| Item | Owner | Status |
+|------|-------|--------|
+| SPF/DKIM/DMARC setup on venturemortgages.com | Taylor (DNS registrar) | NOT DONE — emails may go to spam |
+| Confirm Finmo "smart docs" stays OFF (no overlap) | Taylor | Confirmed OFF (2026-02-21) |
+| Ask Cat notification preferences | Taylor/Luca | Parked |
+| Schedule Cat onboarding walkthrough | Taylor | After Phase 16 |
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-16 (Phase 8 complete)*
+*Last updated: 2026-02-21 (Phases 10-17 + action items from audit)*
