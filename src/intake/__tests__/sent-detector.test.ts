@@ -47,6 +47,12 @@ vi.mock('../../crm/config.js', () => ({
   },
 }));
 
+const mockCaptureFeedback = vi.hoisted(() => vi.fn());
+
+vi.mock('../../feedback/capture.js', () => ({
+  captureFeedback: mockCaptureFeedback,
+}));
+
 // ---------------------------------------------------------------------------
 // Import after mocks
 // ---------------------------------------------------------------------------
@@ -136,6 +142,7 @@ describe('Sent Detector', () => {
       mockUpsertContact.mockResolvedValue({ contactId: 'contact-abc', isNew: false });
       mockMoveToCollectingDocs.mockResolvedValue('opp-123');
       mockCreateAuditNote.mockResolvedValue('note-456');
+      mockCaptureFeedback.mockResolvedValue(undefined);
     });
 
     it('updates docRequestSent field on CRM contact', async () => {

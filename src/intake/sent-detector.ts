@@ -19,6 +19,7 @@ import { getContact, upsertContact } from '../crm/contacts.js';
 import { createAuditNote } from '../crm/notes.js';
 import { moveToCollectingDocs } from '../crm/opportunities.js';
 import { crmConfig } from '../crm/config.js';
+import { captureFeedback } from '../feedback/capture.js';
 import type { GmailMessageMeta } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -110,6 +111,13 @@ export async function handleSentDetection(
     });
   } catch (err) {
     errors.push(`Audit note failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // 5. Capture feedback from Cat's edits (non-critical)
+  try {
+    await captureFeedback(meta.messageId, contactId);
+  } catch (err) {
+    errors.push(`Feedback capture failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   return {

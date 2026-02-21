@@ -75,6 +75,15 @@ vi.mock('../../drive/index.js', () => ({
   filterChecklistByExistingDocs: vi.fn(),
 }));
 
+vi.mock('../../feedback/index.js', () => ({
+  feedbackConfig: { enabled: false },
+  findSimilarEdits: vi.fn(() => Promise.resolve([])),
+  applyFeedbackToChecklist: vi.fn((checklist: unknown) => checklist),
+  buildContextText: vi.fn(() => 'Single purchase, salaried'),
+}));
+
+vi.mock('../../feedback/types.js', () => ({}));
+
 // Prevent BullMQ from creating real connections
 vi.mock('bullmq', () => ({
   Worker: vi.fn(),
@@ -375,6 +384,14 @@ describe('processJob', () => {
       recipientEmail: 'jane@example.com',
       borrowerFirstNames: ['Jane'],
       contactId: 'crm-contact-456',
+      applicationContext: {
+        goal: 'purchase',
+        incomeTypes: ['employed/salaried'],
+        propertyTypes: [],
+        borrowerCount: 1,
+        hasGiftDP: false,
+        hasRentalIncome: false,
+      },
     });
   });
 

@@ -20,6 +20,7 @@ import { emailConfig } from './config.js';
 import { generateEmailBody } from './body.js';
 import { encodeMimeMessage } from './mime.js';
 import { createGmailDraft } from './gmail-client.js';
+import { storeOriginalEmail } from '../feedback/original-store.js';
 
 /**
  * Creates an email draft in admin@venturemortgages.com's Gmail.
@@ -43,6 +44,20 @@ export async function createEmailDraft(
     docInboxEmail: emailConfig.docInbox,
     alreadyOnFile: input.alreadyOnFile,
   });
+
+  // 1b. Store original for feedback capture (non-fatal)
+  if (input.contactId && input.applicationContext) {
+    try {
+      await storeOriginalEmail(input.contactId, {
+        html: body,
+        context: input.applicationContext,
+      });
+    } catch (err) {
+      console.error('[email] Failed to store original for feedback (non-fatal)', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   // 2. Determine recipient (dev override for safety)
   const recipient = emailConfig.recipientOverride ?? input.recipientEmail;

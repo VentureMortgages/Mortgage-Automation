@@ -14,6 +14,7 @@
 
 import type { GeneratedChecklist } from '../checklist/types/index.js';
 import type { AlreadyOnFileDoc } from '../drive/checklist-filter.js';
+import type { ApplicationContext } from '../feedback/types.js';
 
 // ---------------------------------------------------------------------------
 // Email Body Generation
@@ -71,6 +72,8 @@ export interface CreateEmailDraftInput {
   contactId: string;
   /** Documents already on file from a previous application (optional) */
   alreadyOnFile?: AlreadyOnFileDoc[];
+  /** Application context for feedback capture (goal, income types, etc.) */
+  applicationContext?: ApplicationContext;
 }
 
 /** Result of creating a Gmail draft */

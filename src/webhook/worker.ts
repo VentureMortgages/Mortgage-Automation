@@ -33,6 +33,8 @@ import { createBudgetSheet, buildClientFolderName, budgetConfig } from '../budge
 import { getDriveClient } from '../classification/drive-client.js';
 import { findOrCreateFolder } from '../classification/filer.js';
 import { scanClientFolder, filterChecklistByExistingDocs } from '../drive/index.js';
+import { feedbackConfig, findSimilarEdits, applyFeedbackToChecklist, buildContextText } from '../feedback/index.js';
+import type { ApplicationContext } from '../feedback/types.js';
 import type { FilterResult } from '../drive/index.js';
 import type { JobData, ProcessingResult } from './types.js';
 
@@ -103,17 +105,47 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     }
   }
 
-  // 5. Use filtered checklist for both email and CRM
+  // 5. Build application context for feedback capture
+  const applicationContext: ApplicationContext = {
+    goal: finmoApp.application.goal,
+    incomeTypes: finmoApp.incomes.map(i => `${i.source}/${i.payType ?? 'none'}`),
+    propertyTypes: [...new Set(finmoApp.properties.map(p => p.use).filter(Boolean))] as string[],
+    borrowerCount: finmoApp.borrowers.length,
+    hasGiftDP: finmoApp.assets.some(a => a.type === 'gift' && (a.downPayment ?? 0) > 0),
+    hasRentalIncome: finmoApp.properties.some(p => (p.rentalIncome ?? 0) > 0),
+  };
+
+  // 6. Use filtered checklist for both email and CRM
   // The filtered checklist has on-file items removed; preReceivedDocs tells the
   // CRM mapper how many items were already received so totals are computed correctly.
-  const emailChecklist = filterResult?.filteredChecklist ?? checklist;
+  let emailChecklist = filterResult?.filteredChecklist ?? checklist;
   const alreadyOnFile = filterResult?.alreadyOnFile ?? [];
   const preReceivedDocs = alreadyOnFile.map(d => ({
     name: d.checklistItem.document,
     stage: d.checklistItem.stage,
   }));
 
-  // 6. Sync to CRM (with pre-received docs if any)
+  // 7. Apply feedback from Cat's past edits (non-fatal)
+  try {
+    if (feedbackConfig.enabled) {
+      const contextText = buildContextText(applicationContext);
+      const matches = await findSimilarEdits(contextText);
+      if (matches.length > 0) {
+        emailChecklist = applyFeedbackToChecklist(emailChecklist, matches);
+        console.log('[worker] Feedback applied', {
+          applicationId,
+          matchCount: matches.length,
+        });
+      }
+    }
+  } catch (err) {
+    console.error('[worker] Feedback retrieval failed (non-fatal)', {
+      applicationId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  // 8. Sync to CRM (with pre-received docs if any)
   const crmResult = await syncChecklistToCrm({
     checklist: emailChecklist,
     borrowerEmail: mainBorrower.email,
@@ -131,13 +163,14 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     errors: crmResult.errors.length,
   });
 
-  // 7. Create email draft (uses filtered checklist + on-file section)
+  // 9. Create email draft (uses filtered checklist + on-file section)
   const emailResult = await createEmailDraft({
     checklist: emailChecklist,
     recipientEmail: mainBorrower.email,
     borrowerFirstNames: finmoApp.borrowers.map(b => b.firstName),
     contactId: crmResult.contactId,
     alreadyOnFile: alreadyOnFile.length > 0 ? alreadyOnFile : undefined,
+    applicationContext,
   });
 
   console.log('[worker] Email draft created', {
@@ -146,7 +179,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     subject: emailResult.subject,
   });
 
-  // 8. Create budget sheet (non-fatal — errors logged but don't fail the job)
+  // 10. Create budget sheet (non-fatal — errors logged but don't fail the job)
   let budgetSheetId: string | null = null;
   try {
     if (budgetConfig.enabled) {
