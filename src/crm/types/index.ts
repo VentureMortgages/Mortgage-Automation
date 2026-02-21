@@ -28,6 +28,10 @@ export const LOCATION_ID = 'bzzWH2mLpCr7HHulO3bW';
 // ============================================================================
 
 /**
+ * @deprecated Phase 10: Contact-level doc tracking fields are deprecated.
+ * Use OPP_DOC_TRACKING_FIELD_DEFS for opportunity-scoped fields instead.
+ * These definitions are retained only for the setup script's --deprecate-contact-fields flag.
+ *
  * Definitions for the 9 custom fields needed for document tracking.
  * Used by the create-custom-fields setup script to provision fields in MyBrokerPro.
  * After creation, the returned IDs are stored in .env and loaded via crmConfig.fieldIds.

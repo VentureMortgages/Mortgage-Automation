@@ -13,6 +13,10 @@ export interface CrmConfig {
     cat: string;
     taylor: string;
   };
+  /**
+   * @deprecated Phase 10: Use opportunityFieldIds instead. Contact-level fieldIds
+   * retained only for backward-compatible fallback when no opportunity is found.
+   */
   fieldIds: {
     docStatus: string;
     docRequestSent: string;
@@ -111,11 +115,21 @@ export function validateConfig(): void {
   if (!crmConfig.userIds.cat) missing.push('GHL_USER_CAT_ID');
   if (!crmConfig.userIds.taylor) missing.push('GHL_USER_TAYLOR_ID');
 
+  // Contact-level field IDs: warn but don't throw (deprecated in Phase 10,
+  // retained for backward-compatible fallback when no opportunity exists)
+  const contactFieldWarnings: string[] = [];
   for (const [key, value] of Object.entries(crmConfig.fieldIds)) {
     if (!value) {
       const envKey = fieldIdToEnvKey(key);
-      missing.push(envKey);
+      contactFieldWarnings.push(envKey);
     }
+  }
+
+  if (contactFieldWarnings.length > 0) {
+    console.warn(
+      '[CRM config] Contact-level field IDs not configured (deprecated — use opportunity fields instead):',
+      contactFieldWarnings,
+    );
   }
 
   for (const [key, value] of Object.entries(crmConfig.stageIds)) {

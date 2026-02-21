@@ -5,10 +5,16 @@
  *   npx tsx src/crm/setup/create-custom-fields.ts
  * Create opportunity fields (Phase 10):
  *   npx tsx src/crm/setup/create-custom-fields.ts --model=opportunity
+ * Deprecate contact-level doc tracking fields (Phase 10):
+ *   npx tsx src/crm/setup/create-custom-fields.ts --deprecate-contact-fields
  *
  * This creates 9 custom fields in a "Doc Tracking" (opportunity) or
  * "Finmo Integration" (contact) field group and prints the resulting
  * field IDs in .env format for copy-paste.
+ *
+ * The --deprecate-contact-fields flag renames the 9 contact-level doc tracking
+ * fields to "DEPRECATED - [name]" via PUT API, marking them as obsolete in the
+ * MyBrokerPro UI. Field IDs remain valid (rename does not change IDs).
  *
  * If a field already exists (422/409 error), the script prints a warning
  * and continues with the remaining fields.
@@ -174,10 +180,86 @@ async function findOppFieldGroup(): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
+// Deprecate contact-level fields (Phase 10)
+// ---------------------------------------------------------------------------
+
+/** Env key -> GHL_FIELD_* env var mapping for contact-level doc tracking fields */
+const CONTACT_FIELD_ENV_MAP: Record<string, string> = {
+  GHL_FIELD_DOC_STATUS_ID: 'Doc Collection Status',
+  GHL_FIELD_DOC_REQUEST_SENT_ID: 'Doc Request Sent Date',
+  GHL_FIELD_MISSING_DOCS_ID: 'Missing Docs',
+  GHL_FIELD_RECEIVED_DOCS_ID: 'Received Docs',
+  GHL_FIELD_PRE_TOTAL_ID: 'PRE Docs Total',
+  GHL_FIELD_PRE_RECEIVED_ID: 'PRE Docs Received',
+  GHL_FIELD_FULL_TOTAL_ID: 'FULL Docs Total',
+  GHL_FIELD_FULL_RECEIVED_ID: 'FULL Docs Received',
+  GHL_FIELD_LAST_DOC_RECEIVED_ID: 'Last Doc Received Date',
+};
+
+/**
+ * Renames contact-level doc tracking fields to "DEPRECATED - [name]" in MBP.
+ * Uses PUT /locations/:locationId/customFields/:fieldId to rename each field.
+ * Field IDs remain valid after rename (only the display name changes).
+ */
+async function deprecateContactFields(): Promise<void> {
+  console.log('Deprecating contact-level doc tracking fields...');
+  console.log(`Location: ${LOCATION_ID}`);
+  console.log('');
+
+  let renamed = 0;
+  let skipped = 0;
+
+  for (const [envKey, originalName] of Object.entries(CONTACT_FIELD_ENV_MAP)) {
+    const fieldId = process.env[envKey];
+
+    if (!fieldId) {
+      console.warn(`  SKIP: ${envKey} not set in .env (field "${originalName}")`);
+      skipped++;
+      continue;
+    }
+
+    const newName = `DEPRECATED - ${originalName}`;
+    const url = `${BASE_URL}/locations/${LOCATION_ID}/customFields/${fieldId}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        console.error(`  ERROR: Failed to rename "${originalName}" (${response.status}): ${body}`);
+        skipped++;
+        continue;
+      }
+
+      console.log(`  Renamed "${originalName}" -> "${newName}" (fieldId: ${fieldId})`);
+      renamed++;
+    } catch (err) {
+      console.error(`  ERROR: ${err instanceof Error ? err.message : String(err)}`);
+      skipped++;
+    }
+  }
+
+  console.log('');
+  console.log('='.repeat(60));
+  console.log(`Done. Renamed: ${renamed}, Skipped: ${skipped}`);
+  console.log('='.repeat(60));
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
+  // Check for --deprecate-contact-fields flag (run deprecation and exit early)
+  if (process.argv.includes('--deprecate-contact-fields')) {
+    await deprecateContactFields();
+    return;
+  }
+
   // Parse --model CLI argument (default: 'contact' for backward compatibility)
   const modelArg = process.argv.find(a => a.startsWith('--model='));
   const model = modelArg ? modelArg.split('=')[1] : 'contact';
