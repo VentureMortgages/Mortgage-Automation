@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 11-drive-folder-linking-deal-subfolders
-Plan: 01 (COMPLETE)
-Status: 11-01 complete — CRM config, types, contact helper, setup script for Drive folder linking
-Last activity: 2026-02-22 — 11-01 complete (Drive folder field defs, config, getContactDriveFolderId, --drive-fields flag)
+Plan: 02 (COMPLETE)
+Status: 11-02 complete — Webhook worker persists folder IDs, creates deal subfolders, dual-scans both locations
+Last activity: 2026-02-22 — 11-02 complete (folder ID persistence, deal subfolder creation, extractDealReference, dual-scan)
 
-Progress: [█████████░] 91% (core pipeline complete, Phase 11 plan 1/3 done)
+Progress: [█████████░] 93% (core pipeline complete, Phase 11 plan 2/3 done)
 
 ### Completed outside GSD:
 - **Feedback Loop (RAG)** — Phase 8.1, implemented + E2E verified (2026-02-21)
@@ -25,7 +25,7 @@ Progress: [█████████░] 91% (core pipeline complete, Phase 11
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 29
+- Total plans completed: 30
 - Average duration: 4 min
 - Total execution time: 2.1 hours
 
@@ -42,10 +42,10 @@ Progress: [█████████░] 91% (core pipeline complete, Phase 11
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 
 | 10-opportunity-centric-architecture | 5/5 | 19 min | 4 min |
-| 11-drive-folder-linking-deal-subfolders | 1/3 | 3 min | 3 min |
+| 11-drive-folder-linking-deal-subfolders | 2/3 | 5 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 10-03 (4 min), 10-04 (6 min), 10-05 (4 min), 11-01 (3 min)
+- Last 5 plans: 10-04 (6 min), 10-05 (4 min), 11-01 (3 min), 11-02 (2 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -167,6 +167,10 @@ Progress: [█████████░] 91% (core pipeline complete, Phase 11
 - Drive folder field defs are standalone constants (not part of DOC_TRACKING or OPP_DOC_TRACKING arrays)
 - driveFolderIdFieldId and oppDealSubfolderIdFieldId are top-level on CrmConfig (span contact/opportunity models)
 - Validation warns but does not throw for missing drive folder field IDs (same pattern as opportunity field warnings)
+- Folder ID persistence uses upsertContact with customFields to store clientFolderId on contact before CRM sync step
+- Deal subfolder name derived from opportunity name via extractDealReference (lastIndexOf ' - ' pattern)
+- Dual-scan merges client + deal folder docs with spread operator before filtering
+- All CRM persistence operations wrapped in non-fatal try/catch (failures must not block pipeline)
 
 ### Pending Todos
 
@@ -240,16 +244,17 @@ None yet.
 
 **Phase 11 (Drive Folder Linking + Deal Subfolders):** IN PROGRESS
 - 11-01 complete: CRM config, types, contact helper, setup script --drive-fields flag (692 tests pass)
-- Next: 11-02 (folder creation service) and 11-03 (worker integration)
+- 11-02 complete: webhook worker folder ID persistence, deal subfolder creation, dual-scan (698 tests pass)
+- Next: 11-03 (E2E testing / finalization)
 - Setup script --drive-fields must be run against live CRM to get field IDs
 
 ## Session Continuity
 
-Last session: 2026-02-22 (11-01 execution)
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-02-22 (11-02 execution)
+Stopped at: Completed 11-02-PLAN.md
 Resume file: None
-Next: 11-02-PLAN.md (folder creation and linking service)
+Next: 11-03-PLAN.md (E2E testing / finalization)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-22 (11-01 complete, Phase 11 Drive folder linking in progress)*
+*Last updated: 2026-02-22 (11-02 complete, Phase 11 Drive folder linking 2/3 done)*
