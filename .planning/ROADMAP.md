@@ -213,7 +213,7 @@ Plans:
   5. Deal-specific docs (purchase agreement, MLS, gift letter) filed in deal subfolder
   6. Drive scanner checks both client folder (reusable) and deal subfolder (deal-specific) when building checklist
   7. Falls back to DRIVE_ROOT_FOLDER_ID if no folder ID on contact (backward compat)
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 11-01-PLAN.md — CRM config, types, contact helper, and setup script for Drive folder fields
@@ -325,7 +325,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Tracking Integration | 2/2 | Complete | 2026-02-16 |
 | 8.1 Feedback Loop (RAG) | N/A | Complete (outside GSD) | 2026-02-21 |
 | 10. Opportunity-Centric Architecture | 5/5 | Complete    | 2026-02-21 |
-| 11. Drive Folder Linking + Deal Subfolders | 3/3 | Complete | 2026-02-22 |
+| 11. Drive Folder Linking + Deal Subfolders | 3/3 | Complete    | 2026-02-22 |
 | 12. Original Doc Preservation | 0/TBD | Not started | - |
 | 13. Email Wording & Notifications | 0/TBD | Not started | - |
 | 14. CRM Views & Kill Switch | 0/TBD | Not started | - |
