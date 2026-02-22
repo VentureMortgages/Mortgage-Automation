@@ -215,6 +215,31 @@ export async function getContact(contactId: string): Promise<CrmContact> {
 }
 
 // ============================================================================
+// Drive Folder Helpers
+// ============================================================================
+
+/**
+ * Reads the Drive folder ID from a contact's custom fields.
+ *
+ * Pure function: takes the contact record and field ID as parameters,
+ * following the same pattern as parseContactTrackingFields in tracking-sync.ts.
+ *
+ * @param contact - The CRM contact record with customFields
+ * @param fieldId - The custom field ID for Drive Folder ID (from crmConfig.driveFolderIdFieldId)
+ * @returns The Google Drive folder ID string, or null if not set
+ */
+export function getContactDriveFolderId(
+  contact: CrmContact,
+  fieldId: string,
+): string | null {
+  const field = contact.customFields.find((f) => f.id === fieldId);
+  if (!field || !field.value || typeof field.value !== 'string') {
+    return null;
+  }
+  return field.value;
+}
+
+// ============================================================================
 // Internal — HTTP helper with error classification
 // ============================================================================
 

@@ -45,6 +45,10 @@ export interface CrmConfig {
     collectingDocuments: string;
     allDocsReceived: string;
   };
+  /** Contact-level custom field ID for the client's Google Drive folder */
+  driveFolderIdFieldId: string;
+  /** Opportunity-level custom field ID for the deal subfolder within the client's Drive folder */
+  oppDealSubfolderIdFieldId: string;
 }
 
 function requiredEnv(key: string): string {
@@ -102,6 +106,8 @@ export const crmConfig: CrmConfig = {
     collectingDocuments: optionalEnv('GHL_STAGE_COLLECTING_DOCS_ID'),
     allDocsReceived: optionalEnv('GHL_STAGE_ALL_DOCS_RECEIVED_ID'),
   },
+  driveFolderIdFieldId: optionalEnv('GHL_FIELD_DRIVE_FOLDER_ID'),
+  oppDealSubfolderIdFieldId: optionalEnv('GHL_OPP_FIELD_DEAL_SUBFOLDER_ID'),
 };
 
 /**
@@ -162,6 +168,18 @@ export function validateConfig(): void {
     console.warn(
       '[CRM config] Opportunity field IDs not yet configured (run setup script with --model=opportunity):',
       oppWarnings,
+    );
+  }
+
+  // Drive folder field IDs: warn but don't throw (populated after setup script runs with --drive-fields)
+  const driveWarnings: string[] = [];
+  if (!crmConfig.driveFolderIdFieldId) driveWarnings.push('GHL_FIELD_DRIVE_FOLDER_ID');
+  if (!crmConfig.oppDealSubfolderIdFieldId) driveWarnings.push('GHL_OPP_FIELD_DEAL_SUBFOLDER_ID');
+
+  if (driveWarnings.length > 0) {
+    console.warn(
+      '[CRM config] Drive folder field IDs not yet configured (run setup script with --drive-fields):',
+      driveWarnings,
     );
   }
 }

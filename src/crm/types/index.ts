@@ -89,6 +89,24 @@ export const DOC_TRACKING_FIELD_DEFS = [
 export type DocTrackingFieldDef = (typeof DOC_TRACKING_FIELD_DEFS)[number];
 
 // ============================================================================
+// Drive Folder Linking Field Definitions — Standalone (not part of doc tracking)
+// ============================================================================
+
+/** Contact-level field for storing the client's Google Drive folder ID */
+export const DRIVE_FOLDER_FIELD_DEF = {
+  envKey: 'GHL_FIELD_DRIVE_FOLDER_ID',
+  name: 'Drive Folder ID',
+  dataType: 'TEXT' as const,
+};
+
+/** Opportunity-level field for storing the deal subfolder ID within the client's Drive folder */
+export const OPP_DEAL_SUBFOLDER_FIELD_DEF = {
+  envKey: 'GHL_OPP_FIELD_DEAL_SUBFOLDER_ID',
+  name: 'Deal Subfolder ID',
+  dataType: 'TEXT' as const,
+};
+
+// ============================================================================
 // CRM Interfaces
 // ============================================================================
 
