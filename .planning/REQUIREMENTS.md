@@ -73,6 +73,16 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **OPP-07**: Contact-level custom fields for doc tracking are deprecated / removed
 - [ ] **OPP-08**: Existing single-deal clients continue to work (backward compatible)
 
+### Drive Folder Linking
+
+- [ ] **DRIVE-01**: Client Drive folder ID stored on CRM contact custom field when folder is created by webhook worker
+- [ ] **DRIVE-02**: Classification worker reads client folder ID from CRM contact before filing (not global root)
+- [ ] **DRIVE-03**: Deal-specific subfolder created per Finmo application (named by deal reference, e.g., `BRXM-F050382/`), subfolder ID stored on CRM opportunity
+- [ ] **DRIVE-04**: Reusable docs (income, IDs, bank statements) filed at client folder level, shared across deals
+- [ ] **DRIVE-05**: Deal-specific docs (purchase agreement, MLS, gift letter) filed in deal subfolder
+- [ ] **DRIVE-06**: Drive scanner checks both client folder (reusable docs) and deal subfolder (deal-specific docs) when building checklist
+- [ ] **DRIVE-07**: System falls back to DRIVE_ROOT_FOLDER_ID when CRM contact has no folder ID (backward compat)
+
 ### Reminders
 
 - [ ] **REMIND-01**: System has scheduled reminder infrastructure for missing documents (e.g., 3 days, 7 days after initial request)
@@ -175,12 +185,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OPP-06 | Phase 10 | Pending |
 | OPP-07 | Phase 10 | Pending |
 | OPP-08 | Phase 10 | Pending |
+| DRIVE-01 | Phase 11 | Pending |
+| DRIVE-02 | Phase 11 | Pending |
+| DRIVE-03 | Phase 11 | Pending |
+| DRIVE-04 | Phase 11 | Pending |
+| DRIVE-05 | Phase 11 | Pending |
+| DRIVE-06 | Phase 11 | Pending |
+| DRIVE-07 | Phase 11 | Pending |
 
 **Coverage:**
-- v1 requirements: 46 total
-- Mapped to phases: 46
+- v1 requirements: 53 total
+- Mapped to phases: 53
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-21 (Phase 10 OPP requirements added)*
+*Last updated: 2026-02-21 (Phase 11 DRIVE requirements added)*

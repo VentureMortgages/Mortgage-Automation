@@ -204,6 +204,7 @@ Plans:
 ### Phase 11: Drive Folder Linking + Deal Subfolders
 **Goal**: Client folder ID stored on CRM, deal-specific subfolders for property docs, correct filing everywhere
 **Depends on**: Phase 10 (opportunity-centric architecture)
+**Requirements**: DRIVE-01, DRIVE-02, DRIVE-03, DRIVE-04, DRIVE-05, DRIVE-06, DRIVE-07
 **Success Criteria** (what must be TRUE):
   1. Client Drive folder ID stored on CRM contact when created (webhook worker)
   2. Classification worker reads folder ID from contact before filing
@@ -212,10 +213,12 @@ Plans:
   5. Deal-specific docs (purchase agreement, MLS, gift letter) filed in deal subfolder
   6. Drive scanner checks both client folder (reusable) and deal subfolder (deal-specific) when building checklist
   7. Falls back to DRIVE_ROOT_FOLDER_ID if no folder ID on contact (backward compat)
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 11-01: TBD during planning
+- [ ] 11-01-PLAN.md — CRM config, types, contact helper, and setup script for Drive folder fields
+- [ ] 11-02-PLAN.md — Webhook worker folder persistence, deal subfolder creation, dual Drive scan
+- [ ] 11-03-PLAN.md — Classification worker CRM-based folder resolution and property/reusable routing
 
 ### Phase 12: Original Document Preservation
 **Goal**: Every received document is preserved in its original form, with a renamed copy filed using Cat's naming conventions
@@ -322,7 +325,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Tracking Integration | 2/2 | Complete | 2026-02-16 |
 | 8.1 Feedback Loop (RAG) | N/A | Complete (outside GSD) | 2026-02-21 |
 | 10. Opportunity-Centric Architecture | 5/5 | Complete    | 2026-02-21 |
-| 11. Drive Folder Linking + Deal Subfolders | 0/TBD | Not started (blocked by 10) | - |
+| 11. Drive Folder Linking + Deal Subfolders | 0/3 | Not started | - |
 | 12. Original Doc Preservation | 0/TBD | Not started (blocked by 11) | - |
 | 13. Email Wording & Notifications | 0/TBD | Not started | - |
 | 14. CRM Views & Kill Switch | 0/TBD | Not started | - |
@@ -340,4 +343,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-21 (Phase 10 complete — all 5 plans executed)*
+*Last updated: 2026-02-21 (Phase 11 planned — 3 plans in 2 waves)*
