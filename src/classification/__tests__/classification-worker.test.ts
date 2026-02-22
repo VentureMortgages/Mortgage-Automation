@@ -79,9 +79,45 @@ vi.mock('../filer.js', () => mockFiler);
 
 const mockContacts = vi.hoisted(() => ({
   resolveContactId: vi.fn(),
+  getContact: vi.fn(),
+  getContactDriveFolderId: vi.fn(),
 }));
 
 vi.mock('../../crm/contacts.js', () => mockContacts);
+
+const mockCrmConfig = vi.hoisted(() => ({
+  crmConfig: {
+    driveFolderIdFieldId: 'field-drive-folder-id',
+    oppDealSubfolderIdFieldId: 'field-deal-subfolder-id',
+  },
+}));
+
+vi.mock('../../crm/config.js', () => mockCrmConfig);
+
+const mockOpportunities = vi.hoisted(() => ({
+  findOpportunityByFinmoId: vi.fn(),
+  getOpportunityFieldValue: vi.fn(),
+}));
+
+vi.mock('../../crm/opportunities.js', () => mockOpportunities);
+
+vi.mock('../../crm/types/index.js', () => ({
+  PIPELINE_IDS: { LIVE_DEALS: 'pipeline-live-deals' },
+}));
+
+const mockDocExpiry = vi.hoisted(() => ({
+  PROPERTY_SPECIFIC_TYPES: new Set([
+    'purchase_agreement',
+    'mls_listing',
+    'property_tax_bill',
+    'home_insurance',
+    'gift_letter',
+    'lease_agreement',
+    'mortgage_statement',
+  ]),
+}));
+
+vi.mock('../../drive/doc-expiry.js', () => mockDocExpiry);
 
 const mockTasks = vi.hoisted(() => ({
   createReviewTask: vi.fn(),
@@ -164,6 +200,19 @@ describe('classification-worker', () => {
     mockFiler.findExistingFile.mockResolvedValue(null);
     mockFiler.uploadFile.mockResolvedValue('drive-file-789');
     mockContacts.resolveContactId.mockResolvedValue({ contactId: 'contact-abc', resolvedVia: 'email' });
+    // Default: getContact returns a contact without Drive folder ID (fallback to root)
+    mockContacts.getContact.mockResolvedValue({
+      id: 'contact-abc',
+      email: 'client@example.com',
+      firstName: 'Terry',
+      lastName: 'Smith',
+      customFields: [],
+    });
+    // Default: no Drive folder ID on contact (triggers fallback to DRIVE_ROOT_FOLDER_ID)
+    mockContacts.getContactDriveFolderId.mockReturnValue(null);
+    // Default: no opportunity match
+    mockOpportunities.findOpportunityByFinmoId.mockResolvedValue(null);
+    mockOpportunities.getOpportunityFieldValue.mockReturnValue(undefined);
     mockTasks.createReviewTask.mockResolvedValue('task-xyz');
     mockTrackingSync.updateDocTracking.mockResolvedValue({
       updated: true,
@@ -340,14 +389,16 @@ describe('classification-worker', () => {
       const result = await processClassificationJob(job);
 
       expect(result.filed).toBe(true);
-      expect(mockTrackingSync.updateDocTracking).toHaveBeenCalledWith({
-        senderEmail: 'client@example.com',
-        documentType: 't4',
-        driveFileId: 'drive-file-789',
-        source: 'gmail',
-        receivedAt: '2026-02-15T12:00:00Z',
-        contactId: 'contact-abc',
-      });
+      expect(mockTrackingSync.updateDocTracking).toHaveBeenCalledWith(
+        expect.objectContaining({
+          senderEmail: 'client@example.com',
+          documentType: 't4',
+          driveFileId: 'drive-file-789',
+          source: 'gmail',
+          receivedAt: '2026-02-15T12:00:00Z',
+          contactId: 'contact-abc',
+        }),
+      );
     });
 
     it('should still call updateDocTracking via contactId when senderEmail is null', async () => {
@@ -426,6 +477,164 @@ describe('classification-worker', () => {
       // Doc should still be filed — contact resolution is non-blocking for Drive
       expect(result.filed).toBe(true);
       expect(result.driveFileId).toBe('drive-file-789');
+    });
+
+    // -----------------------------------------------------------------
+    // Phase 11: Folder resolution (DRIVE-02, DRIVE-04, DRIVE-05, DRIVE-07)
+    // -----------------------------------------------------------------
+
+    describe('folder resolution', () => {
+      it('should use CRM contact Drive folder ID when available (DRIVE-02)', async () => {
+        // Contact has a Drive folder ID set
+        mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
+
+        const job = mockJob();
+        const result = await processClassificationJob(job);
+
+        expect(result.filed).toBe(true);
+        // resolveTargetFolder should receive the CRM-provided folder ID
+        expect(mockFiler.resolveTargetFolder).toHaveBeenCalledWith(
+          expect.anything(), // drive client
+          'crm-client-folder-999', // base folder from CRM, not root-folder-123
+          expect.any(String),
+          expect.any(String),
+        );
+      });
+
+      it('should fall back to DRIVE_ROOT_FOLDER_ID when contact has no Drive folder (DRIVE-07)', async () => {
+        // Contact has no Drive folder ID (getContactDriveFolderId returns null)
+        mockContacts.getContactDriveFolderId.mockReturnValue(null);
+
+        const job = mockJob();
+        const result = await processClassificationJob(job);
+
+        expect(result.filed).toBe(true);
+        // resolveTargetFolder should receive the root folder ID as fallback
+        expect(mockFiler.resolveTargetFolder).toHaveBeenCalledWith(
+          expect.anything(),
+          'root-folder-123', // DRIVE_ROOT_FOLDER_ID fallback
+          expect.any(String),
+          expect.any(String),
+        );
+      });
+
+      it('should route property-specific doc to deal subfolder (DRIVE-05)', async () => {
+        // Contact has folder, opportunity has deal subfolder
+        mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
+        const mockOpp = { id: 'opp-1', customFields: [] };
+        mockOpportunities.findOpportunityByFinmoId.mockResolvedValue(mockOpp);
+        mockOpportunities.getOpportunityFieldValue.mockReturnValue('deal-subfolder-888');
+
+        // Property-specific doc type
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ documentType: 'purchase_agreement' }),
+        );
+        mockRouter.routeToSubfolder.mockReturnValue('subject_property');
+
+        const job = mockJob({ applicationId: 'finmo-app-uuid-1' });
+        const result = await processClassificationJob(job);
+
+        expect(result.filed).toBe(true);
+        // resolveTargetFolder should receive the DEAL subfolder ID
+        expect(mockFiler.resolveTargetFolder).toHaveBeenCalledWith(
+          expect.anything(),
+          'deal-subfolder-888', // deal subfolder, not client folder
+          expect.any(String),
+          expect.any(String),
+        );
+      });
+
+      it('should fall back to client folder for property-specific doc without deal subfolder', async () => {
+        // Contact has folder, but opportunity has no deal subfolder
+        mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
+        const mockOpp = { id: 'opp-1', customFields: [] };
+        mockOpportunities.findOpportunityByFinmoId.mockResolvedValue(mockOpp);
+        mockOpportunities.getOpportunityFieldValue.mockReturnValue(undefined); // no subfolder
+
+        // Property-specific doc type
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ documentType: 'purchase_agreement' }),
+        );
+        mockRouter.routeToSubfolder.mockReturnValue('subject_property');
+
+        const job = mockJob({ applicationId: 'finmo-app-uuid-1' });
+        const result = await processClassificationJob(job);
+
+        expect(result.filed).toBe(true);
+        // Falls back to client folder since dealSubfolderId is null
+        expect(mockFiler.resolveTargetFolder).toHaveBeenCalledWith(
+          expect.anything(),
+          'crm-client-folder-999', // client folder fallback
+          expect.any(String),
+          expect.any(String),
+        );
+      });
+
+      it('should always route reusable doc to client folder even when deal subfolder exists', async () => {
+        // Contact has folder AND opportunity has deal subfolder
+        mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
+        // Even though opportunity has a deal subfolder...
+        const mockOpp = { id: 'opp-1', customFields: [] };
+        mockOpportunities.findOpportunityByFinmoId.mockResolvedValue(mockOpp);
+        mockOpportunities.getOpportunityFieldValue.mockReturnValue('deal-subfolder-888');
+
+        // Reusable doc type (pay_stub is NOT in PROPERTY_SPECIFIC_TYPES)
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ documentType: 'pay_stub' }),
+        );
+        mockRouter.routeToSubfolder.mockReturnValue('person');
+
+        const job = mockJob({ applicationId: 'finmo-app-uuid-1' });
+        const result = await processClassificationJob(job);
+
+        expect(result.filed).toBe(true);
+        // Reusable docs always go to client folder, not deal subfolder
+        expect(mockFiler.resolveTargetFolder).toHaveBeenCalledWith(
+          expect.anything(),
+          'crm-client-folder-999', // client folder, not deal subfolder
+          expect.any(String),
+          expect.any(String),
+        );
+      });
+
+      it('should handle getContact failure gracefully and fall back to root folder', async () => {
+        // getContact throws an error (CRM offline)
+        mockContacts.getContact.mockRejectedValue(new Error('CRM API timeout'));
+
+        const job = mockJob();
+        const result = await processClassificationJob(job);
+
+        expect(result.filed).toBe(true);
+        // Falls back to DRIVE_ROOT_FOLDER_ID since contact fetch failed
+        expect(mockFiler.resolveTargetFolder).toHaveBeenCalledWith(
+          expect.anything(),
+          'root-folder-123', // DRIVE_ROOT_FOLDER_ID fallback
+          expect.any(String),
+          expect.any(String),
+        );
+      });
+
+      it('should pass pre-fetched contact to updateDocTracking', async () => {
+        const contactRecord = {
+          id: 'contact-abc',
+          email: 'client@example.com',
+          firstName: 'Terry',
+          lastName: 'Smith',
+          customFields: [{ id: 'field-drive-folder-id', value: 'crm-client-folder-999' }],
+        };
+        mockContacts.getContact.mockResolvedValue(contactRecord);
+        mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
+
+        const job = mockJob();
+        const result = await processClassificationJob(job);
+
+        expect(result.filed).toBe(true);
+        expect(mockTrackingSync.updateDocTracking).toHaveBeenCalledWith(
+          expect.objectContaining({
+            prefetchedContact: contactRecord,
+          }),
+        );
+      });
     });
   });
 });
