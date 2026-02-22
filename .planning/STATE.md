@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 11 - Drive Folder Linking + Deal Subfolders (IN PROGRESS)
+**Current focus:** Phase 11 - Drive Folder Linking + Deal Subfolders (COMPLETE)
 
 ## Current Position
 
 Phase: 11-drive-folder-linking-deal-subfolders
-Plan: 02 (COMPLETE)
-Status: 11-02 complete — Webhook worker persists folder IDs, creates deal subfolders, dual-scans both locations
-Last activity: 2026-02-22 — 11-02 complete (folder ID persistence, deal subfolder creation, extractDealReference, dual-scan)
+Plan: 03 (COMPLETE)
+Status: Phase 11 COMPLETE — All 3 plans executed: CRM config, webhook worker, classification worker
+Last activity: 2026-02-22 — 11-03 complete (CRM-based folder resolution, property-specific routing, fallback chain, 705 tests)
 
-Progress: [█████████░] 93% (core pipeline complete, Phase 11 plan 2/3 done)
+Progress: [██████████] 100% (core pipeline complete, Phase 11 all 3/3 done)
 
 ### Completed outside GSD:
 - **Feedback Loop (RAG)** — Phase 8.1, implemented + E2E verified (2026-02-21)
@@ -25,9 +25,9 @@ Progress: [█████████░] 93% (core pipeline complete, Phase 11
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 30
+- Total plans completed: 31
 - Average duration: 4 min
-- Total execution time: 2.1 hours
+- Total execution time: 2.15 hours
 
 **By Phase:**
 
@@ -42,10 +42,10 @@ Progress: [█████████░] 93% (core pipeline complete, Phase 11
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 
 | 10-opportunity-centric-architecture | 5/5 | 19 min | 4 min |
-| 11-drive-folder-linking-deal-subfolders | 2/3 | 5 min | 3 min |
+| 11-drive-folder-linking-deal-subfolders | 3/3 | 8 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 10-04 (6 min), 10-05 (4 min), 11-01 (3 min), 11-02 (2 min)
+- Last 5 plans: 10-05 (4 min), 11-01 (3 min), 11-02 (2 min), 11-03 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -171,6 +171,10 @@ Progress: [█████████░] 93% (core pipeline complete, Phase 11
 - Deal subfolder name derived from opportunity name via extractDealReference (lastIndexOf ' - ' pattern)
 - Dual-scan merges client + deal folder docs with spread operator before filtering
 - All CRM persistence operations wrapped in non-fatal try/catch (failures must not block pipeline)
+- Contact fetched once via getContact and shared with tracking-sync via prefetchedContact (saves one API call per classification job)
+- Property-specific vs reusable routing in classification worker uses PROPERTY_SPECIFIC_TYPES from drive/doc-expiry.ts (single source of truth)
+- getContact failure in classification worker is non-fatal, falls back to DRIVE_ROOT_FOLDER_ID
+- Deal subfolder resolution only attempted when both contactId and applicationId are present
 
 ### Pending Todos
 
@@ -242,19 +246,20 @@ None yet.
 - End-to-end pipeline uses opportunity-level tracking
 - Contact-level doc tracking deprecated (setup script can rename, config warns, types annotated)
 
-**Phase 11 (Drive Folder Linking + Deal Subfolders):** IN PROGRESS
+**Phase 11 (Drive Folder Linking + Deal Subfolders):** COMPLETE
 - 11-01 complete: CRM config, types, contact helper, setup script --drive-fields flag (692 tests pass)
 - 11-02 complete: webhook worker folder ID persistence, deal subfolder creation, dual-scan (698 tests pass)
-- Next: 11-03 (E2E testing / finalization)
+- 11-03 complete: classification worker CRM-based folder resolution, property-specific routing, fallback chain (705 tests pass)
+- Full Drive folder linking pipeline wired end-to-end
 - Setup script --drive-fields must be run against live CRM to get field IDs
 
 ## Session Continuity
 
-Last session: 2026-02-22 (11-02 execution)
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-02-22 (11-03 execution)
+Stopped at: Completed 11-03-PLAN.md — Phase 11 COMPLETE
 Resume file: None
-Next: 11-03-PLAN.md (E2E testing / finalization)
+Next: Next phase TBD
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-22 (11-02 complete, Phase 11 Drive folder linking 2/3 done)*
+*Last updated: 2026-02-22 (11-03 complete, Phase 11 Drive folder linking 3/3 done)*

@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Tracking Integration** - Update checklist status and notify on PRE-readiness
 - [x] **Phase 8.1: Feedback Loop (RAG)** - Capture Cat's email edits and auto-apply to future similar applications (INSERTED)
 - [x] **Phase 10: Opportunity-Centric Architecture** - Move doc tracking from contact to opportunity level, support multi-deal clients
-- [ ] **Phase 11: Drive Folder Linking + Deal Subfolders** - Store folder IDs, create deal-specific subfolders, file deal docs correctly
+- [x] **Phase 11: Drive Folder Linking + Deal Subfolders** - Store folder IDs, create deal-specific subfolders, file deal docs correctly
 - [ ] **Phase 12: Original Document Preservation** - Always store originals, make renamed copy for filing
 - [ ] **Phase 13: Email Wording & Notifications** - Fix client-facing email, add PRE Complete + unexpected doc alerts
 - [ ] **Phase 14: CRM Views & Kill Switch** - MBP smart lists for doc tracking + automation toggle field
@@ -218,7 +218,7 @@ Plans:
 Plans:
 - [x] 11-01-PLAN.md — CRM config, types, contact helper, and setup script for Drive folder fields
 - [x] 11-02-PLAN.md — Webhook worker folder persistence, deal subfolder creation, dual Drive scan
-- [ ] 11-03-PLAN.md — Classification worker CRM-based folder resolution and property/reusable routing
+- [x] 11-03-PLAN.md — Classification worker CRM-based folder resolution and property/reusable routing
 
 ### Phase 12: Original Document Preservation
 **Goal**: Every received document is preserved in its original form, with a renamed copy filed using Cat's naming conventions
@@ -325,8 +325,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8. Tracking Integration | 2/2 | Complete | 2026-02-16 |
 | 8.1 Feedback Loop (RAG) | N/A | Complete (outside GSD) | 2026-02-21 |
 | 10. Opportunity-Centric Architecture | 5/5 | Complete    | 2026-02-21 |
-| 11. Drive Folder Linking + Deal Subfolders | 2/3 | In progress | - |
-| 12. Original Doc Preservation | 0/TBD | Not started (blocked by 11) | - |
+| 11. Drive Folder Linking + Deal Subfolders | 3/3 | Complete | 2026-02-22 |
+| 12. Original Doc Preservation | 0/TBD | Not started | - |
 | 13. Email Wording & Notifications | 0/TBD | Not started | - |
 | 14. CRM Views & Kill Switch | 0/TBD | Not started | - |
 | 15. Automated Reminders | 0/TBD | Tabled | - |
@@ -343,4 +343,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-22 (Phase 11 plan 02 complete — webhook worker folder persistence, deal subfolders, dual-scan)*
+*Last updated: 2026-02-22 (Phase 11 COMPLETE — CRM-based folder resolution, property-specific routing, 705 tests)*
