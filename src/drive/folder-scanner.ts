@@ -363,6 +363,31 @@ function parseDocFlexible(filename: string, knownNames: Set<string>): ParsedDoc 
   return { borrowerName, docTypeLabel, institution, year, amount };
 }
 
+/**
+ * Extracts the Finmo deal reference from a CRM opportunity name.
+ *
+ * Finmo creates opportunities with names like "John - BRXM-F050382".
+ * Extracts the portion after the last " - " as the deal reference.
+ * Falls back to the first 8 characters of the fallback ID (UUID).
+ *
+ * @param opportunityName - The CRM opportunity name (may be undefined)
+ * @param fallbackId - Finmo application UUID to use if extraction fails
+ * @returns A human-readable deal reference for subfolder naming
+ */
+export function extractDealReference(
+  opportunityName: string | undefined,
+  fallbackId: string,
+): string {
+  if (opportunityName) {
+    const dashIdx = opportunityName.lastIndexOf(' - ');
+    if (dashIdx >= 0) {
+      const ref = opportunityName.slice(dashIdx + 3).trim();
+      if (ref.length > 0) return ref;
+    }
+  }
+  return fallbackId.slice(0, 8);
+}
+
 /** Lists contents of a single Drive folder (handles pagination) */
 async function listFolderContents(
   drive: DriveClient,

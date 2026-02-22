@@ -11,6 +11,7 @@ export {
   parseDocFromFilename,
   resolveDocumentType,
   scanClientFolder,
+  extractDealReference,
 } from './folder-scanner.js';
 export type { DriveFileEntry, ParsedDoc, ExistingDoc } from './folder-scanner.js';
 

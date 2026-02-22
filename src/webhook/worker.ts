@@ -32,10 +32,14 @@ import { createEmailDraft } from '../email/index.js';
 import { createBudgetSheet, buildClientFolderName, budgetConfig } from '../budget/index.js';
 import { getDriveClient } from '../classification/drive-client.js';
 import { findOrCreateFolder } from '../classification/filer.js';
-import { scanClientFolder, filterChecklistByExistingDocs } from '../drive/index.js';
+import { scanClientFolder, filterChecklistByExistingDocs, extractDealReference } from '../drive/index.js';
 import { feedbackConfig, findSimilarEdits, applyFeedbackToChecklist, buildContextText } from '../feedback/index.js';
+import { upsertContact, findContactByEmail } from '../crm/contacts.js';
+import { findOpportunityByFinmoId, updateOpportunityFields } from '../crm/opportunities.js';
+import { crmConfig } from '../crm/config.js';
+import { PIPELINE_IDS } from '../crm/types/index.js';
 import type { ApplicationContext } from '../feedback/types.js';
-import type { FilterResult } from '../drive/index.js';
+import type { FilterResult, ExistingDoc } from '../drive/index.js';
 import type { JobData, ProcessingResult } from './types.js';
 
 let _worker: Worker | null = null;
@@ -82,17 +86,85 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     clientFolderId = await findOrCreateFolder(getDriveClient(), clientFolderName, driveRootFolderId);
   }
 
+  // 3b. Store client Drive folder ID on CRM contact (DRIVE-01)
+  if (clientFolderId && crmConfig.driveFolderIdFieldId) {
+    try {
+      await upsertContact({
+        email: mainBorrower.email,
+        firstName: mainBorrower.firstName,
+        lastName: mainBorrower.lastName,
+        customFields: [
+          { id: crmConfig.driveFolderIdFieldId, field_value: clientFolderId },
+        ],
+      });
+    } catch (err) {
+      console.error('[worker] Failed to store Drive folder ID on contact (non-fatal)', {
+        applicationId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // 3c. Create deal subfolder per Finmo application (DRIVE-03)
+  let dealSubfolderId: string | null = null;
+  if (clientFolderId) {
+    try {
+      // Find the opportunity to get the deal reference
+      const contactResult = await findContactByEmail(mainBorrower.email);
+      if (contactResult) {
+        const opportunity = await findOpportunityByFinmoId(
+          contactResult,
+          PIPELINE_IDS.LIVE_DEALS,
+          finmoApp.application.id,
+        );
+
+        if (opportunity) {
+          const dealRef = extractDealReference(opportunity.name, finmoApp.application.id);
+          dealSubfolderId = await findOrCreateFolder(getDriveClient(), dealRef, clientFolderId);
+
+          // Store deal subfolder ID on opportunity
+          if (crmConfig.oppDealSubfolderIdFieldId) {
+            await updateOpportunityFields(opportunity.id, [
+              { id: crmConfig.oppDealSubfolderIdFieldId, field_value: dealSubfolderId },
+            ]);
+          }
+
+          console.log('[worker] Deal subfolder created', {
+            applicationId,
+            dealRef,
+            dealSubfolderId,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[worker] Deal subfolder creation failed (non-fatal)', {
+        applicationId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   // 4. Scan Drive folder for existing docs (non-fatal)
   let filterResult: FilterResult | null = null;
   if (clientFolderId) {
     try {
       const borrowerFirstNames = finmoApp.borrowers.map(b => b.firstName);
       const existingDocs = await scanClientFolder(getDriveClient(), clientFolderId, borrowerFirstNames);
-      if (existingDocs.length > 0) {
-        filterResult = filterChecklistByExistingDocs(checklist, existingDocs, new Date());
+
+      // Also scan deal subfolder for property-specific docs
+      let dealDocs: ExistingDoc[] = [];
+      if (dealSubfolderId) {
+        dealDocs = await scanClientFolder(getDriveClient(), dealSubfolderId, borrowerFirstNames);
+      }
+
+      const allExistingDocs = [...existingDocs, ...dealDocs];
+
+      if (allExistingDocs.length > 0) {
+        filterResult = filterChecklistByExistingDocs(checklist, allExistingDocs, new Date());
         console.log('[worker] Drive scan found existing docs', {
           applicationId,
-          scanned: existingDocs.length,
+          clientLevel: existingDocs.length,
+          dealLevel: dealDocs.length,
           onFile: filterResult.alreadyOnFile.length,
           expired: filterResult.expiredDocs.length,
         });
