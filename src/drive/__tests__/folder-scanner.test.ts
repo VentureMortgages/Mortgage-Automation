@@ -8,6 +8,7 @@ import {
   resolveDocumentType,
   listClientFolderFiles,
   scanClientFolder,
+  extractDealReference,
 } from '../folder-scanner.js';
 import type { drive_v3 } from 'googleapis';
 
@@ -369,5 +370,37 @@ describe('scanClientFolder', () => {
 
     const results = await scanClientFolder(drive, 'folder-id', ['Jane']);
     expect(results).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// extractDealReference
+// ============================================================================
+
+describe('extractDealReference', () => {
+  const fallbackId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+  it('extracts deal reference from standard format: "John - BRXM-F050382"', () => {
+    expect(extractDealReference('John - BRXM-F050382', fallbackId)).toBe('BRXM-F050382');
+  });
+
+  it('uses lastIndexOf for multiple dashes: "John Smith - Jane - BRXM-F050382"', () => {
+    expect(extractDealReference('John Smith - Jane - BRXM-F050382', fallbackId)).toBe('BRXM-F050382');
+  });
+
+  it('returns first 8 chars of fallbackId when no dash separator present', () => {
+    expect(extractDealReference('JohnBRXMF050382', fallbackId)).toBe('a1b2c3d4');
+  });
+
+  it('returns first 8 chars of fallbackId when opportunityName is undefined', () => {
+    expect(extractDealReference(undefined, fallbackId)).toBe('a1b2c3d4');
+  });
+
+  it('returns first 8 chars of fallbackId when string after dash is empty', () => {
+    expect(extractDealReference('John - ', fallbackId)).toBe('a1b2c3d4');
+  });
+
+  it('trims whitespace from extracted reference', () => {
+    expect(extractDealReference('John -   BRXM-F050382  ', fallbackId)).toBe('BRXM-F050382');
   });
 });
