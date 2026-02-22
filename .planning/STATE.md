@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 10 - Opportunity-Centric Architecture (COMPLETE)
+**Current focus:** Phase 11 - Drive Folder Linking + Deal Subfolders (IN PROGRESS)
 
 ## Current Position
 
-Phase: 10-opportunity-centric-architecture
-Plan: 05 (COMPLETE)
-Status: Phase 10 complete — all 5 plans executed
-Last activity: 2026-02-21 — 10-05 complete (workers wired, barrel cleaned, contact fields deprecated)
+Phase: 11-drive-folder-linking-deal-subfolders
+Plan: 01 (COMPLETE)
+Status: 11-01 complete — CRM config, types, contact helper, setup script for Drive folder linking
+Last activity: 2026-02-22 — 11-01 complete (Drive folder field defs, config, getContactDriveFolderId, --drive-fields flag)
 
-Progress: [█████████░] 90% (core pipeline complete, Phase 10 complete)
+Progress: [█████████░] 91% (core pipeline complete, Phase 11 plan 1/3 done)
 
 ### Completed outside GSD:
 - **Feedback Loop (RAG)** — Phase 8.1, implemented + E2E verified (2026-02-21)
@@ -25,9 +25,9 @@ Progress: [█████████░] 90% (core pipeline complete, Phase 10
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28
+- Total plans completed: 29
 - Average duration: 4 min
-- Total execution time: 2.0 hours
+- Total execution time: 2.1 hours
 
 **By Phase:**
 
@@ -42,9 +42,10 @@ Progress: [█████████░] 90% (core pipeline complete, Phase 10
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 
 | 10-opportunity-centric-architecture | 5/5 | 19 min | 4 min |
+| 11-drive-folder-linking-deal-subfolders | 1/3 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 10-02 (5 min), 10-03 (4 min), 10-04 (6 min), 10-05 (4 min)
+- Last 5 plans: 10-03 (4 min), 10-04 (6 min), 10-05 (4 min), 11-01 (3 min)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -163,6 +164,9 @@ Progress: [█████████░] 90% (core pipeline complete, Phase 10
 - Deprecated functions (upsertOpportunity, moveToCollectingDocs, moveToAllDocsReceived) kept in opportunities.ts for direct import by sent-detector.ts, removed from barrel
 - Contact-level fieldIds validation downgraded from throw to warning (deprecated, fallback-only)
 - Setup script --deprecate-contact-fields renames via PUT API (field IDs remain valid after rename)
+- Drive folder field defs are standalone constants (not part of DOC_TRACKING or OPP_DOC_TRACKING arrays)
+- driveFolderIdFieldId and oppDealSubfolderIdFieldId are top-level on CrmConfig (span contact/opportunity models)
+- Validation warns but does not throw for missing drive folder field IDs (same pattern as opportunity field warnings)
 
 ### Pending Todos
 
@@ -234,13 +238,18 @@ None yet.
 - End-to-end pipeline uses opportunity-level tracking
 - Contact-level doc tracking deprecated (setup script can rename, config warns, types annotated)
 
+**Phase 11 (Drive Folder Linking + Deal Subfolders):** IN PROGRESS
+- 11-01 complete: CRM config, types, contact helper, setup script --drive-fields flag (692 tests pass)
+- Next: 11-02 (folder creation service) and 11-03 (worker integration)
+- Setup script --drive-fields must be run against live CRM to get field IDs
+
 ## Session Continuity
 
-Last session: 2026-02-21 (10-05 execution)
-Stopped at: Completed 10-05-PLAN.md (Phase 10 complete)
+Last session: 2026-02-22 (11-01 execution)
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None
-Next: Phase 10 complete — ready for next phase or end-to-end testing
+Next: 11-02-PLAN.md (folder creation and linking service)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-21 (10-05 complete, Phase 10 opportunity-centric architecture complete)*
+*Last updated: 2026-02-22 (11-01 complete, Phase 11 Drive folder linking in progress)*
