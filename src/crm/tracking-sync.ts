@@ -60,6 +60,8 @@ export interface TrackingUpdateInput {
   contactId?: string;
   /** Finmo application UUID — for finding the right opportunity (property-specific docs) */
   finmoApplicationId?: string;
+  /** Pre-fetched contact record — when provided, skips the getContact() call (saves one API call) */
+  prefetchedContact?: CrmContact;
 }
 
 export interface TrackingUpdateResult {
@@ -214,8 +216,8 @@ export async function updateDocTracking(
     return { updated: false, reason: 'no-contact', errors: [] };
   }
 
-  // 2. Get contact record (needed for borrower name in milestones + audit)
-  const contact = await getContact(contactId);
+  // 2. Get contact record (use pre-fetched if available to save API call)
+  const contact = input.prefetchedContact ?? await getContact(contactId);
 
   // 3. Search for open opportunities in Live Deals pipeline
   const allOpportunities = await searchOpportunities(contactId, PIPELINE_IDS.LIVE_DEALS);

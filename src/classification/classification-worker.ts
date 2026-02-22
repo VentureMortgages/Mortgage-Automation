@@ -5,11 +5,12 @@
  * 1. Read PDF from temp file
  * 2. Classify document via Claude API
  * 3. Check confidence threshold (low -> CRM manual review task)
- * 4. Resolve client Drive folder (best-effort via CRM contact lookup)
- * 5. Generate filename (Cat's naming convention)
- * 6. Route to correct subfolder
- * 7. File to Google Drive (upload or update existing)
- * 8. Clean up temp file
+ * 4. Resolve client Drive folder from CRM contact (fallback: DRIVE_ROOT_FOLDER_ID)
+ * 5. For property-specific docs, resolve deal subfolder from opportunity
+ * 6. Generate filename (Cat's naming convention)
+ * 7. Route to correct subfolder
+ * 8. File to Google Drive (upload or update existing)
+ * 9. Clean up temp file
  *
  * Error handling is per-stage: classification failure, Drive failure, and CRM
  * failure are each caught independently. Temp files are cleaned up in all paths.
@@ -30,9 +31,14 @@ import { generateFilename } from './naming.js';
 import { routeToSubfolder, getPersonSubfolderName } from './router.js';
 import { getDriveClient } from './drive-client.js';
 import { resolveTargetFolder, uploadFile, findExistingFile, updateFileContent } from './filer.js';
-import { resolveContactId } from '../crm/contacts.js';
+import { resolveContactId, getContact, getContactDriveFolderId } from '../crm/contacts.js';
+import { crmConfig } from '../crm/config.js';
+import { findOpportunityByFinmoId, getOpportunityFieldValue } from '../crm/opportunities.js';
+import { PIPELINE_IDS } from '../crm/types/index.js';
+import type { CrmContact } from '../crm/types/index.js';
 import { createReviewTask } from '../crm/tasks.js';
 import { updateDocTracking } from '../crm/tracking-sync.js';
+import { PROPERTY_SPECIFIC_TYPES } from '../drive/doc-expiry.js';
 import { DOC_TYPE_LABELS } from './types.js';
 import type { ClassificationJobData, ClassificationJobResult } from './types.js';
 
@@ -126,24 +132,38 @@ export async function processClassificationJob(
       };
     }
 
-    // e. Resolve client Drive folder
-    // TODO: Phase 8 will add a CRM custom field for Drive folder ID.
-    // For now, use driveRootFolderId as fallback.
+    // e. Resolve client Drive folder from CRM contact (DRIVE-02)
     let clientFolderId: string | null = null;
+    let dealSubfolderId: string | null = null;
+    let contact: CrmContact | null = null;
 
     if (contactId) {
-      clientFolderId = classificationConfig.driveRootFolderId || null;
+      try {
+        // Fetch contact ONCE — shared with tracking-sync later (DRIVE-02, rate limit optimization)
+        contact = await getContact(contactId);
+        clientFolderId = getContactDriveFolderId(contact, crmConfig.driveFolderIdFieldId);
+
+        if (clientFolderId) {
+          console.log('[classification] Resolved client folder from CRM contact:', {
+            hasClientFolder: true,
+          });
+        }
+      } catch (err) {
+        console.error('[classification] Failed to read contact folder ID (non-fatal):', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
 
-    // Fallback: use Drive root folder if available
+    // Fallback to global root folder (DRIVE-07)
     if (!clientFolderId && classificationConfig.driveRootFolderId) {
       clientFolderId = classificationConfig.driveRootFolderId;
+      console.log('[classification] Using DRIVE_ROOT_FOLDER_ID fallback');
     }
 
     // If still no folder, route to manual review
     if (!clientFolderId) {
       console.warn('[classification] Cannot resolve client Drive folder, routing to manual review');
-
       try {
         if (contactId) {
           await createReviewTask(
@@ -156,9 +176,7 @@ export async function processClassificationJob(
       } catch {
         // CRM task creation failure is non-fatal
       }
-
       await unlink(tempFilePath).catch(() => {});
-
       return {
         intakeDocumentId,
         classification,
@@ -167,6 +185,34 @@ export async function processClassificationJob(
         manualReview: true,
         error: null,
       };
+    }
+
+    // For property-specific docs, resolve deal subfolder from opportunity (DRIVE-05)
+    const isPropertySpecific = PROPERTY_SPECIFIC_TYPES.has(classification.documentType);
+
+    if (isPropertySpecific && contactId && applicationId) {
+      try {
+        const opp = await findOpportunityByFinmoId(
+          contactId,
+          PIPELINE_IDS.LIVE_DEALS,
+          applicationId,
+        );
+        if (opp) {
+          const subfolderId = getOpportunityFieldValue(
+            opp,
+            crmConfig.oppDealSubfolderIdFieldId,
+          );
+          if (typeof subfolderId === 'string' && subfolderId.length > 0) {
+            dealSubfolderId = subfolderId;
+            console.log('[classification] Resolved deal subfolder from opportunity');
+          }
+        }
+      } catch (err) {
+        // Non-fatal: fall back to client folder for property-specific docs
+        console.error('[classification] Failed to resolve deal subfolder (non-fatal):', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
 
     // e. Generate filename
@@ -182,11 +228,15 @@ export async function processClassificationJob(
       'Borrower',
     );
 
-    // g. Resolve target folder in Drive
+    // g. Resolve target folder in Drive (DRIVE-04/DRIVE-05)
     const drive = getDriveClient();
+    const baseFolderId = (isPropertySpecific && dealSubfolderId)
+      ? dealSubfolderId   // Property-specific docs -> deal subfolder
+      : clientFolderId;   // Reusable docs -> client folder
+
     const targetFolderId = await resolveTargetFolder(
       drive,
-      clientFolderId,
+      baseFolderId,
       subfolderTarget,
       personName,
     );
@@ -224,6 +274,7 @@ export async function processClassificationJob(
           receivedAt: job.data.receivedAt,
           ...(contactId ? { contactId } : {}),
           finmoApplicationId: applicationId ?? undefined,
+          prefetchedContact: contact ?? undefined,
         });
 
         if (trackingResult.updated) {
