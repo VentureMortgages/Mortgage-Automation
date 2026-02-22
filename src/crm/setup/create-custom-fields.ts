@@ -7,6 +7,8 @@
  *   npx tsx src/crm/setup/create-custom-fields.ts --model=opportunity
  * Deprecate contact-level doc tracking fields (Phase 10):
  *   npx tsx src/crm/setup/create-custom-fields.ts --deprecate-contact-fields
+ * Create Drive folder linking fields (Phase 11):
+ *   npx tsx src/crm/setup/create-custom-fields.ts --drive-fields
  *
  * This creates 9 custom fields in a "Doc Tracking" (opportunity) or
  * "Finmo Integration" (contact) field group and prints the resulting
@@ -16,12 +18,21 @@
  * fields to "DEPRECATED - [name]" via PUT API, marking them as obsolete in the
  * MyBrokerPro UI. Field IDs remain valid (rename does not change IDs).
  *
+ * The --drive-fields flag creates two TEXT fields: "Drive Folder ID" on contacts
+ * (in the Finmo Integration group) and "Deal Subfolder ID" on opportunities.
+ *
  * If a field already exists (422/409 error), the script prints a warning
  * and continues with the remaining fields.
  */
 
 import 'dotenv/config';
-import { DOC_TRACKING_FIELD_DEFS, OPP_DOC_TRACKING_FIELD_DEFS, FIELD_GROUP_ID } from '../types/index.js';
+import {
+  DOC_TRACKING_FIELD_DEFS,
+  OPP_DOC_TRACKING_FIELD_DEFS,
+  FIELD_GROUP_ID,
+  DRIVE_FOLDER_FIELD_DEF,
+  OPP_DEAL_SUBFOLDER_FIELD_DEF,
+} from '../types/index.js';
 
 const API_KEY = process.env.GHL_API_KEY;
 const BASE_URL = process.env.GHL_BASE_URL ?? 'https://services.leadconnectorhq.com';
@@ -250,6 +261,81 @@ async function deprecateContactFields(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Create Drive folder linking fields (Phase 11)
+// ---------------------------------------------------------------------------
+
+/**
+ * Creates two Drive folder linking custom fields:
+ * 1. "Drive Folder ID" (TEXT) on contacts — stores the client's Google Drive folder ID
+ * 2. "Deal Subfolder ID" (TEXT) on opportunities — stores the deal subfolder ID
+ *
+ * These are separate from the 9-field doc tracking groups.
+ */
+async function createDriveFields(): Promise<void> {
+  console.log('Creating Drive folder linking custom fields in MyBrokerPro...');
+  console.log(`Location: ${LOCATION_ID}`);
+  console.log('');
+
+  const results: Array<{ envKey: string; name: string; id: string }> = [];
+  const skipped: string[] = [];
+
+  // 1. Contact-level field: Drive Folder ID (in existing Finmo Integration group)
+  console.log(`Creating contact field: ${DRIVE_FOLDER_FIELD_DEF.name} (${DRIVE_FOLDER_FIELD_DEF.dataType})...`);
+  const contactResult = await createField({
+    name: DRIVE_FOLDER_FIELD_DEF.name,
+    dataType: DRIVE_FOLDER_FIELD_DEF.dataType,
+    model: 'contact',
+    parentId: FIELD_GROUP_ID,
+  });
+
+  if (contactResult) {
+    console.log(`  Created: ${contactResult.name} -> ${contactResult.id}`);
+    results.push({ envKey: DRIVE_FOLDER_FIELD_DEF.envKey, name: contactResult.name, id: contactResult.id });
+  } else {
+    skipped.push(DRIVE_FOLDER_FIELD_DEF.name);
+  }
+
+  // 2. Opportunity-level field: Deal Subfolder ID
+  console.log(`Creating opportunity field: ${OPP_DEAL_SUBFOLDER_FIELD_DEF.name} (${OPP_DEAL_SUBFOLDER_FIELD_DEF.dataType})...`);
+  const oppParentId = await findOppFieldGroup();
+  const oppResult = await createField({
+    name: OPP_DEAL_SUBFOLDER_FIELD_DEF.name,
+    dataType: OPP_DEAL_SUBFOLDER_FIELD_DEF.dataType,
+    model: 'opportunity',
+    parentId: oppParentId,
+  });
+
+  if (oppResult) {
+    console.log(`  Created: ${oppResult.name} -> ${oppResult.id}`);
+    results.push({ envKey: OPP_DEAL_SUBFOLDER_FIELD_DEF.envKey, name: oppResult.name, id: oppResult.id });
+  } else {
+    skipped.push(OPP_DEAL_SUBFOLDER_FIELD_DEF.name);
+  }
+
+  // Print results in .env format
+  console.log('');
+  console.log('='.repeat(60));
+  console.log('Copy the following into your .env file:');
+  console.log('='.repeat(60));
+  console.log('');
+  console.log('# Drive Folder Linking Custom Field IDs');
+
+  for (const r of results) {
+    console.log(`${r.envKey}=${r.id}`);
+  }
+
+  if (skipped.length > 0) {
+    console.log('');
+    console.log(`# Skipped (already exist or error): ${skipped.join(', ')}`);
+  }
+
+  console.log('');
+  console.log('='.repeat(60));
+  console.log(`Done. Created: ${results.length}, Skipped: ${skipped.length}`);
+  console.log('='.repeat(60));
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -257,6 +343,12 @@ async function main(): Promise<void> {
   // Check for --deprecate-contact-fields flag (run deprecation and exit early)
   if (process.argv.includes('--deprecate-contact-fields')) {
     await deprecateContactFields();
+    return;
+  }
+
+  // Check for --drive-fields flag (create Drive folder linking fields and exit early)
+  if (process.argv.includes('--drive-fields')) {
+    await createDriveFields();
     return;
   }
 
