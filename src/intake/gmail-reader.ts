@@ -166,6 +166,23 @@ export async function getMessageDetails(
   const fromRaw = getHeader('From');
   const from = parseEmailFromHeader(fromRaw);
 
+  // Check X- headers first (may be stripped by Gmail on send)
+  let ventureType = getHeader('X-Venture-Type') || undefined;
+  let ventureContactId = getHeader('X-Venture-Contact-Id') || undefined;
+
+  // Fallback: parse hidden HTML comment embedded in email body
+  // (Gmail preserves body content but strips custom X- headers)
+  if (!ventureType || !ventureContactId) {
+    const htmlBody = extractHtmlBodyText(response.data.payload ?? undefined);
+    if (htmlBody) {
+      const match = htmlBody.match(/<!-- venture:doc-request:(\S+) -->/);
+      if (match) {
+        ventureType = 'doc-request';
+        ventureContactId = match[1];
+      }
+    }
+  }
+
   return {
     messageId: response.data.id ?? messageId,
     threadId: response.data.threadId ?? null,
@@ -173,9 +190,33 @@ export async function getMessageDetails(
     subject: getHeader('Subject'),
     date: getHeader('Date'),
     historyId: response.data.historyId ?? '',
-    ventureType: getHeader('X-Venture-Type') || undefined,
-    ventureContactId: getHeader('X-Venture-Contact-Id') || undefined,
+    ventureType,
+    ventureContactId,
   };
+}
+
+/**
+ * Extracts the HTML body text from a Gmail message payload.
+ * Walks MIME parts recursively looking for text/html content.
+ * Decodes base64url-encoded body data.
+ */
+function extractHtmlBodyText(
+  payload: gmail_v1.Schema$MessagePart | undefined,
+): string | null {
+  if (!payload) return null;
+
+  // Direct body (non-multipart)
+  if (payload.mimeType === 'text/html' && payload.body?.data) {
+    return Buffer.from(payload.body.data, 'base64url').toString('utf-8');
+  }
+
+  // Walk parts recursively
+  for (const part of payload.parts ?? []) {
+    const result = extractHtmlBodyText(part);
+    if (result) return result;
+  }
+
+  return null;
 }
 
 /**

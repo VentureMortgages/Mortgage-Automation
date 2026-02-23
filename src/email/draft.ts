@@ -39,11 +39,16 @@ export async function createEmailDraft(
   input: CreateEmailDraftInput,
 ): Promise<CreateEmailDraftResult> {
   // 1. Generate email body
-  const body = generateEmailBody(input.checklist, {
+  const rawBody = generateEmailBody(input.checklist, {
     borrowerFirstNames: input.borrowerFirstNames,
     docInboxEmail: emailConfig.docInbox,
     alreadyOnFile: input.alreadyOnFile,
   });
+
+  // Embed tracking metadata as hidden HTML comment (Gmail strips X- headers on send)
+  const body = input.contactId
+    ? `${rawBody}\n<!-- venture:doc-request:${input.contactId} -->`
+    : rawBody;
 
   // 1b. Store original for feedback capture (non-fatal)
   if (input.contactId && input.applicationContext) {
