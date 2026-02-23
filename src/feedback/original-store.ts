@@ -84,3 +84,47 @@ export async function deleteOriginalEmail(contactId: string): Promise<void> {
   const redis = getRedis();
   await redis.del(redisKey(contactId));
 }
+
+// ---------------------------------------------------------------------------
+// Subject → ContactId Mapping
+// ---------------------------------------------------------------------------
+
+/**
+ * Normalizes a subject for use as a Redis lookup key.
+ * Strips [TEST] prefix and whitespace.
+ */
+function normalizeSubject(subject: string): string {
+  return subject.replace(/^\[TEST\]\s*/, '').trim().toLowerCase();
+}
+
+function subjectKey(subject: string): string {
+  return `feedback:subject:${normalizeSubject(subject)}`;
+}
+
+/**
+ * Store a subject→contactId mapping so sent emails can be matched
+ * back to the contact even when Gmail strips tracking metadata.
+ */
+export async function storeSubjectMapping(
+  subject: string,
+  contactId: string,
+): Promise<void> {
+  const redis = getRedis();
+  await redis.set(
+    subjectKey(subject),
+    contactId,
+    'EX',
+    feedbackConfig.originalTtlSeconds,
+  );
+}
+
+/**
+ * Look up the contactId for a sent doc-request email by its subject.
+ * Returns null if no mapping exists or TTL expired.
+ */
+export async function getContactIdBySubject(
+  subject: string,
+): Promise<string | null> {
+  const redis = getRedis();
+  return redis.get(subjectKey(subject));
+}

@@ -18,6 +18,11 @@ vi.mock('../gmail-client.js', () => ({
   sendGmailDraft: vi.fn(),
 }));
 
+vi.mock('../../feedback/original-store.js', () => ({
+  storeOriginalEmail: vi.fn(),
+  storeSubjectMapping: vi.fn(),
+}));
+
 import { createEmailDraft } from '../draft.js';
 import { sendEmailDraft } from '../send.js';
 import { createGmailDraft } from '../gmail-client.js';

@@ -20,7 +20,7 @@ export type {
 export { feedbackConfig } from './config.js';
 
 // Phase A: Capture
-export { storeOriginalEmail, getOriginalEmail, deleteOriginalEmail } from './original-store.js';
+export { storeOriginalEmail, getOriginalEmail, deleteOriginalEmail, storeSubjectMapping, getContactIdBySubject } from './original-store.js';
 export { extractEmailHtml } from './html-extractor.js';
 export { analyzeEdits } from './diff-analyzer.js';
 export { appendFeedbackRecord, loadFeedbackRecords } from './feedback-store.js';

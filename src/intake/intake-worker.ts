@@ -50,6 +50,7 @@ import { extractAttachments, downloadAttachment } from './attachment-extractor.j
 import { convertToPdf, ConversionError } from './pdf-converter.js';
 import { downloadFinmoDocument, isDocRequestProcessed, markDocRequestProcessed } from './finmo-downloader.js';
 import { isBccCopy, handleSentDetection } from './sent-detector.js';
+import { getContactIdBySubject } from '../feedback/original-store.js';
 import { pollForNewMessages, getInitialHistoryId } from './gmail-reader.js';
 import { INTAKE_QUEUE_NAME, getIntakeQueue, getStoredHistoryId, storeHistoryId } from './gmail-monitor.js';
 import { CLASSIFICATION_QUEUE_NAME } from '../classification/classification-worker.js';
@@ -130,8 +131,20 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
   }
 
   // 1c. Check if this is an outbound BCC copy (doc-request email sent by Cat)
-  if (isBccCopy(messageMeta)) {
-    console.log('[intake] Detected outbound BCC copy, updating CRM', { messageId });
+  // Primary: X-Venture headers (works if Gmail preserves them)
+  // Fallback: subject pattern + Redis lookup (Gmail strips headers, comments, data-* attrs)
+  let detectedBcc = isBccCopy(messageMeta);
+  if (!detectedBcc && messageMeta.subject.includes('Documents Needed')) {
+    const contactId = await getContactIdBySubject(messageMeta.subject);
+    if (contactId) {
+      messageMeta.ventureType = 'doc-request';
+      messageMeta.ventureContactId = contactId;
+      detectedBcc = true;
+      console.log('[intake] BCC detected via subject mapping', { messageId, contactId });
+    }
+  }
+  if (detectedBcc) {
+    console.log('[intake] Detected outbound doc-request email, updating CRM', { messageId });
     const sentResult = await handleSentDetection(messageMeta);
     return {
       documentsProcessed: 0,

@@ -20,7 +20,7 @@ import { emailConfig } from './config.js';
 import { generateEmailBody } from './body.js';
 import { encodeMimeMessage } from './mime.js';
 import { createGmailDraft } from './gmail-client.js';
-import { storeOriginalEmail } from '../feedback/original-store.js';
+import { storeOriginalEmail, storeSubjectMapping } from '../feedback/original-store.js';
 
 /**
  * Creates an email draft in admin@venturemortgages.com's Gmail.
@@ -45,11 +45,7 @@ export async function createEmailDraft(
     alreadyOnFile: input.alreadyOnFile,
   });
 
-  // Embed tracking metadata as hidden element (Gmail strips X- headers AND HTML comments on send)
-  // Using a zero-height div with data attributes — Gmail preserves data-* attributes on block elements
-  const body = input.contactId
-    ? `${rawBody}\n<div style="height:0;overflow:hidden;font-size:0;color:transparent;" data-venture-type="doc-request" data-venture-contact="${input.contactId}">.</div>`
-    : rawBody;
+  const body = rawBody;
 
   // 1b. Store original for feedback capture (non-fatal)
   if (input.contactId && input.applicationContext) {
@@ -86,6 +82,19 @@ export async function createEmailDraft(
 
   // 5. Create Gmail draft
   const draftId = await createGmailDraft(raw);
+
+  // 5b. Store subject→contactId mapping for BCC detection (non-fatal)
+  // Gmail strips all tracking metadata (X- headers, HTML comments, data-* attrs)
+  // so we match sent emails back to contacts via subject line
+  if (input.contactId) {
+    try {
+      await storeSubjectMapping(subject, input.contactId);
+    } catch (err) {
+      console.error('[email] Failed to store subject mapping (non-fatal)', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   // 6. Log metadata only (no PII per CLAUDE.md)
   console.log('[email] Draft created', {

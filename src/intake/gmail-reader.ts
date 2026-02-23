@@ -166,25 +166,6 @@ export async function getMessageDetails(
   const fromRaw = getHeader('From');
   const from = parseEmailFromHeader(fromRaw);
 
-  // Check X- headers first (may be stripped by Gmail on send)
-  let ventureType = getHeader('X-Venture-Type') || undefined;
-  let ventureContactId = getHeader('X-Venture-Contact-Id') || undefined;
-
-  // Fallback: parse hidden element in email body
-  // (Gmail strips both custom X- headers AND HTML comments on send,
-  //  but preserves data-* attributes on block elements)
-  if (!ventureType || !ventureContactId) {
-    const htmlBody = extractHtmlBodyText(response.data.payload ?? undefined);
-    if (htmlBody) {
-      const match = htmlBody.match(/data-venture-type="doc-request"\s+data-venture-contact="(\S+?)"/);
-      if (match) {
-        ventureType = 'doc-request';
-        ventureContactId = match[1];
-        console.log('[intake] BCC detected via body tracking element', { messageId, contactId: match[1] });
-      }
-    }
-  }
-
   return {
     messageId: response.data.id ?? messageId,
     threadId: response.data.threadId ?? null,
@@ -192,33 +173,9 @@ export async function getMessageDetails(
     subject: getHeader('Subject'),
     date: getHeader('Date'),
     historyId: response.data.historyId ?? '',
-    ventureType,
-    ventureContactId,
+    ventureType: getHeader('X-Venture-Type') || undefined,
+    ventureContactId: getHeader('X-Venture-Contact-Id') || undefined,
   };
-}
-
-/**
- * Extracts the HTML body text from a Gmail message payload.
- * Walks MIME parts recursively looking for text/html content.
- * Decodes base64url-encoded body data.
- */
-function extractHtmlBodyText(
-  payload: gmail_v1.Schema$MessagePart | undefined,
-): string | null {
-  if (!payload) return null;
-
-  // Direct body (non-multipart)
-  if (payload.mimeType === 'text/html' && payload.body?.data) {
-    return Buffer.from(payload.body.data, 'base64url').toString('utf-8');
-  }
-
-  // Walk parts recursively
-  for (const part of payload.parts ?? []) {
-    const result = extractHtmlBodyText(part);
-    if (result) return result;
-  }
-
-  return null;
 }
 
 /**
