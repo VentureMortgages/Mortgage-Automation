@@ -17,7 +17,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { getGmailReadonlyClient } from '../email/gmail-client.js';
-import { emailConfig } from '../email/config.js';
+import { intakeConfig } from '../intake/config.js';
 import { feedbackConfig } from './config.js';
 import { getOriginalEmail, deleteOriginalEmail } from './original-store.js';
 import { extractEmailHtml } from './html-extractor.js';
@@ -46,7 +46,8 @@ export async function captureFeedback(
   }
 
   // 2. Extract sent HTML from BCC message
-  const gmail = getGmailReadonlyClient(emailConfig.senderAddress);
+  // Read from the docs inbox — the BCC copy arrives there, not the sender's mailbox
+  const gmail = getGmailReadonlyClient(intakeConfig.docsInbox);
   const sentHtml = await extractEmailHtml(gmail, messageId);
   if (!sentHtml) {
     console.log('[feedback] Could not extract HTML from BCC message, skipping', { messageId });

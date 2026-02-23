@@ -146,6 +146,9 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
   if (detectedBcc) {
     console.log('[intake] Detected outbound doc-request email, updating CRM', { messageId });
     const sentResult = await handleSentDetection(messageMeta);
+    if (sentResult.errors.length > 0) {
+      console.error('[intake] Sent detection errors', { messageId, errors: sentResult.errors });
+    }
     return {
       documentsProcessed: 0,
       documentIds: [],
