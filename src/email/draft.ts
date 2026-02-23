@@ -45,9 +45,10 @@ export async function createEmailDraft(
     alreadyOnFile: input.alreadyOnFile,
   });
 
-  // Embed tracking metadata as hidden HTML comment (Gmail strips X- headers on send)
+  // Embed tracking metadata as hidden element (Gmail strips X- headers AND HTML comments on send)
+  // Using a zero-height div with data attributes — Gmail preserves data-* attributes on block elements
   const body = input.contactId
-    ? `${rawBody}\n<!-- venture:doc-request:${input.contactId} -->`
+    ? `${rawBody}\n<div style="height:0;overflow:hidden;font-size:0;color:transparent;" data-venture-type="doc-request" data-venture-contact="${input.contactId}">.</div>`
     : rawBody;
 
   // 1b. Store original for feedback capture (non-fatal)

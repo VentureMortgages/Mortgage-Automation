@@ -170,22 +170,17 @@ export async function getMessageDetails(
   let ventureType = getHeader('X-Venture-Type') || undefined;
   let ventureContactId = getHeader('X-Venture-Contact-Id') || undefined;
 
-  // Fallback: parse hidden HTML comment embedded in email body
-  // (Gmail preserves body content but strips custom X- headers)
+  // Fallback: parse hidden element in email body
+  // (Gmail strips both custom X- headers AND HTML comments on send,
+  //  but preserves data-* attributes on block elements)
   if (!ventureType || !ventureContactId) {
     const htmlBody = extractHtmlBodyText(response.data.payload ?? undefined);
-    console.log('[intake] BCC detection fallback', {
-      messageId,
-      hasXHeaders: !!(getHeader('X-Venture-Type')),
-      hasHtmlBody: !!htmlBody,
-      htmlTail: htmlBody?.slice(-200) ?? '(none)',
-      mimeType: response.data.payload?.mimeType,
-    });
     if (htmlBody) {
-      const match = htmlBody.match(/<!-- venture:doc-request:(\S+) -->/);
+      const match = htmlBody.match(/data-venture-type="doc-request"\s+data-venture-contact="(\S+?)"/);
       if (match) {
         ventureType = 'doc-request';
         ventureContactId = match[1];
+        console.log('[intake] BCC detected via body tracking element', { messageId, contactId: match[1] });
       }
     }
   }
