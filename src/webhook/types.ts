@@ -15,6 +15,7 @@ export interface WebhookPayload {
 export interface JobData {
   applicationId: string;
   receivedAt: string; // ISO timestamp of webhook receipt
+  finmoDealId?: string; // e.g. "BRXM-F050746" — from resthook payload
 }
 
 /** Result returned by worker after processing a job */

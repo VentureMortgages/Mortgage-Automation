@@ -106,35 +106,45 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
   }
 
   // 3c. Create deal subfolder per Finmo application (DRIVE-03)
+  // Prefer finmoDealId from webhook payload (available immediately).
+  // Fall back to CRM opportunity lookup (may fail if MBP hasn't synced yet).
   let dealSubfolderId: string | null = null;
   if (clientFolderId) {
     try {
-      // Find the opportunity to get the deal reference
-      const contactResult = await findContactByEmail(mainBorrower.email);
-      if (contactResult) {
-        const opportunity = await findOpportunityByFinmoId(
-          contactResult,
-          PIPELINE_IDS.LIVE_DEALS,
-          finmoApp.application.id,
-        );
+      let dealRef: string | null = job.data.finmoDealId ?? null;
+      let opportunity: Awaited<ReturnType<typeof findOpportunityByFinmoId>> = null;
 
-        if (opportunity) {
-          const dealRef = extractDealReference(opportunity.name, finmoApp.application.id);
-          dealSubfolderId = await findOrCreateFolder(getDriveClient(), dealRef, clientFolderId);
-
-          // Store deal subfolder ID on opportunity
-          if (crmConfig.oppDealSubfolderIdFieldId) {
-            await updateOpportunityFields(opportunity.id, [
-              { id: crmConfig.oppDealSubfolderIdFieldId, field_value: dealSubfolderId },
-            ]);
+      if (!dealRef) {
+        // Fallback: look up deal reference from CRM opportunity
+        const contactResult = await findContactByEmail(mainBorrower.email);
+        if (contactResult) {
+          opportunity = await findOpportunityByFinmoId(
+            contactResult,
+            PIPELINE_IDS.LIVE_DEALS,
+            finmoApp.application.id,
+          );
+          if (opportunity) {
+            dealRef = extractDealReference(opportunity.name, finmoApp.application.id);
           }
-
-          console.log('[worker] Deal subfolder created', {
-            applicationId,
-            dealRef,
-            dealSubfolderId,
-          });
         }
+      }
+
+      if (dealRef) {
+        dealSubfolderId = await findOrCreateFolder(getDriveClient(), dealRef, clientFolderId);
+
+        // Store deal subfolder ID on opportunity (if we have one)
+        if (opportunity && crmConfig.oppDealSubfolderIdFieldId) {
+          await updateOpportunityFields(opportunity.id, [
+            { id: crmConfig.oppDealSubfolderIdFieldId, field_value: dealSubfolderId },
+          ]);
+        }
+
+        console.log('[worker] Deal subfolder created', {
+          applicationId,
+          dealRef,
+          source: job.data.finmoDealId ? 'webhook' : 'crm',
+          dealSubfolderId,
+        });
       }
     } catch (err) {
       console.error('[worker] Deal subfolder creation failed (non-fatal)', {

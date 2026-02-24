@@ -97,10 +97,14 @@ export function createApp() {
       return;
     }
 
+    // Extract finmoDealId from payload (e.g. "BRXM-F050746")
+    const finmoDealId = typeof payload.finmoDealId === 'string' ? payload.finmoDealId : undefined;
+
     // Enqueue with dedup via jobId — same applicationId = same job
     const jobData: JobData = {
       applicationId,
       receivedAt: new Date().toISOString(),
+      ...(finmoDealId && { finmoDealId }),
     };
 
     const queue = getWebhookQueue();

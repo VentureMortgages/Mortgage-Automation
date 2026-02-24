@@ -124,6 +124,28 @@ describe('Webhook Server', () => {
       // Should be a valid ISO timestamp
       expect(new Date(jobData.receivedAt).toISOString()).toBe(jobData.receivedAt);
     });
+
+    it('includes finmoDealId in job data when present in payload', async () => {
+      const app = createApp();
+      await request(app)
+        .post('/webhooks/finmo')
+        .send({ id: 'abc-123-def', finmoDealId: 'BRXM-F050746' })
+        .expect(202);
+
+      const jobData = mockQueueAdd.mock.calls[0][1];
+      expect(jobData.finmoDealId).toBe('BRXM-F050746');
+    });
+
+    it('omits finmoDealId from job data when not in payload', async () => {
+      const app = createApp();
+      await request(app)
+        .post('/webhooks/finmo')
+        .send({ applicationId: 'abc-123' })
+        .expect(202);
+
+      const jobData = mockQueueAdd.mock.calls[0][1];
+      expect(jobData.finmoDealId).toBeUndefined();
+    });
   });
 
   describe('GET /health', () => {
