@@ -54,11 +54,17 @@ export async function createEmailDraft(
         html: body,
         context: input.applicationContext,
       });
+      console.log('[email] Original stored for feedback', { contactId: input.contactId });
     } catch (err) {
       console.error('[email] Failed to store original for feedback (non-fatal)', {
         error: err instanceof Error ? err.message : String(err),
       });
     }
+  } else {
+    console.log('[email] Skipped original store', {
+      hasContactId: !!input.contactId,
+      hasContext: !!input.applicationContext,
+    });
   }
 
   // 2. Determine recipient (dev override for safety)

@@ -113,7 +113,7 @@ function evaluateRule(
   const item: ChecklistItem = {
     ruleId: rule.id,
     document: rule.document,
-    displayName: rule.displayName,
+    displayName: rule.displayNameFn ? rule.displayNameFn(ctx) : rule.displayName,
     stage: rule.stage,
     forEmail: !rule.internalOnly && rule.stage !== 'LENDER_CONDITION',
     section: rule.section,

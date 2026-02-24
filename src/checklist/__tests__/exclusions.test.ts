@@ -34,14 +34,18 @@ describe('CHKL-05: Excluded items', () => {
     expect(ruleIds.every((id) => !id.includes('credit_consent'))).toBe(true);
   });
 
-  test('2. Bonus payment history is NOT in output (bonus letter IS)', () => {
+  test('2. Bonus payment history is NOT in output (bonus details merged into LOE)', () => {
     // Bob in co-borrower fixture has bonuses:true
     const result = generateChecklist(coBorrowerMixed, undefined, TEST_DATE);
     const ruleIds = getClientFacingRuleIds(result);
     expect(ruleIds.every((id) => id !== 'bonus_payment_history')).toBe(true);
-    // Bonus T4s removed (B9), but bonus letter should be present for Bob
+    // Bonus T4s removed (B9), standalone bonus letter removed (merged into LOE)
     expect(ruleIds).not.toContain('s10_bonus_t4s');
-    expect(ruleIds).toContain('s10_bonus_letter');
+    expect(ruleIds).not.toContain('s10_bonus_letter');
+    // Bob's LOE should include bonus structure details
+    const bob = result.borrowerChecklists.find((bc) => bc.borrowerName === 'Bob Co');
+    const bobLoe = bob!.items.find((i) => i.ruleId === 's1_loe');
+    expect(bobLoe?.displayName).toContain('bonus structure');
   });
 
   test('3. T2125 is NOT requested separately (is internal-only)', () => {

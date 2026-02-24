@@ -56,6 +56,15 @@ function salaryHourlyRules(): ChecklistRule[] {
       stage: 'PRE',
       scope: 'per_borrower',
       condition: hasSalaryOrHourly,
+      /** When borrower has bonuses, append bonus structure requirement to the LOE */
+      displayNameFn: (ctx: RuleContext) => {
+        const base =
+          'Letter of Employment (dated within the last 30 days) — must include: position, start date, salary, full-time/part-time, guaranteed hours';
+        const hasBonus = ctx.borrowerIncomes.some((inc) => inc.bonuses === true);
+        return hasBonus
+          ? `${base}, and bonus structure (discretionary vs guaranteed)`
+          : base;
+      },
     },
     {
       id: 's1_t4_previous',

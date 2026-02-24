@@ -65,6 +65,8 @@ export interface ChecklistRule {
    * Example: Don't request T2125 separately if T1 is already requested.
    */
   excludeWhen?: (ctx: RuleContext) => boolean;
+  /** Context-dependent display name override (e.g., LOE with bonus details when borrower has bonuses) */
+  displayNameFn?: (ctx: RuleContext) => string;
   /** Conditional note to include in email (e.g., "if NOA shows amount owing...") */
   notes?: string;
   /**

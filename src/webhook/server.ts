@@ -20,6 +20,7 @@ import { appConfig } from '../config.js';
 import { getWebhookQueue } from './queue.js';
 import { sanitizeForLog } from './sanitize.js';
 import { healthHandler } from './health.js';
+import { getIntakeQueue } from '../intake/gmail-monitor.js';
 import type { WebhookPayload, JobData } from './types.js';
 
 /**
@@ -109,6 +110,35 @@ export function createApp() {
 
     console.log('[webhook] Enqueued', { applicationId, jobId: `finmo-app-${applicationId}` });
     res.status(202).json({ accepted: true, applicationId });
+  });
+
+  // Admin: reprocess a Gmail message (bypasses history.list + BullMQ dedup)
+  app.post('/admin/reprocess-message', async (req: Request, res: Response) => {
+    const { messageId } = req.body as { messageId?: string };
+    if (!messageId) {
+      res.status(400).json({ error: 'Missing messageId' });
+      return;
+    }
+
+    const queue = getIntakeQueue();
+    const jobId = `gmail-${messageId}`;
+
+    // Remove existing completed/failed job if present (clears dedup)
+    const existing = await queue.getJob(jobId);
+    if (existing) {
+      await existing.remove();
+      console.log('[admin] Removed existing job', { jobId });
+    }
+
+    // Enqueue for reprocessing
+    await queue.add('process-gmail-message', {
+      source: 'gmail' as const,
+      gmailMessageId: messageId,
+      receivedAt: new Date().toISOString(),
+    }, { jobId });
+
+    console.log('[admin] Reprocessing message', { messageId, jobId });
+    res.json({ success: true, jobId });
   });
 
   // Global error handler

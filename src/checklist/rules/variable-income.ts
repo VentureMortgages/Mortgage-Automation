@@ -94,18 +94,10 @@ function commissionRules(): ChecklistRule[] {
 // Bonus
 // ---------------------------------------------------------------------------
 
+// Bonus letter removed — merged into LOE (s1_loe) via displayNameFn.
+// When borrower has bonuses, the LOE request includes bonus structure details.
 function bonusRules(): ChecklistRule[] {
-  return [
-    {
-      id: 's10_bonus_letter',
-      section: '10_variable_income_bonus',
-      document: 'Letter confirming bonus structure',
-      displayName: 'Letter confirming bonus structure (discretionary vs guaranteed)',
-      stage: 'FULL',
-      scope: 'per_borrower',
-      condition: hasBonus,
-    },
-  ];
+  return [];
 }
 
 // ---------------------------------------------------------------------------

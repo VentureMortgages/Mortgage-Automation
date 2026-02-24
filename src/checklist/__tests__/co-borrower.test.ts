@@ -61,7 +61,7 @@ describe('CHKL-04: Co-borrower duplication', () => {
     expect(bobRuleIds).toContain('s1_loe');
   });
 
-  test('bonus-specific docs only appear for borrower with bonuses', () => {
+  test('bonus details merged into LOE for borrower with bonuses', () => {
     const alice = result.borrowerChecklists.find(
       (bc) => bc.borrowerName === 'Alice Main'
     );
@@ -69,13 +69,12 @@ describe('CHKL-04: Co-borrower duplication', () => {
       (bc) => bc.borrowerName === 'Bob Co'
     );
 
-    const aliceRuleIds = alice!.items.map((i) => i.ruleId);
-    const bobRuleIds = bob!.items.map((i) => i.ruleId);
+    // Bob (bonuses:true) LOE should include bonus structure requirement
+    const bobLoe = bob!.items.find((i) => i.ruleId === 's1_loe');
+    expect(bobLoe?.displayName).toContain('bonus structure');
 
-    // Bob (bonuses:true) should have bonus letter (bonus T4s removed per B9)
-    expect(bobRuleIds).toContain('s10_bonus_letter');
-
-    // Alice (bonuses:false) should NOT have bonus items
-    expect(aliceRuleIds).not.toContain('s10_bonus_letter');
+    // Alice (bonuses:false) LOE should NOT mention bonus
+    const aliceLoe = alice!.items.find((i) => i.ruleId === 's1_loe');
+    expect(aliceLoe?.displayName).not.toContain('bonus');
   });
 });
