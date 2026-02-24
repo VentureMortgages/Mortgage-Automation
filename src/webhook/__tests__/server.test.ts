@@ -108,7 +108,7 @@ describe('Webhook Server', () => {
       expect(mockQueueAdd).toHaveBeenCalledWith(
         'process-application',
         expect.objectContaining({ applicationId: 'abc-123' }),
-        { jobId: 'finmo-app-abc-123', delay: 5 * 60 * 1000 },
+        { jobId: 'finmo-app-abc-123' },
       );
     });
 

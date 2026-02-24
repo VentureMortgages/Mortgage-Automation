@@ -23,7 +23,7 @@
  */
 
 import { Worker, Job } from 'bullmq';
-import { createRedisConnection, QUEUE_NAME } from './queue.js';
+import { createRedisConnection, QUEUE_NAME, getWebhookQueue } from './queue.js';
 import { appConfig } from '../config.js';
 import { fetchFinmoApplication } from './finmo-client.js';
 import { generateChecklist } from '../checklist/engine/index.js';
@@ -40,7 +40,7 @@ import { crmConfig } from '../crm/config.js';
 import { PIPELINE_IDS } from '../crm/types/index.js';
 import type { ApplicationContext } from '../feedback/types.js';
 import type { FilterResult, ExistingDoc } from '../drive/index.js';
-import type { JobData, ProcessingResult } from './types.js';
+import type { JobData, CrmRetryJobData, ProcessingResult } from './types.js';
 
 let _worker: Worker | null = null;
 
@@ -245,6 +245,34 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     errors: crmResult.errors.length,
   });
 
+  // 8b. Schedule CRM sync retry if opportunity wasn't found yet
+  if (crmResult.trackingTarget === 'contact') {
+    try {
+      const retryData: CrmRetryJobData = {
+        applicationId,
+        finmoApplicationId: finmoApp.application.id,
+        finmoDealId: job.data.finmoDealId,
+        contactId: crmResult.contactId,
+        dealSubfolderId: dealSubfolderId,
+        borrowerEmail: mainBorrower.email,
+        borrowerFirstName: mainBorrower.firstName,
+        borrowerLastName: mainBorrower.lastName,
+        borrowerPhone: mainBorrower.phone ?? undefined,
+        retryAttempt: 1,
+      };
+      const queue = getWebhookQueue();
+      await queue.add('crm-sync-retry', retryData, {
+        delay: 5 * 60 * 1000, // 5 min
+      });
+      console.log('[worker] Scheduling CRM sync retry', { applicationId, retryAttempt: 1 });
+    } catch (err) {
+      console.error('[worker] Failed to schedule CRM sync retry (non-fatal)', {
+        applicationId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   // 9. Create email draft (uses filtered checklist + on-file section)
   const emailResult = await createEmailDraft({
     checklist: emailChecklist,
@@ -290,18 +318,170 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
   };
 }
 
+/** Retry delay schedule: 5min, 10min, 20min */
+const RETRY_DELAYS = [5 * 60 * 1000, 10 * 60 * 1000, 20 * 60 * 1000];
+const MAX_RETRY_ATTEMPTS = 3;
+
+/**
+ * Process a CRM sync retry job.
+ *
+ * Called when the initial webhook processing fell back to contact-level tracking
+ * because the MBP opportunity didn't exist yet. This function:
+ * 1. Looks up the opportunity again
+ * 2. If found: re-fetches Finmo app, regenerates checklist, syncs to CRM at opportunity level,
+ *    and stores the deal subfolder link
+ * 3. If not found: re-enqueues with exponential delay (up to MAX_RETRY_ATTEMPTS)
+ */
+export async function processCrmRetry(job: Job<CrmRetryJobData>): Promise<void> {
+  const { applicationId, finmoApplicationId, contactId, retryAttempt } = job.data;
+  console.log(`[worker] CRM sync retry attempt ${retryAttempt}`, { applicationId });
+
+  // Look up the opportunity
+  const opportunity = await findOpportunityByFinmoId(
+    contactId,
+    PIPELINE_IDS.LIVE_DEALS,
+    finmoApplicationId,
+  );
+
+  if (!opportunity) {
+    if (retryAttempt < MAX_RETRY_ATTEMPTS) {
+      const nextAttempt = retryAttempt + 1;
+      const delay = RETRY_DELAYS[retryAttempt] ?? RETRY_DELAYS[RETRY_DELAYS.length - 1];
+      const queue = getWebhookQueue();
+      await queue.add('crm-sync-retry', {
+        ...job.data,
+        retryAttempt: nextAttempt,
+      }, { delay });
+      console.log('[worker] Opportunity still not found, scheduling retry', {
+        applicationId,
+        nextAttempt,
+        delayMs: delay,
+      });
+    } else {
+      console.warn('[worker] CRM sync retry exhausted — contact-level tracking is permanent', {
+        applicationId,
+        attempts: retryAttempt,
+      });
+    }
+    return;
+  }
+
+  // Opportunity found — re-run CRM sync at opportunity level
+  console.log('[worker] Opportunity found on retry, syncing checklist', {
+    applicationId,
+    opportunityId: opportunity.id,
+  });
+
+  // Re-fetch Finmo app and regenerate checklist (avoids stale data)
+  const finmoApp = await fetchFinmoApplication(applicationId);
+  const checklist = generateChecklist(finmoApp);
+
+  // Apply Drive scan filtering and feedback (same as initial run)
+  let emailChecklist = checklist;
+  const driveRootFolderId = process.env.DRIVE_ROOT_FOLDER_ID;
+  if (driveRootFolderId) {
+    try {
+      const clientFolderName = buildClientFolderName(finmoApp.borrowers);
+      const clientFolderId = await findOrCreateFolder(getDriveClient(), clientFolderName, driveRootFolderId);
+      const borrowerFirstNames = finmoApp.borrowers.map(b => b.firstName);
+      const existingDocs = await scanClientFolder(getDriveClient(), clientFolderId, borrowerFirstNames);
+
+      let dealDocs: ExistingDoc[] = [];
+      if (job.data.dealSubfolderId) {
+        dealDocs = await scanClientFolder(getDriveClient(), job.data.dealSubfolderId, borrowerFirstNames);
+      }
+
+      const allExistingDocs = [...existingDocs, ...dealDocs];
+      if (allExistingDocs.length > 0) {
+        const filterResult = filterChecklistByExistingDocs(checklist, allExistingDocs, new Date());
+        emailChecklist = filterResult.filteredChecklist;
+      }
+    } catch (err) {
+      console.error('[worker] Drive scan failed during retry (non-fatal)', {
+        applicationId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // Apply feedback
+  try {
+    if (feedbackConfig.enabled) {
+      const applicationContext: ApplicationContext = {
+        goal: finmoApp.application.goal,
+        incomeTypes: finmoApp.incomes.map(i => `${i.source}/${i.payType ?? 'none'}`),
+        propertyTypes: [...new Set(finmoApp.properties.map(p => p.use).filter(Boolean))] as string[],
+        borrowerCount: finmoApp.borrowers.length,
+        hasGiftDP: finmoApp.assets.some(a => a.type === 'gift' && (a.downPayment ?? 0) > 0),
+        hasRentalIncome: finmoApp.properties.some(p => (p.rentalIncome ?? 0) > 0),
+      };
+      const contextText = buildContextText(applicationContext);
+      const matches = await findSimilarEdits(contextText);
+      if (matches.length > 0) {
+        emailChecklist = applyFeedbackToChecklist(emailChecklist, matches);
+      }
+    }
+  } catch (err) {
+    console.error('[worker] Feedback retrieval failed during retry (non-fatal)', {
+      applicationId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  // Sync checklist to CRM — this time it should find the opportunity
+  const crmResult = await syncChecklistToCrm({
+    checklist: emailChecklist,
+    borrowerEmail: job.data.borrowerEmail,
+    borrowerFirstName: job.data.borrowerFirstName,
+    borrowerLastName: job.data.borrowerLastName,
+    borrowerPhone: job.data.borrowerPhone,
+    finmoDealId: applicationId,
+    finmoApplicationId: finmoApplicationId,
+  });
+
+  console.log('[worker] CRM retry sync completed', {
+    applicationId,
+    trackingTarget: crmResult.trackingTarget,
+    opportunityId: crmResult.opportunityId,
+  });
+
+  // Store deal subfolder link on opportunity
+  if (job.data.dealSubfolderId && crmResult.opportunityId && crmConfig.oppDealSubfolderIdFieldId) {
+    try {
+      await updateOpportunityFields(crmResult.opportunityId, [
+        { id: crmConfig.oppDealSubfolderIdFieldId, field_value: `https://drive.google.com/drive/folders/${job.data.dealSubfolderId}` },
+      ]);
+      console.log('[worker] Deal subfolder link stored on opportunity', {
+        applicationId,
+        opportunityId: crmResult.opportunityId,
+      });
+    } catch (err) {
+      console.error('[worker] Failed to store deal subfolder link on retry (non-fatal)', {
+        applicationId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+}
+
 /**
  * Create and start the BullMQ worker (lazy singleton).
  *
  * The worker listens on the finmo-webhooks queue and processes jobs
  * through the full pipeline. Only one worker instance is created.
+ * Routes jobs by name: 'crm-sync-retry' → processCrmRetry, all others → processJob.
  *
  * @returns The BullMQ Worker instance
  */
-export function createWorker(): Worker<JobData, ProcessingResult> {
+export function createWorker(): Worker {
   if (_worker) return _worker;
 
-  _worker = new Worker<JobData, ProcessingResult>(QUEUE_NAME, processJob, {
+  _worker = new Worker(QUEUE_NAME, async (job) => {
+    if (job.name === 'crm-sync-retry') {
+      return processCrmRetry(job as Job<CrmRetryJobData>);
+    }
+    return processJob(job as Job<JobData>);
+  }, {
     connection: createRedisConnection(),
     concurrency: 1,
   });

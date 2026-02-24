@@ -18,6 +18,20 @@ export interface JobData {
   finmoDealId?: string; // e.g. "BRXM-F050746" — from resthook payload
 }
 
+/** Data for a CRM sync retry job (scheduled when MBP opportunity doesn't exist yet) */
+export interface CrmRetryJobData {
+  applicationId: string;
+  finmoApplicationId: string;
+  finmoDealId?: string;
+  contactId: string;
+  dealSubfolderId: string | null;
+  borrowerEmail: string;
+  borrowerFirstName: string;
+  borrowerLastName: string;
+  borrowerPhone?: string;
+  retryAttempt: number;
+}
+
 /** Result returned by worker after processing a job */
 export interface ProcessingResult {
   applicationId: string;

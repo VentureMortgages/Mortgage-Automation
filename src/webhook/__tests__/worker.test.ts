@@ -19,22 +19,22 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Module-level mocks
 // ============================================================================
 
-const mockConfig = vi.hoisted(() => ({
-  appConfig: {
-    killSwitch: false,
-    isDev: true,
-    finmo: { apiKey: 'test-key', apiBase: 'https://test.finmo.ca/api/v1' },
-    redis: { host: 'localhost', port: 6379 },
-    server: { port: 3000 },
+const { mockConfig, mockQueueAdd, mockFindOpp, mockUpdateOpp } = vi.hoisted(() => ({
+  mockConfig: {
+    appConfig: {
+      killSwitch: false,
+      isDev: true,
+      finmo: { apiKey: 'test-key', apiBase: 'https://test.finmo.ca/api/v1' },
+      redis: { host: 'localhost', port: 6379 },
+      server: { port: 3000 },
+    },
   },
+  mockQueueAdd: vi.fn().mockResolvedValue({ id: 'retry-job-id' }),
+  mockFindOpp: vi.fn(),
+  mockUpdateOpp: vi.fn(),
 }));
 
 vi.mock('../../config.js', () => mockConfig);
-
-vi.mock('../queue.js', () => ({
-  createRedisConnection: vi.fn(() => ({})),
-  QUEUE_NAME: 'finmo-webhooks',
-}));
 
 vi.mock('../finmo-client.js', () => ({
   fetchFinmoApplication: vi.fn(),
@@ -46,6 +46,40 @@ vi.mock('../../checklist/engine/index.js', () => ({
 
 vi.mock('../../crm/index.js', () => ({
   syncChecklistToCrm: vi.fn(),
+}));
+
+vi.mock('../../crm/opportunities.js', () => ({
+  findOpportunityByFinmoId: (...args: unknown[]) => mockFindOpp(...args),
+  updateOpportunityFields: (...args: unknown[]) => mockUpdateOpp(...args),
+}));
+
+vi.mock('../../crm/contacts.js', () => ({
+  upsertContact: vi.fn(() => Promise.resolve({ contactId: 'crm-contact-456' })),
+  findContactByEmail: vi.fn(() => Promise.resolve('crm-contact-456')),
+}));
+
+vi.mock('../../crm/config.js', () => ({
+  crmConfig: {
+    isDev: true,
+    locationId: 'loc-123',
+    oppDealSubfolderIdFieldId: 'opp-subfolder-field-id',
+    driveFolderIdFieldId: 'drive-folder-field-id',
+    fieldIds: {},
+    opportunityFieldIds: {},
+    stageIds: { collectingDocuments: 'stage-1' },
+  },
+}));
+
+vi.mock('../../crm/types/index.js', () => ({
+  PIPELINE_IDS: { LIVE_DEALS: 'pipeline-live-deals' },
+}));
+
+vi.mock('../queue.js', () => ({
+  createRedisConnection: vi.fn(() => ({})),
+  QUEUE_NAME: 'finmo-webhooks',
+  getWebhookQueue: vi.fn(() => ({
+    add: mockQueueAdd,
+  })),
 }));
 
 vi.mock('../../email/index.js', () => ({
@@ -73,6 +107,7 @@ vi.mock('../../classification/filer.js', () => ({
 vi.mock('../../drive/index.js', () => ({
   scanClientFolder: vi.fn(() => Promise.resolve([])),
   filterChecklistByExistingDocs: vi.fn(),
+  extractDealReference: vi.fn(),
 }));
 
 vi.mock('../../feedback/index.js', () => ({
@@ -90,7 +125,7 @@ vi.mock('bullmq', () => ({
   Job: vi.fn(),
 }));
 
-import { processJob } from '../worker.js';
+import { processJob, processCrmRetry } from '../worker.js';
 import { fetchFinmoApplication } from '../finmo-client.js';
 import { generateChecklist } from '../../checklist/engine/index.js';
 import { syncChecklistToCrm } from '../../crm/index.js';
@@ -102,7 +137,7 @@ import type { GeneratedChecklist } from '../../checklist/types/index.js';
 import type { SyncChecklistResult } from '../../crm/index.js';
 import type { CreateEmailDraftResult } from '../../email/index.js';
 import type { Job } from 'bullmq';
-import type { JobData, ProcessingResult } from '../types.js';
+import type { JobData, CrmRetryJobData, ProcessingResult } from '../types.js';
 
 // ============================================================================
 // Test Fixtures
@@ -721,5 +756,160 @@ describe('processJob', () => {
       delete process.env.DRIVE_ROOT_FOLDER_ID;
       mockBudgetConfig.budgetConfig.enabled = false;
     });
+  });
+
+  describe('CRM sync retry scheduling (step 8b)', () => {
+    beforeEach(() => {
+      mockFetch.mockResolvedValue(createMockFinmoApp());
+      mockGenerate.mockReturnValue(createMockChecklist());
+      mockEmail.mockResolvedValue(createMockEmailResult());
+    });
+
+    it('should schedule retry when CRM falls back to contact-level tracking', async () => {
+      mockCrm.mockResolvedValue({
+        ...createMockCrmResult(),
+        trackingTarget: 'contact',
+      });
+
+      await processJob(createMockJob());
+
+      expect(mockQueueAdd).toHaveBeenCalledWith(
+        'crm-sync-retry',
+        expect.objectContaining({
+          applicationId: 'app-123',
+          finmoApplicationId: 'app-123',
+          contactId: 'crm-contact-456',
+          retryAttempt: 1,
+        }),
+        { delay: 5 * 60 * 1000 },
+      );
+    });
+
+    it('should not schedule retry when CRM targets opportunity', async () => {
+      mockCrm.mockResolvedValue(createMockCrmResult()); // trackingTarget: 'opportunity'
+
+      await processJob(createMockJob());
+
+      expect(mockQueueAdd).not.toHaveBeenCalledWith(
+        'crm-sync-retry',
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+  });
+});
+
+// ============================================================================
+// processCrmRetry Tests
+// ============================================================================
+
+function createMockRetryJob(overrides?: Partial<CrmRetryJobData>): Job<CrmRetryJobData> {
+  return {
+    id: 'retry-job-1',
+    name: 'crm-sync-retry',
+    data: {
+      applicationId: 'app-123',
+      finmoApplicationId: 'app-123',
+      contactId: 'crm-contact-456',
+      dealSubfolderId: 'subfolder-789',
+      borrowerEmail: 'jane@example.com',
+      borrowerFirstName: 'Jane',
+      borrowerLastName: 'Doe',
+      retryAttempt: 1,
+      ...overrides,
+    },
+    attemptsMade: 0,
+    opts: {},
+  } as Job<CrmRetryJobData>;
+}
+
+describe('processCrmRetry', () => {
+  const mockFetch = vi.mocked(fetchFinmoApplication);
+  const mockGenerate = vi.mocked(generateChecklist);
+  const mockCrm = vi.mocked(syncChecklistToCrm);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should sync to CRM when opportunity is found', async () => {
+    mockFindOpp.mockResolvedValue({ id: 'opp-101', name: 'Jane Doe — BRXM-F050746' });
+    mockFetch.mockResolvedValue(createMockFinmoApp());
+    mockGenerate.mockReturnValue(createMockChecklist());
+    mockCrm.mockResolvedValue({
+      ...createMockCrmResult(),
+      trackingTarget: 'opportunity',
+    });
+
+    await processCrmRetry(createMockRetryJob());
+
+    // Should have called syncChecklistToCrm
+    expect(mockCrm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        borrowerEmail: 'jane@example.com',
+        finmoApplicationId: 'app-123',
+      }),
+    );
+  });
+
+  it('should store deal subfolder link on opportunity', async () => {
+    mockFindOpp.mockResolvedValue({ id: 'opp-101', name: 'Jane Doe' });
+    mockFetch.mockResolvedValue(createMockFinmoApp());
+    mockGenerate.mockReturnValue(createMockChecklist());
+    mockCrm.mockResolvedValue({
+      ...createMockCrmResult(),
+      opportunityId: 'opp-101',
+    });
+
+    await processCrmRetry(createMockRetryJob());
+
+    expect(mockUpdateOpp).toHaveBeenCalledWith('opp-101', [
+      {
+        id: 'opp-subfolder-field-id',
+        field_value: 'https://drive.google.com/drive/folders/subfolder-789',
+      },
+    ]);
+  });
+
+  it('should re-enqueue with increased delay when opportunity not found', async () => {
+    mockFindOpp.mockResolvedValue(null);
+
+    await processCrmRetry(createMockRetryJob({ retryAttempt: 1 }));
+
+    expect(mockQueueAdd).toHaveBeenCalledWith(
+      'crm-sync-retry',
+      expect.objectContaining({
+        retryAttempt: 2,
+      }),
+      { delay: 10 * 60 * 1000 }, // 10 min
+    );
+
+    // Should NOT have called syncChecklistToCrm
+    expect(mockCrm).not.toHaveBeenCalled();
+  });
+
+  it('should give up after max retry attempts', async () => {
+    mockFindOpp.mockResolvedValue(null);
+
+    await processCrmRetry(createMockRetryJob({ retryAttempt: 3 }));
+
+    // Should NOT re-enqueue
+    expect(mockQueueAdd).not.toHaveBeenCalled();
+    // Should NOT have called syncChecklistToCrm
+    expect(mockCrm).not.toHaveBeenCalled();
+  });
+
+  it('should not store subfolder link when dealSubfolderId is null', async () => {
+    mockFindOpp.mockResolvedValue({ id: 'opp-101', name: 'Jane Doe' });
+    mockFetch.mockResolvedValue(createMockFinmoApp());
+    mockGenerate.mockReturnValue(createMockChecklist());
+    mockCrm.mockResolvedValue({
+      ...createMockCrmResult(),
+      opportunityId: 'opp-101',
+    });
+
+    await processCrmRetry(createMockRetryJob({ dealSubfolderId: null }));
+
+    expect(mockUpdateOpp).not.toHaveBeenCalled();
   });
 });
