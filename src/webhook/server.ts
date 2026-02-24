@@ -110,9 +110,10 @@ export function createApp() {
     const queue = getWebhookQueue();
     await queue.add('process-application', jobData, {
       jobId: `finmo-app-${applicationId}`, // Deduplication key
+      delay: 5 * 60 * 1000, // 5 min — wait for Finmo to create MBP opportunity
     });
 
-    console.log('[webhook] Enqueued', { applicationId, jobId: `finmo-app-${applicationId}` });
+    console.log('[webhook] Enqueued', { applicationId, finmoDealId: finmoDealId ?? null, jobId: `finmo-app-${applicationId}` });
     res.status(202).json({ accepted: true, applicationId });
   });
 
