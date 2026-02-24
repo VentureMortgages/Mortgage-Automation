@@ -94,7 +94,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
         firstName: mainBorrower.firstName,
         lastName: mainBorrower.lastName,
         customFields: [
-          { id: crmConfig.driveFolderIdFieldId, field_value: clientFolderId },
+          { id: crmConfig.driveFolderIdFieldId, field_value: `https://drive.google.com/drive/folders/${clientFolderId}` },
         ],
       });
     } catch (err) {
@@ -114,28 +114,26 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
       let dealRef: string | null = job.data.finmoDealId ?? null;
       let opportunity: Awaited<ReturnType<typeof findOpportunityByFinmoId>> = null;
 
-      if (!dealRef) {
-        // Fallback: look up deal reference from CRM opportunity
-        const contactResult = await findContactByEmail(mainBorrower.email);
-        if (contactResult) {
-          opportunity = await findOpportunityByFinmoId(
-            contactResult,
-            PIPELINE_IDS.LIVE_DEALS,
-            finmoApp.application.id,
-          );
-          if (opportunity) {
-            dealRef = extractDealReference(opportunity.name, finmoApp.application.id);
-          }
+      // Look up CRM opportunity (needed to store subfolder ID + get dealRef fallback)
+      const contactResult = await findContactByEmail(mainBorrower.email);
+      if (contactResult) {
+        opportunity = await findOpportunityByFinmoId(
+          contactResult,
+          PIPELINE_IDS.LIVE_DEALS,
+          finmoApp.application.id,
+        );
+        if (!dealRef && opportunity) {
+          dealRef = extractDealReference(opportunity.name, finmoApp.application.id);
         }
       }
 
       if (dealRef) {
         dealSubfolderId = await findOrCreateFolder(getDriveClient(), dealRef, clientFolderId);
 
-        // Store deal subfolder ID on opportunity (if we have one)
+        // Store deal subfolder link on opportunity
         if (opportunity && crmConfig.oppDealSubfolderIdFieldId) {
           await updateOpportunityFields(opportunity.id, [
-            { id: crmConfig.oppDealSubfolderIdFieldId, field_value: dealSubfolderId },
+            { id: crmConfig.oppDealSubfolderIdFieldId, field_value: `https://drive.google.com/drive/folders/${dealSubfolderId}` },
           ]);
         }
 
