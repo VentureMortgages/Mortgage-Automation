@@ -56,6 +56,8 @@ export interface SyncChecklistInput {
   finmoApplicationId?: string;
   /** Pre-received docs from Drive scan (already on file) */
   preReceivedDocs?: { name: string; stage: string }[];
+  /** Skip review task creation (used on CRM sync retry to avoid duplicates) */
+  skipTask?: boolean;
 }
 
 export interface SyncChecklistResult {
@@ -188,15 +190,18 @@ export async function syncChecklistToCrm(
   }
 
   // 6. Create review task for Cat — non-critical
+  //    Skipped on retry to avoid duplicate tasks
   let taskId: string | undefined;
-  try {
-    const borrowerName = `${input.borrowerFirstName} ${input.borrowerLastName}`;
-    const summary = buildChecklistSummary(input.checklist);
-    taskId = await createReviewTask(contactId, borrowerName, summary);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.warn(`[syncChecklistToCrm] Task creation failed: ${message}`);
-    errors.push(`Task creation failed: ${message}`);
+  if (!input.skipTask) {
+    try {
+      const borrowerName = `${input.borrowerFirstName} ${input.borrowerLastName}`;
+      const summary = buildChecklistSummary(input.checklist);
+      taskId = await createReviewTask(contactId, borrowerName, summary);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.warn(`[syncChecklistToCrm] Task creation failed: ${message}`);
+      errors.push(`Task creation failed: ${message}`);
+    }
   }
 
   // 7. Return result

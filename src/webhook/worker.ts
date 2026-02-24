@@ -429,6 +429,7 @@ export async function processCrmRetry(job: Job<CrmRetryJobData>): Promise<void> 
   }
 
   // Sync checklist to CRM — this time it should find the opportunity
+  // Skip task creation to avoid duplicate review tasks for Cat
   const crmResult = await syncChecklistToCrm({
     checklist: emailChecklist,
     borrowerEmail: job.data.borrowerEmail,
@@ -437,6 +438,7 @@ export async function processCrmRetry(job: Job<CrmRetryJobData>): Promise<void> 
     borrowerPhone: job.data.borrowerPhone,
     finmoDealId: applicationId,
     finmoApplicationId: finmoApplicationId,
+    skipTask: true,
   });
 
   console.log('[worker] CRM retry sync completed', {
