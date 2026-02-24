@@ -1,34 +1,32 @@
 /**
- * Tests for Feedback Store — JSON file append/read
+ * Tests for Feedback Store — Redis-backed persistence
  *
  * Tests cover:
- * - loadFeedbackRecords: returns records from existing file
- * - loadFeedbackRecords: returns empty array when file doesn't exist
- * - appendFeedbackRecord: appends to existing records
- * - appendFeedbackRecord: creates file when it doesn't exist
+ * - loadFeedbackRecords: returns records from Redis list
+ * - loadFeedbackRecords: returns empty array when no records exist
+ * - appendFeedbackRecord: appends to Redis list
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FeedbackRecord } from '../types.js';
 
 // ---------------------------------------------------------------------------
-// Mock fs and config
+// Mock Redis + queue (must be before imports)
 // ---------------------------------------------------------------------------
 
-const mockReadFile = vi.hoisted(() => vi.fn());
-const mockWriteFile = vi.hoisted(() => vi.fn());
-const mockMkdir = vi.hoisted(() => vi.fn());
+const mockLrange = vi.fn();
+const mockRpush = vi.fn();
 
-vi.mock('node:fs/promises', () => ({
-  readFile: mockReadFile,
-  writeFile: mockWriteFile,
-  mkdir: mockMkdir,
+vi.mock('ioredis', () => ({
+  Redis: class MockIORedis {
+    lrange = mockLrange;
+    rpush = mockRpush;
+    constructor() { /* no-op */ }
+  },
 }));
 
-vi.mock('../config.js', () => ({
-  feedbackConfig: {
-    feedbackFilePath: '/test/data/feedback-records.json',
-  },
+vi.mock('../../webhook/queue.js', () => ({
+  createRedisConnection: vi.fn().mockReturnValue({}),
 }));
 
 // ---------------------------------------------------------------------------
@@ -72,65 +70,41 @@ const testRecord: FeedbackRecord = {
 describe('Feedback Store', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockMkdir.mockResolvedValue(undefined);
-    mockWriteFile.mockResolvedValue(undefined);
   });
 
   describe('loadFeedbackRecords', () => {
-    it('returns records from existing file', async () => {
-      mockReadFile.mockResolvedValue(JSON.stringify([testRecord]));
+    it('returns records from Redis list', async () => {
+      mockLrange.mockResolvedValue([JSON.stringify(testRecord)]);
 
       const records = await loadFeedbackRecords();
 
       expect(records).toHaveLength(1);
       expect(records[0].id).toBe('rec-1');
+      expect(mockLrange).toHaveBeenCalledWith('feedback:records', 0, -1);
     });
 
-    it('returns empty array when file does not exist', async () => {
-      const err = new Error('ENOENT') as NodeJS.ErrnoException;
-      err.code = 'ENOENT';
-      mockReadFile.mockRejectedValue(err);
+    it('returns empty array when no records exist', async () => {
+      mockLrange.mockResolvedValue([]);
 
       const records = await loadFeedbackRecords();
 
       expect(records).toEqual([]);
     });
-
-    it('throws on other file errors', async () => {
-      const err = new Error('Permission denied') as NodeJS.ErrnoException;
-      err.code = 'EACCES';
-      mockReadFile.mockRejectedValue(err);
-
-      await expect(loadFeedbackRecords()).rejects.toThrow('Permission denied');
-    });
   });
 
   describe('appendFeedbackRecord', () => {
-    it('appends to existing records', async () => {
-      const existing = [testRecord];
-      mockReadFile.mockResolvedValue(JSON.stringify(existing));
-
-      const newRecord: FeedbackRecord = { ...testRecord, id: 'rec-2' };
-      await appendFeedbackRecord(newRecord);
-
-      expect(mockWriteFile).toHaveBeenCalledOnce();
-      const written = JSON.parse(mockWriteFile.mock.calls[0][1]);
-      expect(written).toHaveLength(2);
-      expect(written[1].id).toBe('rec-2');
-    });
-
-    it('creates file when it does not exist', async () => {
-      const err = new Error('ENOENT') as NodeJS.ErrnoException;
-      err.code = 'ENOENT';
-      mockReadFile.mockRejectedValue(err);
+    it('appends serialized record to Redis list', async () => {
+      mockRpush.mockResolvedValue(1);
 
       await appendFeedbackRecord(testRecord);
 
-      expect(mockMkdir).toHaveBeenCalledWith(expect.any(String), { recursive: true });
-      expect(mockWriteFile).toHaveBeenCalledOnce();
-      const written = JSON.parse(mockWriteFile.mock.calls[0][1]);
-      expect(written).toHaveLength(1);
-      expect(written[0].id).toBe('rec-1');
+      expect(mockRpush).toHaveBeenCalledOnce();
+      expect(mockRpush).toHaveBeenCalledWith(
+        'feedback:records',
+        expect.any(String),
+      );
+      const pushed = JSON.parse(mockRpush.mock.calls[0][1]);
+      expect(pushed.id).toBe('rec-1');
     });
   });
 });

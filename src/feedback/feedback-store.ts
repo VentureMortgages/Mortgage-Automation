@@ -1,44 +1,47 @@
 /**
- * Feedback Store — JSON file persistence for feedback records
+ * Feedback Store — Redis-backed persistence for feedback records
  *
- * Simple append-only JSON file storage. Expected volume is <100 records
- * over months, so a JSON file is sufficient (no DB needed).
+ * Stores feedback records as individual entries in a Redis list.
+ * Expected volume is <100 records over months — Redis list is sufficient.
  *
- * File: data/feedback-records.json
+ * Moved from JSON file to Redis because Railway's filesystem is ephemeral
+ * (data lost on every deploy).
  *
  * Consumers: capture.ts (append), retriever.ts (load)
  */
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import path from 'node:path';
-import { feedbackConfig } from './config.js';
+import { Redis as IORedis } from 'ioredis';
+import { createRedisConnection } from '../webhook/queue.js';
 import type { FeedbackRecord } from './types.js';
 
-/**
- * Load all feedback records from the JSON file.
- * Returns an empty array if the file doesn't exist yet.
- */
-export async function loadFeedbackRecords(): Promise<FeedbackRecord[]> {
-  try {
-    const raw = await readFile(feedbackConfig.feedbackFilePath, 'utf-8');
-    return JSON.parse(raw) as FeedbackRecord[];
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-      return [];
-    }
-    throw err;
-  }
+const RECORDS_KEY = 'feedback:records';
+
+// ---------------------------------------------------------------------------
+// Lazy Redis singleton
+// ---------------------------------------------------------------------------
+
+let _redis: IORedis | null = null;
+
+function getRedis(): IORedis {
+  if (_redis) return _redis;
+  _redis = new IORedis(createRedisConnection());
+  return _redis;
 }
 
 /**
- * Append a feedback record to the JSON file.
- * Creates the file and directory if they don't exist.
+ * Load all feedback records from Redis.
+ * Returns an empty array if no records exist yet.
+ */
+export async function loadFeedbackRecords(): Promise<FeedbackRecord[]> {
+  const redis = getRedis();
+  const items = await redis.lrange(RECORDS_KEY, 0, -1);
+  return items.map((raw) => JSON.parse(raw) as FeedbackRecord);
+}
+
+/**
+ * Append a feedback record to Redis.
  */
 export async function appendFeedbackRecord(record: FeedbackRecord): Promise<void> {
-  const records = await loadFeedbackRecords();
-  records.push(record);
-
-  const dir = path.dirname(feedbackConfig.feedbackFilePath);
-  await mkdir(dir, { recursive: true });
-  await writeFile(feedbackConfig.feedbackFilePath, JSON.stringify(records, null, 2), 'utf-8');
+  const redis = getRedis();
+  await redis.rpush(RECORDS_KEY, JSON.stringify(record));
 }
