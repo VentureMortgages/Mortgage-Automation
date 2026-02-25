@@ -2,29 +2,21 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-09)
+See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
-**Current focus:** Phase 11 - Drive Folder Linking + Deal Subfolders (COMPLETE)
+**Current focus:** Milestone v1.1 — Production Hardening
 
 ## Current Position
 
-Phase: 11-drive-folder-linking-deal-subfolders
-Plan: 03 (COMPLETE)
-Status: Phase 11 COMPLETE — All 3 plans executed: CRM config, webhook worker, classification worker
-Last activity: 2026-02-22 — 11-03 complete (CRM-based folder resolution, property-specific routing, fallback chain, 705 tests)
-
-Progress: [██████████] 100% (core pipeline complete, Phase 11 all 3/3 done)
-
-### Completed outside GSD:
-- **Feedback Loop (RAG)** — Phase 8.1, implemented + E2E verified (2026-02-21)
-- **Budget Sheet Automation** — auto-create from template on new Finmo app (2026-02-17)
-- **Sender-to-borrower matching** — name-based CRM lookup fallback (2026-02-16)
-- **11 draft emails** from real Finmo apps → admin@ Gmail for Cat review (2026-02-16)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-25 — Milestone v1.1 started
 
 ## Performance Metrics
 
-**Velocity:**
+**Velocity (v1.0):**
 - Total plans completed: 31
 - Average duration: 4 min
 - Total execution time: 2.15 hours
@@ -40,13 +32,8 @@ Progress: [██████████] 100% (core pipeline complete, Phase 1
 | 06-document-intake | 4/4 | 17 min | 4 min |
 | 07-classification-filing | 5/5 | 20 min | 4 min |
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
-
 | 10-opportunity-centric-architecture | 5/5 | 19 min | 4 min |
 | 11-drive-folder-linking-deal-subfolders | 3/3 | 8 min | 3 min |
-
-**Recent Trend:**
-- Last 5 plans: 10-05 (4 min), 11-01 (3 min), 11-02 (2 min), 11-03 (3 min)
-- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -175,6 +162,7 @@ Progress: [██████████] 100% (core pipeline complete, Phase 1
 - Property-specific vs reusable routing in classification worker uses PROPERTY_SPECIFIC_TYPES from drive/doc-expiry.ts (single source of truth)
 - getContact failure in classification worker is non-fatal, falls back to DRIVE_ROOT_FOLDER_ID
 - Deal subfolder resolution only attempted when both contactId and applicationId are present
+- extractDriveFolderId normalizes both raw IDs and full Drive URLs to folder IDs (fixes "File not found: ." error)
 
 ### Pending Todos
 
@@ -182,84 +170,17 @@ None yet.
 
 ### Blockers/Concerns
 
-**Phase 2 (CRM Exploration):**
-- Need to confirm MyBrokerPro credentials work and explore existing setup before designing integration
-- Subfolder structure inside client Drive folders needs documentation
-
-**Phase 3 (Checklist Generation):** COMPLETE
-- All edge cases tested: multi-income dedup, empty borrowers, unknown income types, minimal data
-- 58 integration tests pass covering all CHKL requirements
-
-**Phase 4 (CRM Integration):** COMPLETE
-- All 4 plans executed: foundation, services, mapper, orchestrator + tests
-- 93 total tests pass (35 CRM-specific + 58 checklist)
-- syncChecklistToCrm ready for Phase 1 webhook handler
-- CRM setup scripts must be run against live CRM before runtime operations work
-
-**Phase 5 (Email Drafting):** COMPLETE
-- All 2 plans executed: email body/MIME + Gmail API integration
-- 124 total tests pass (31 email + 93 CRM/checklist)
-- createEmailDraft and sendEmailDraft ready for Phase 1 webhook handler
-- Gmail API requires service account setup before live testing (GCP project, delegation, env var)
-
-**Phase 1 (Webhook Foundation):** COMPLETE
-- 01-01 complete: shared config, webhook types, PII sanitizer (28 tests)
-- 01-02 complete: Express webhook receiver, BullMQ queue, health check (16 tests)
-- 01-03 complete: Finmo client, worker pipeline orchestrator, entry point (14 tests)
-- 183 total tests pass (58 webhook + 125 prior)
-- Full pipeline: webhook POST -> BullMQ -> worker -> Finmo API -> checklist -> CRM -> email draft
-
-**Phase 6 (Document Intake):** COMPLETE
-- 06-01 complete: intake types, config, Gmail readonly client (0 new tests, 183 existing pass)
-- 06-02 complete: PDF converter with pdf-lib, TDD (15 new tests, 198 total pass)
-- 06-03 complete: Gmail reader & attachment extractor (25 new tests, 223 total pass)
-- 06-04 complete: Gmail monitor, Finmo handler, intake worker, barrel (18 new tests, 241 total pass)
-- Full intake pipeline: Gmail polling -> message processing -> attachment download -> PDF conversion -> IntakeDocument
-- Finmo document webhook handler with dedup; actual file download deferred (API undocumented)
-- Barrel export at src/intake/index.ts provides clean import surface for Phase 7
-
-**Phase 7 (Classification & Filing):** COMPLETE
-- 07-01 complete: classification types, Zod schema, config (0 new tests, 241 existing pass)
-- 07-02 complete: Finmo document download pipeline (29 new tests, 270 total pass)
-- 07-03 complete: classifier, naming, router TDD (42 new tests, 312 total pass)
-- 07-04 complete: Drive client + filer module (31 new tests, 343 total pass)
-- 07-05 complete: classification worker + intake integration + barrel (11 new tests, 354 total pass)
-- Full pipeline wired: Gmail/Finmo intake -> temp file -> classification queue -> classify -> name -> route -> file to Drive
-- Low-confidence docs route to CRM manual review task (FILE-05)
-- Existing files updated instead of duplicated (FILE-04 versioning)
-- Barrel export at src/classification/index.ts covers all public API
-- ANTHROPIC_API_KEY, DRIVE_ROOT_FOLDER_ID, Google credentials, CRM API key required at runtime
-
-**Phase 8 (Tracking Integration):** COMPLETE
-- 08-01 complete: CRM types, getContact, notes, doc-type matcher, stage-aware missingDocs (44 new tests, 398 total pass)
-- 08-02 complete: tracking-sync orchestrator + classification worker integration (26 new tests, 424 total pass)
-- Full tracking loop: classify -> file to Drive -> updateDocTracking -> CRM fields + audit note + milestones
-- updateDocTracking reads contact, matches doc, updates fields, creates note, triggers PRE task / pipeline advance
-- Non-fatal pattern: tracking failure never blocks document filing
-
-**Phase 10 (Opportunity-Centric Architecture):** COMPLETE
-- 10-01 complete: opportunity types, config, API functions (27 tests)
-- 10-02 complete: setup scripts updated for --model=opportunity + live CRM setup
-- 10-03 complete: checklist-sync refactored for opportunity-level doc tracking (26 tests, 679 total)
-- 10-04 complete: tracking-sync refactored for opportunity-level tracking with cross-deal reuse (36 tests, 692 total)
-- 10-05 complete: workers wired with finmoApplicationId, barrel cleaned, contact fields deprecated (692 total)
-- End-to-end pipeline uses opportunity-level tracking
-- Contact-level doc tracking deprecated (setup script can rename, config warns, types annotated)
-
-**Phase 11 (Drive Folder Linking + Deal Subfolders):** COMPLETE
-- 11-01 complete: CRM config, types, contact helper, setup script --drive-fields flag (692 tests pass)
-- 11-02 complete: webhook worker folder ID persistence, deal subfolder creation, dual-scan (698 tests pass)
-- 11-03 complete: classification worker CRM-based folder resolution, property-specific routing, fallback chain (705 tests pass)
-- Full Drive folder linking pipeline wired end-to-end
-- Setup script --drive-fields must be run against live CRM to get field IDs
+- SPF/DKIM/DMARC not configured on venturemortgages.com — emails may go to spam (Taylor action item)
+- Google Sheets API scope missing from domain-wide delegation — budget sheet broken
+- 2+ [TEST] opportunities in MBP need cleanup
 
 ## Session Continuity
 
-Last session: 2026-02-22 (11-03 execution)
-Stopped at: Completed 11-03-PLAN.md — Phase 11 COMPLETE
+Last session: 2026-02-25 (milestone v1.1 initialization)
+Stopped at: Defining requirements
 Resume file: None
-Next: Next phase TBD
+Next: Define v1.1 requirements and roadmap
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-22 (11-03 complete, Phase 11 Drive folder linking 3/3 done)*
+*Last updated: 2026-02-25 (milestone v1.1 started)*
