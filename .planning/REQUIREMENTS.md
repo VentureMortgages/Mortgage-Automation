@@ -1,7 +1,7 @@
 # Requirements: Venture Mortgages Doc Automation
 
 **Defined:** 2026-02-09
-**Core Value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
+**Core Value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
 
 ## v1.0 Requirements (Validated)
 
@@ -85,36 +85,36 @@ All v1.0 requirements shipped and validated. See MILESTONES.md for details.
 
 ## v1.1 Requirements
 
-Requirements for milestone v1.1 — Production Hardening. Each maps to roadmap phases (12+).
+Requirements for milestone v1.1 -- Production Hardening. Each maps to roadmap phases 12-16.
 
-### CRM Pipeline
+### CRM Pipeline (Phase 12)
 
 - [ ] **PIPE-01**: System creates only one "Review checklist" task per Finmo application, even though Finmo creates 2 MBP opportunities (Leads + Live Deals)
 - [ ] **PIPE-02**: When checklist email draft is created, opportunity automatically moves from "In Progress" to "Collecting Documents"
 - [ ] **PIPE-03**: When opportunity moves to "Collecting Documents", the "Review checklist" task is automatically marked completed
 - [ ] **PIPE-04**: When Finmo app includes a realtor, the realtor contact in MBP is assigned the correct contact type
 
-### Timing & Sync
+### Timing & Sync (Phase 13)
 
 - [ ] **SYNC-01**: If MBP opportunity doesn't exist when webhook fires, system retries CRM sync at increasing intervals (5/10/20 min) until opportunity appears
 - [ ] **SYNC-02**: Documents uploaded before MBP opportunity exists are filed to Drive immediately; CRM tracking is retried when opportunity becomes available
 - [ ] **SYNC-03**: Research whether Finmo "update external system" API can trigger MBP sync on demand (eliminates delay)
 
-### Folder Matching
+### Folder Matching (Phase 14)
 
-- [ ] **FOLD-01**: Client folder resolution uses CRM contact ID → stored Drive folder URL as primary method (not name matching)
+- [ ] **FOLD-01**: Client folder resolution uses CRM contact ID -> stored Drive folder URL as primary method (not name matching)
 - [ ] **FOLD-02**: When CRM lookup fails, fallback matching uses email address or phone number in addition to name
-- [ ] **FOLD-03**: Multi-borrower folders are owned by the primary borrower — co-borrower docs route through primary borrower's CRM contact
+- [ ] **FOLD-03**: Multi-borrower folders are owned by the primary borrower -- co-borrower docs route through primary borrower's CRM contact
 - [ ] **FOLD-04**: Doc subfolders (Income/, Property/, Down Payment/, etc.) are pre-created when the client folder is first set up
 - [ ] **FOLD-05**: Interactive backfill script matches existing CRM contacts to their Drive folders (human confirms each match before storing)
 
-### Original Preservation
+### Original Preservation (Phase 15)
 
 - [ ] **ORIG-01**: Every received document is stored in `ClientFolder/Originals/` with its original filename before classification
 - [ ] **ORIG-02**: Low-confidence documents are preserved in Originals (not deleted from temp storage)
 - [ ] **ORIG-03**: When a document is re-uploaded, new original is stored alongside previous versions (no overwrite in Originals)
 
-### Reminders
+### Reminders (Phase 16)
 
 - [ ] **REMIND-01**: When docs are outstanding for 3+ days, a CRM task is created for Cat listing missing documents with a draft follow-up email to copy/paste
 - [ ] **REMIND-02**: Cat receives an email notification: Subject "Follow up: Need docs - [Client Name]", Body includes client details and draft follow-up email text
@@ -156,10 +156,10 @@ Deferred to future milestone. Tracked but not in current roadmap.
 
 | Feature | Reason |
 |---------|--------|
-| Auto-send emails without Cat review | Compliance risk — human-in-the-loop required |
+| Auto-send emails without Cat review | Compliance risk -- human-in-the-loop required |
 | Auto-send reminder emails | Cat reviews and sends manually from CRM task |
 | Auto-submit to lenders | Broker judgment required |
-| Store PII in logs | PIPEDA compliance — metadata only |
+| Store PII in logs | PIPEDA compliance -- metadata only |
 | Build in GHL visual workflow builder | Custom code via API |
 | WhatsApp/text doc intake | Not used by clients |
 | Lender submission automation | Future scope |
@@ -188,31 +188,31 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PIPE-01 | TBD | Pending |
-| PIPE-02 | TBD | Pending |
-| PIPE-03 | TBD | Pending |
-| PIPE-04 | TBD | Pending |
-| SYNC-01 | TBD | Pending |
-| SYNC-02 | TBD | Pending |
-| SYNC-03 | TBD | Pending |
-| FOLD-01 | TBD | Pending |
-| FOLD-02 | TBD | Pending |
-| FOLD-03 | TBD | Pending |
-| FOLD-04 | TBD | Pending |
-| FOLD-05 | TBD | Pending |
-| ORIG-01 | TBD | Pending |
-| ORIG-02 | TBD | Pending |
-| ORIG-03 | TBD | Pending |
-| REMIND-01 | TBD | Pending |
-| REMIND-02 | TBD | Pending |
-| REMIND-03 | TBD | Pending |
-| REMIND-04 | TBD | Pending |
+| PIPE-01 | Phase 12 | Pending |
+| PIPE-02 | Phase 12 | Pending |
+| PIPE-03 | Phase 12 | Pending |
+| PIPE-04 | Phase 12 | Pending |
+| SYNC-01 | Phase 13 | Pending |
+| SYNC-02 | Phase 13 | Pending |
+| SYNC-03 | Phase 13 | Pending |
+| FOLD-01 | Phase 14 | Pending |
+| FOLD-02 | Phase 14 | Pending |
+| FOLD-03 | Phase 14 | Pending |
+| FOLD-04 | Phase 14 | Pending |
+| FOLD-05 | Phase 14 | Pending |
+| ORIG-01 | Phase 15 | Pending |
+| ORIG-02 | Phase 15 | Pending |
+| ORIG-03 | Phase 15 | Pending |
+| REMIND-01 | Phase 16 | Pending |
+| REMIND-02 | Phase 16 | Pending |
+| REMIND-03 | Phase 16 | Pending |
+| REMIND-04 | Phase 16 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 19 total
-- Mapped to phases: 0
-- Unmapped: 19
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-25 after milestone v1.1 definition*
+*Last updated: 2026-02-25 after v1.1 roadmap creation (all 19 requirements mapped to phases 12-16)*
