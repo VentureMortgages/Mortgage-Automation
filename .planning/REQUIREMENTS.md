@@ -3,201 +3,216 @@
 **Defined:** 2026-02-09
 **Core Value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
 
-## v1 Requirements
+## v1.0 Requirements (Validated)
 
-Requirements for initial release. Each maps to roadmap phases.
+All v1.0 requirements shipped and validated. See MILESTONES.md for details.
 
-### Infrastructure
+### Infrastructure (Phases 1, 5)
 
-- [ ] **INFRA-01**: System receives Finmo "application submitted" webhook and returns HTTP 202 immediately
-- [ ] **INFRA-02**: Webhook payloads are enqueued to BullMQ for async processing with idempotency (no duplicate processing)
-- [ ] **INFRA-03**: Failed jobs retry with exponential backoff and land in dead-letter queue for manual review
-- [ ] **INFRA-04**: All logging is PII-safe (no SIN numbers, income amounts, or addresses in logs — metadata only)
-- [ ] **INFRA-05**: OAuth tokens for Gmail and Google Drive auto-refresh and alert on failure
-- [ ] **INFRA-06**: Global kill switch to disable all automation via environment variable
-- [ ] **INFRA-07**: System deploys to Railway or Render VPS with Redis for BullMQ
+- [x] **INFRA-01**: System receives Finmo "application submitted" webhook and returns HTTP 202 immediately
+- [x] **INFRA-02**: Webhook payloads are enqueued to BullMQ for async processing with idempotency
+- [x] **INFRA-03**: Failed jobs retry with exponential backoff and land in dead-letter queue
+- [x] **INFRA-04**: All logging is PII-safe (no SIN numbers, income amounts, or addresses)
+- [x] **INFRA-05**: OAuth tokens for Gmail and Google Drive auto-refresh and alert on failure
+- [x] **INFRA-06**: Global kill switch to disable all automation via environment variable
+- [x] **INFRA-07**: System deploys to Railway with Redis for BullMQ
 
-### Checklist Generation
+### Checklist Generation (Phase 3)
 
-- [ ] **CHKL-01**: System reads Finmo application fields (employment type, property type, deal type, down payment source, residency status, co-borrower) and generates personalized doc checklist
-- [ ] **CHKL-02**: Checklist rules match DOC_CHECKLIST_RULES_V2.md exactly (Cat-approved, 17 sections)
-- [ ] **CHKL-03**: All docs (PRE + FULL) are requested upfront in initial email; PRE/FULL tags are tracked internally only
-- [ ] **CHKL-04**: Co-borrower applications generate duplicate doc requests for second applicant
-- [ ] **CHKL-05**: Checklist excludes items Cat removed (e.g., signed credit consent auto-sent by Finmo, T2125 inside T1 package, bonus payment history if T4s+LOE collected)
-- [ ] **CHKL-06**: Gift letter is flagged internally but NOT requested upfront (collected later when lender is picked)
+- [x] **CHKL-01**: Personalized doc checklist generated from Finmo application data
+- [x] **CHKL-02**: Rules match DOC_CHECKLIST_RULES_V2.md exactly (103 rules, 17 sections)
+- [x] **CHKL-03**: All docs (PRE + FULL) requested upfront; PRE/FULL tracked internally
+- [x] **CHKL-04**: Co-borrower applications generate duplicate doc requests
+- [x] **CHKL-05**: Excludes Cat-removed items (credit consent, T2125, bonus history)
+- [x] **CHKL-06**: Gift letter flagged internally but not requested upfront
 
-### CRM Integration
+### CRM Integration (Phases 2, 4)
 
-- [ ] **CRM-01**: System creates/updates contact in MyBrokerPro (GoHighLevel) from Finmo application data
-- [ ] **CRM-02**: System creates draft task in MyBrokerPro for Cat to review generated doc request email
-- [ ] **CRM-03**: Checklist status (received/missing per doc) is tracked in MyBrokerPro custom fields
-- [ ] **CRM-04**: System respects existing MyBrokerPro setup (pipelines, fields Cat/Taylor already configured) — no duplicate structures
-- [ ] **CRM-05**: PRE-readiness notification: when all PRE docs are received, system notifies Taylor via CRM task
+- [x] **CRM-01**: Contact created/updated in MBP from Finmo application data
+- [x] **CRM-02**: Draft review task created in MBP for Cat
+- [x] **CRM-03**: Checklist status tracked in MBP custom fields
+- [x] **CRM-04**: Respects existing MBP setup (no duplicate structures)
+- [x] **CRM-05**: PRE-readiness notification via CRM task
 
-### Email
+### Email (Phase 5)
 
-- [ ] **EMAIL-01**: System generates personalized doc request email using checklist output
-- [ ] **EMAIL-02**: Email is created as draft for Cat to review before sending (human-in-the-loop)
-- [ ] **EMAIL-03**: Emails send from admin@venturemortgages.com via Gmail API
-- [ ] **EMAIL-04**: Email template is professional, clear, and lists required docs with brief explanations
+- [x] **EMAIL-01**: Personalized doc request email from checklist
+- [x] **EMAIL-02**: Created as draft for Cat to review
+- [x] **EMAIL-03**: Sends from admin@venturemortgages.com via Gmail API
+- [x] **EMAIL-04**: Professional template with doc explanations
 
-### Document Intake
+### Document Intake (Phase 6)
 
-- [ ] **INTAKE-01**: System monitors docs@venturemortgages.co inbox for forwarded client doc emails from Cat
-- [ ] **INTAKE-02**: System detects when client uploads documents through Finmo portal (via Finmo webhook/API)
-- [ ] **INTAKE-03**: System extracts attachments from emails (PDF, images, Word docs)
-- [ ] **INTAKE-04**: Non-PDF documents are auto-converted to PDF
+- [x] **INTAKE-01**: Monitors docs@venturemortgages.com for forwarded client emails
+- [x] **INTAKE-02**: Detects Finmo portal uploads via API
+- [x] **INTAKE-03**: Extracts attachments from emails (PDF, images, Word)
+- [x] **INTAKE-04**: Non-PDF documents auto-converted to PDF
 
-### Document Classification & Filing
+### Classification & Filing (Phase 7)
 
-- [ ] **FILE-01**: System classifies received documents by type (pay stub, T4, NOA, LOE, etc.)
-- [ ] **FILE-02**: System renames documents using Cat's existing naming convention
-- [ ] **FILE-03**: System files documents to correct client folder/subfolder in Google Drive
-- [ ] **FILE-04**: System handles re-uploads (document versioning — new version replaces or sits alongside old)
-- [ ] **FILE-05**: Classification confidence below threshold routes doc to Cat for manual review
+- [x] **FILE-01**: Classifies documents by type (pay stub, T4, NOA, etc.)
+- [x] **FILE-02**: Renames using Cat's naming convention
+- [x] **FILE-03**: Files to correct client folder/subfolder in Google Drive
+- [x] **FILE-04**: Handles re-uploads (versioning)
+- [x] **FILE-05**: Low confidence routes to Cat for manual review
 
-### Tracking
+### Tracking (Phase 8)
 
-- [ ] **TRACK-01**: System updates MyBrokerPro checklist status when a document is received and filed
-- [ ] **TRACK-02**: System maintains audit trail (who uploaded/accessed what, when) for compliance
-- [ ] **TRACK-03**: Cat can view per-client doc status in MyBrokerPro dashboard (received/missing/pending review)
+- [x] **TRACK-01**: MBP checklist status updates when doc received and filed
+- [x] **TRACK-02**: Audit trail (who uploaded what, when)
+- [x] **TRACK-03**: Per-client doc status in MBP
 
-### Opportunity-Centric Architecture
+### Opportunity-Centric (Phase 10)
 
-- [ ] **OPP-01**: System finds Finmo's existing opportunity (by Finmo application ID) instead of creating its own
-- [ ] **OPP-02**: Doc tracking fields (missingDocs, receivedDocs, docStatus, counters) live on the opportunity, not the contact
-- [ ] **OPP-03**: Two simultaneous deals for the same client have independent checklists that don't overwrite each other
-- [ ] **OPP-04**: Reusable docs (IDs, T4s, bank statements) from the client folder are applied across all active deals
-- [ ] **OPP-05**: Property-specific docs (purchase agreement, MLS, gift letter) are NOT reused across deals
-- [ ] **OPP-06**: Pipeline stage advances per-opportunity (not per-contact)
-- [ ] **OPP-07**: Contact-level custom fields for doc tracking are deprecated / removed
-- [ ] **OPP-08**: Existing single-deal clients continue to work (backward compatible)
+- [x] **OPP-01**: Finds Finmo's existing opportunity by deal ID
+- [x] **OPP-02**: Doc tracking on opportunity, not contact
+- [x] **OPP-03**: Independent checklists per deal
+- [x] **OPP-04**: Reusable docs applied across deals
+- [x] **OPP-05**: Property-specific docs not reused across deals
+- [x] **OPP-06**: Pipeline stage advances per-opportunity
+- [x] **OPP-07**: Contact-level doc tracking deprecated
+- [x] **OPP-08**: Backward compatible for single-deal clients
 
-### Drive Folder Linking
+### Drive Folder Linking (Phase 11)
 
-- [ ] **DRIVE-01**: Client Drive folder ID stored on CRM contact custom field when folder is created by webhook worker
-- [ ] **DRIVE-02**: Classification worker reads client folder ID from CRM contact before filing (not global root)
-- [ ] **DRIVE-03**: Deal-specific subfolder created per Finmo application (named by deal reference, e.g., `BRXM-F050382/`), subfolder ID stored on CRM opportunity
-- [ ] **DRIVE-04**: Reusable docs (income, IDs, bank statements) filed at client folder level, shared across deals
-- [ ] **DRIVE-05**: Deal-specific docs (purchase agreement, MLS, gift letter) filed in deal subfolder
-- [ ] **DRIVE-06**: Drive scanner checks both client folder (reusable docs) and deal subfolder (deal-specific docs) when building checklist
-- [ ] **DRIVE-07**: System falls back to DRIVE_ROOT_FOLDER_ID when CRM contact has no folder ID (backward compat)
+- [x] **DRIVE-01**: Client folder ID stored on CRM contact
+- [x] **DRIVE-02**: Classification reads folder ID from CRM before filing
+- [x] **DRIVE-03**: Deal subfolder created per Finmo application
+- [x] **DRIVE-04**: Reusable docs filed at client folder level
+- [x] **DRIVE-05**: Deal-specific docs filed in deal subfolder
+- [x] **DRIVE-06**: Scanner checks both client and deal folders
+- [x] **DRIVE-07**: Fallback to DRIVE_ROOT_FOLDER_ID
+
+## v1.1 Requirements
+
+Requirements for milestone v1.1 — Production Hardening. Each maps to roadmap phases (12+).
+
+### CRM Pipeline
+
+- [ ] **PIPE-01**: System creates only one "Review checklist" task per Finmo application, even though Finmo creates 2 MBP opportunities (Leads + Live Deals)
+- [ ] **PIPE-02**: When checklist email draft is created, opportunity automatically moves from "In Progress" to "Collecting Documents"
+- [ ] **PIPE-03**: When opportunity moves to "Collecting Documents", the "Review checklist" task is automatically marked completed
+- [ ] **PIPE-04**: When Finmo app includes a realtor, the realtor contact in MBP is assigned the correct contact type
+
+### Timing & Sync
+
+- [ ] **SYNC-01**: If MBP opportunity doesn't exist when webhook fires, system retries CRM sync at increasing intervals (5/10/20 min) until opportunity appears
+- [ ] **SYNC-02**: Documents uploaded before MBP opportunity exists are filed to Drive immediately; CRM tracking is retried when opportunity becomes available
+- [ ] **SYNC-03**: Research whether Finmo "update external system" API can trigger MBP sync on demand (eliminates delay)
+
+### Folder Matching
+
+- [ ] **FOLD-01**: Client folder resolution uses CRM contact ID → stored Drive folder URL as primary method (not name matching)
+- [ ] **FOLD-02**: When CRM lookup fails, fallback matching uses email address or phone number in addition to name
+- [ ] **FOLD-03**: Multi-borrower folders are owned by the primary borrower — co-borrower docs route through primary borrower's CRM contact
+- [ ] **FOLD-04**: Doc subfolders (Income/, Property/, Down Payment/, etc.) are pre-created when the client folder is first set up
+- [ ] **FOLD-05**: Interactive backfill script matches existing CRM contacts to their Drive folders (human confirms each match before storing)
+
+### Original Preservation
+
+- [ ] **ORIG-01**: Every received document is stored in `ClientFolder/Originals/` with its original filename before classification
+- [ ] **ORIG-02**: Low-confidence documents are preserved in Originals (not deleted from temp storage)
+- [ ] **ORIG-03**: When a document is re-uploaded, new original is stored alongside previous versions (no overwrite in Originals)
 
 ### Reminders
 
-- [ ] **REMIND-01**: System has scheduled reminder infrastructure for missing documents (e.g., 3 days, 7 days after initial request)
-- [ ] **REMIND-02**: Reminders are context-aware — reference specific missing documents by name
-- [ ] **REMIND-03**: Reminders are disabled by default (global toggle + per-client toggle)
-- [ ] **REMIND-04**: When enabled, reminder emails are drafted for Cat to review before sending
+- [ ] **REMIND-01**: When docs are outstanding for 3+ days, a CRM task is created for Cat listing missing documents with a draft follow-up email to copy/paste
+- [ ] **REMIND-02**: Cat receives an email notification: Subject "Follow up: Need docs - [Client Name]", Body includes client details and draft follow-up email text
+- [ ] **REMIND-03**: Reminder task refreshes every 3 days if docs are still missing (updated task, not duplicates)
+- [ ] **REMIND-04**: Reminders stop automatically when all required docs are received
 
-## v2 Requirements
+## v1.2 Requirements
 
-Deferred to future release. Tracked but not in current roadmap.
+Deferred to future milestone. Tracked but not in current roadmap.
 
-### Document Validation
+### CRM Views
 
-- **VALID-01**: System extracts data from documents (amounts, dates, names) via OCR
-- **VALID-02**: System validates consistency across documents (income on pay stub vs T4)
-- **VALID-03**: System flags potential issues for broker review (e.g., tax amount owing on NOA)
+- **VIEW-01**: MBP smart list shows opportunities grouped by doc status
+- **VIEW-02**: Cat can see missing docs per deal from MBP view
+- **VIEW-03**: Per-client automation toggle field
 
-### Advanced Classification
+### Notifications
 
-- **CLASS-01**: Batch upload with auto-split (one multi-page PDF split into individual docs)
-- **CLASS-02**: Proactive document health check (flag docs expiring soon, e.g., pay stub >30 days)
+- **NOTIF-01**: Email alert to Cat when all PRE docs received
+- **NOTIF-02**: Email alert for unexpected doc (not on checklist)
 
-### Client Experience
+### Onboarding
 
-- **CLIENT-01**: Document completeness score visible to client ("Your application is 75% complete")
-- **CLIENT-02**: Mobile-optimized document upload portal
+- **SOP-01**: SOP document for Cat
+- **SOP-02**: Walkthrough session with Cat
 
-### Lender-Specific
+### Document Validation (v2+)
 
-- **LENDER-01**: Checklist adapts when specific lender is selected (different lenders need different docs)
-- **LENDER-02**: Bank statement retrieval integration (Flinks/Plaid)
+- **VALID-01**: Data extraction via OCR
+- **VALID-02**: Cross-document consistency validation
+- **VALID-03**: Proactive issue flagging
+
+### Advanced Classification (v2+)
+
+- **CLASS-01**: Batch upload with auto-split
+- **CLASS-02**: Proactive doc health check (expiring docs)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
 | Auto-send emails without Cat review | Compliance risk — human-in-the-loop required |
-| Auto-submit to lenders | Broker judgment required — too risky to automate |
+| Auto-send reminder emails | Cat reviews and sends manually from CRM task |
+| Auto-submit to lenders | Broker judgment required |
 | Store PII in logs | PIPEDA compliance — metadata only |
-| Build in GHL visual workflow builder | Client wants custom code via API |
-| WhatsApp/text doc intake | Not used by clients currently — email + Finmo only |
-| Lender submission automation | Downstream of doc collection — future scope |
+| Build in GHL visual workflow builder | Custom code via API |
+| WhatsApp/text doc intake | Not used by clients |
+| Lender submission automation | Future scope |
 | Budget call scheduling | Taylor handles manually |
-| Client-facing portal | Finmo already handles client-facing interactions |
-| Cross-document validation | High complexity — defer to v2 |
-| First-time buyer declaration docs | Cat marked as "not necessary" |
-| Payout statement (refi) | Handled by lawyers, not broker |
-| Status certificate / Strata Form B | Handled by lawyers, not broker |
-| Appraisal ordering | Only after approval, lender-ordered |
+| Client-facing portal | Finmo handles client interactions |
 
 ## Traceability
 
 Which phases cover which requirements. Updated during roadmap creation.
 
+### v1.0 (Complete)
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| INFRA-05 | Phase 5 | Pending |
-| INFRA-06 | Phase 1 | Pending |
-| INFRA-07 | Phase 1 | Pending |
-| CHKL-01 | Phase 3 | Pending |
-| CHKL-02 | Phase 3 | Pending |
-| CHKL-03 | Phase 3 | Pending |
-| CHKL-04 | Phase 3 | Pending |
-| CHKL-05 | Phase 3 | Pending |
-| CHKL-06 | Phase 3 | Pending |
-| CRM-01 | Phase 4 | Pending |
-| CRM-02 | Phase 4 | Pending |
-| CRM-03 | Phase 4 | Pending |
-| CRM-04 | Phase 2 | Pending |
-| CRM-05 | Phase 4 | Pending |
-| EMAIL-01 | Phase 5 | Pending |
-| EMAIL-02 | Phase 5 | Pending |
-| EMAIL-03 | Phase 5 | Pending |
-| EMAIL-04 | Phase 5 | Pending |
-| INTAKE-01 | Phase 6 | Pending |
-| INTAKE-02 | Phase 6 | Pending |
-| INTAKE-03 | Phase 6 | Pending |
-| INTAKE-04 | Phase 6 | Pending |
-| FILE-01 | Phase 7 | Pending |
-| FILE-02 | Phase 7 | Pending |
-| FILE-03 | Phase 7 | Pending |
-| FILE-04 | Phase 7 | Pending |
-| FILE-05 | Phase 7 | Pending |
-| TRACK-01 | Phase 8 | Pending |
-| TRACK-02 | Phase 8 | Pending |
-| TRACK-03 | Phase 8 | Pending |
-| REMIND-01 | Phase 9 | Pending |
-| REMIND-02 | Phase 9 | Pending |
-| REMIND-03 | Phase 9 | Pending |
-| REMIND-04 | Phase 9 | Pending |
-| OPP-01 | Phase 10 | Pending |
-| OPP-02 | Phase 10 | Pending |
-| OPP-03 | Phase 10 | Pending |
-| OPP-04 | Phase 10 | Pending |
-| OPP-05 | Phase 10 | Pending |
-| OPP-06 | Phase 10 | Pending |
-| OPP-07 | Phase 10 | Pending |
-| OPP-08 | Phase 10 | Pending |
-| DRIVE-01 | Phase 11 | Pending |
-| DRIVE-02 | Phase 11 | Pending |
-| DRIVE-03 | Phase 11 | Pending |
-| DRIVE-04 | Phase 11 | Pending |
-| DRIVE-05 | Phase 11 | Pending |
-| DRIVE-06 | Phase 11 | Pending |
-| DRIVE-07 | Phase 11 | Pending |
+| INFRA-01..07 | Phase 1, 5 | Complete |
+| CHKL-01..06 | Phase 3 | Complete |
+| CRM-01..05 | Phase 2, 4 | Complete |
+| EMAIL-01..04 | Phase 5 | Complete |
+| INTAKE-01..04 | Phase 6 | Complete |
+| FILE-01..05 | Phase 7 | Complete |
+| TRACK-01..03 | Phase 8 | Complete |
+| OPP-01..08 | Phase 10 | Complete |
+| DRIVE-01..07 | Phase 11 | Complete |
+
+### v1.1 (Active)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| PIPE-01 | TBD | Pending |
+| PIPE-02 | TBD | Pending |
+| PIPE-03 | TBD | Pending |
+| PIPE-04 | TBD | Pending |
+| SYNC-01 | TBD | Pending |
+| SYNC-02 | TBD | Pending |
+| SYNC-03 | TBD | Pending |
+| FOLD-01 | TBD | Pending |
+| FOLD-02 | TBD | Pending |
+| FOLD-03 | TBD | Pending |
+| FOLD-04 | TBD | Pending |
+| FOLD-05 | TBD | Pending |
+| ORIG-01 | TBD | Pending |
+| ORIG-02 | TBD | Pending |
+| ORIG-03 | TBD | Pending |
+| REMIND-01 | TBD | Pending |
+| REMIND-02 | TBD | Pending |
+| REMIND-03 | TBD | Pending |
+| REMIND-04 | TBD | Pending |
 
 **Coverage:**
-- v1 requirements: 53 total
-- Mapped to phases: 53
-- Unmapped: 0
+- v1.1 requirements: 19 total
+- Mapped to phases: 0
+- Unmapped: 19
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-21 (Phase 11 DRIVE requirements added)*
+*Last updated: 2026-02-25 after milestone v1.1 definition*
