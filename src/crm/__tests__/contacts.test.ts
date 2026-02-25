@@ -18,7 +18,7 @@ vi.mock('../config.js', () => ({
   devPrefix: (text: string) => text,
 }));
 
-import { getContact, findContactByEmail, findContactByName, resolveContactId } from '../contacts.js';
+import { getContact, findContactByEmail, findContactByName, resolveContactId, extractDriveFolderId, getContactDriveFolderId } from '../contacts.js';
 import { CrmAuthError, CrmApiError } from '../errors.js';
 
 // ============================================================================
@@ -356,5 +356,68 @@ describe('resolveContactId', () => {
     expect(result.resolvedVia).toBeNull();
     // Only one call — email lookup, no name lookup
     expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ============================================================================
+// extractDriveFolderId
+// ============================================================================
+
+describe('extractDriveFolderId', () => {
+  test('extracts folder ID from full Drive URL', () => {
+    expect(extractDriveFolderId('https://drive.google.com/drive/folders/1abc123def456'))
+      .toBe('1abc123def456');
+  });
+
+  test('returns raw ID as-is', () => {
+    expect(extractDriveFolderId('1abc123def456')).toBe('1abc123def456');
+  });
+
+  test('handles URL with query params', () => {
+    expect(extractDriveFolderId('https://drive.google.com/drive/folders/1abc123?usp=sharing'))
+      .toBe('1abc123');
+  });
+
+  test('handles URL with hash fragment', () => {
+    expect(extractDriveFolderId('https://drive.google.com/drive/folders/1abc123#section'))
+      .toBe('1abc123');
+  });
+});
+
+// ============================================================================
+// getContactDriveFolderId
+// ============================================================================
+
+describe('getContactDriveFolderId', () => {
+  test('extracts folder ID from URL stored in custom field', () => {
+    const contact = {
+      id: 'c1', email: 'test@example.com', firstName: 'Test', lastName: 'User',
+      customFields: [{ id: 'drive-field', value: 'https://drive.google.com/drive/folders/1abc123' }],
+    };
+    expect(getContactDriveFolderId(contact, 'drive-field')).toBe('1abc123');
+  });
+
+  test('returns raw ID from custom field', () => {
+    const contact = {
+      id: 'c1', email: 'test@example.com', firstName: 'Test', lastName: 'User',
+      customFields: [{ id: 'drive-field', value: '1abc123' }],
+    };
+    expect(getContactDriveFolderId(contact, 'drive-field')).toBe('1abc123');
+  });
+
+  test('returns null when field not found', () => {
+    const contact = {
+      id: 'c1', email: 'test@example.com', firstName: 'Test', lastName: 'User',
+      customFields: [],
+    };
+    expect(getContactDriveFolderId(contact, 'drive-field')).toBeNull();
+  });
+
+  test('returns null when field value is empty', () => {
+    const contact = {
+      id: 'c1', email: 'test@example.com', firstName: 'Test', lastName: 'User',
+      customFields: [{ id: 'drive-field', value: '' }],
+    };
+    expect(getContactDriveFolderId(contact, 'drive-field')).toBeNull();
   });
 });

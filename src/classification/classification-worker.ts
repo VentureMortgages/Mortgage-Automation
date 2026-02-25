@@ -31,7 +31,7 @@ import { generateFilename } from './naming.js';
 import { routeToSubfolder, getPersonSubfolderName } from './router.js';
 import { getDriveClient } from './drive-client.js';
 import { resolveTargetFolder, uploadFile, findExistingFile, updateFileContent } from './filer.js';
-import { resolveContactId, getContact, getContactDriveFolderId } from '../crm/contacts.js';
+import { resolveContactId, getContact, getContactDriveFolderId, extractDriveFolderId } from '../crm/contacts.js';
 import { crmConfig } from '../crm/config.js';
 import { findOpportunityByFinmoId, getOpportunityFieldValue } from '../crm/opportunities.js';
 import { PIPELINE_IDS } from '../crm/types/index.js';
@@ -203,7 +203,7 @@ export async function processClassificationJob(
             crmConfig.oppDealSubfolderIdFieldId,
           );
           if (typeof subfolderId === 'string' && subfolderId.length > 0) {
-            dealSubfolderId = subfolderId;
+            dealSubfolderId = extractDriveFolderId(subfolderId);
             console.log('[classification] Resolved deal subfolder from opportunity');
           }
         }

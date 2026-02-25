@@ -81,6 +81,7 @@ const mockContacts = vi.hoisted(() => ({
   resolveContactId: vi.fn(),
   getContact: vi.fn(),
   getContactDriveFolderId: vi.fn(),
+  extractDriveFolderId: vi.fn((v: string) => v),
 }));
 
 vi.mock('../../crm/contacts.js', () => mockContacts);

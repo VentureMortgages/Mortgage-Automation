@@ -219,6 +219,20 @@ export async function getContact(contactId: string): Promise<CrmContact> {
 // ============================================================================
 
 /**
+ * Extracts a Google Drive folder ID from either a raw ID or a full Drive URL.
+ *
+ * The CRM may store folder references as:
+ * - Raw IDs: "1abc123def456"
+ * - Full URLs: "https://drive.google.com/drive/folders/1abc123def456"
+ *
+ * This function normalizes both to a raw folder ID.
+ */
+export function extractDriveFolderId(value: string): string {
+  const match = value.match(/\/folders\/([^/?#]+)/);
+  return match ? match[1] : value;
+}
+
+/**
  * Reads the Drive folder ID from a contact's custom fields.
  *
  * Pure function: takes the contact record and field ID as parameters,
@@ -236,7 +250,7 @@ export function getContactDriveFolderId(
   if (!field || !field.value || typeof field.value !== 'string') {
     return null;
   }
-  return field.value;
+  return extractDriveFolderId(field.value);
 }
 
 // ============================================================================
