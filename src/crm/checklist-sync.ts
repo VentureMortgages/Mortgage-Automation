@@ -28,7 +28,7 @@ import { crmConfig } from './config.js';
 import { PIPELINE_IDS } from './types/index.js';
 import { upsertContact } from './contacts.js';
 import { mapChecklistToFields, buildChecklistSummary } from './checklist-mapper.js';
-import { createReviewTask } from './tasks.js';
+import { createOrUpdateReviewTask } from './tasks.js';
 import {
   findOpportunityByFinmoId,
   updateOpportunityFields,
@@ -196,7 +196,7 @@ export async function syncChecklistToCrm(
     try {
       const borrowerName = `${input.borrowerFirstName} ${input.borrowerLastName}`;
       const summary = buildChecklistSummary(input.checklist);
-      taskId = await createReviewTask(contactId, borrowerName, summary);
+      taskId = await createOrUpdateReviewTask(contactId, borrowerName, summary);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.warn(`[syncChecklistToCrm] Task creation failed: ${message}`);

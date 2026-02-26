@@ -53,6 +53,7 @@ vi.mock('../contacts.js', () => ({
 
 vi.mock('../tasks.js', () => ({
   createReviewTask: vi.fn().mockResolvedValue('test-task-456'),
+  createOrUpdateReviewTask: vi.fn().mockResolvedValue('test-task-456'),
   createPreReadinessTask: vi.fn().mockResolvedValue('test-task-789'),
   addBusinessDays: vi.fn().mockImplementation((d: Date) => d),
 }));
@@ -74,7 +75,7 @@ vi.mock('../checklist-mapper.js', () => ({
 // Import AFTER mocks are set up
 import { syncChecklistToCrm } from '../checklist-sync.js';
 import { upsertContact } from '../contacts.js';
-import { createReviewTask } from '../tasks.js';
+import { createReviewTask, createOrUpdateReviewTask } from '../tasks.js';
 import { findOpportunityByFinmoId, updateOpportunityFields, updateOpportunityStage } from '../opportunities.js';
 import { mapChecklistToFields, buildChecklistSummary } from '../checklist-mapper.js';
 
@@ -121,6 +122,7 @@ describe('syncChecklistToCrm', () => {
     // Re-set default mock return values (clearAllMocks resets implementations in Vitest)
     vi.mocked(upsertContact).mockResolvedValue({ contactId: 'test-contact-123', isNew: true });
     vi.mocked(createReviewTask).mockResolvedValue('test-task-456');
+    vi.mocked(createOrUpdateReviewTask).mockResolvedValue('test-task-456');
     vi.mocked(findOpportunityByFinmoId).mockResolvedValue({ id: 'opp-123', name: 'Test Opp' });
     vi.mocked(updateOpportunityFields).mockResolvedValue(undefined);
     vi.mocked(updateOpportunityStage).mockResolvedValue(undefined);
@@ -357,21 +359,21 @@ describe('syncChecklistToCrm', () => {
   // Review task still created on contact
   // --------------------------------------------------------------------------
 
-  test('creates review task on contact (not opportunity)', async () => {
+  test('creates or updates review task on contact (not opportunity)', async () => {
     await syncChecklistToCrm(defaultInput);
 
-    expect(createReviewTask).toHaveBeenCalledWith(
+    expect(createOrUpdateReviewTask).toHaveBeenCalledWith(
       'test-contact-123',
       'John Doe',
       'Test summary',
     );
   });
 
-  test('creates review task even when opportunity is found', async () => {
+  test('creates or updates review task even when opportunity is found', async () => {
     await syncChecklistToCrm(defaultInput);
 
-    expect(createReviewTask).toHaveBeenCalledTimes(1);
-    expect(createReviewTask).toHaveBeenCalledWith(
+    expect(createOrUpdateReviewTask).toHaveBeenCalledTimes(1);
+    expect(createOrUpdateReviewTask).toHaveBeenCalledWith(
       'test-contact-123',
       expect.any(String),
       expect.any(String),
@@ -421,7 +423,7 @@ describe('syncChecklistToCrm', () => {
     });
 
     test('task creation failure is non-fatal, captured in errors', async () => {
-      vi.mocked(createReviewTask).mockRejectedValueOnce(new Error('Task API error'));
+      vi.mocked(createOrUpdateReviewTask).mockRejectedValueOnce(new Error('Task API error'));
 
       const result = await syncChecklistToCrm(defaultInput);
 
