@@ -86,6 +86,110 @@ export async function createPreReadinessTask(contactId: string, borrowerName: st
 }
 
 // ============================================================================
+// Task Search, Update, and Dedup
+// ============================================================================
+
+/**
+ * Searches for an existing "Review doc request" task on a contact.
+ *
+ * Uses the GHL Tasks API to list all tasks for the contact, then filters
+ * by title pattern. This enables deduplication when Finmo creates two MBP
+ * opportunities (Leads + Live Deals) for the same application.
+ *
+ * Non-fatal: returns null on any error (logged, never thrown).
+ *
+ * @param contactId - The CRM contact ID to search tasks for
+ * @returns The first matching task, or null if none found or on error
+ */
+export async function findReviewTask(
+  contactId: string,
+): Promise<{ id: string; title: string; completed: boolean } | null> {
+  try {
+    const response = await taskFetch(`/contacts/${contactId}/tasks`, {
+      method: 'GET',
+    });
+
+    const data = (await response.json()) as {
+      tasks: Array<{ id: string; title: string; completed: boolean; body?: string; assignedTo?: string }>;
+    };
+
+    const match = data.tasks.find((task) => task.title.includes('Review doc request'));
+    return match ? { id: match.id, title: match.title, completed: match.completed } : null;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`[findReviewTask] Failed to search tasks for contact: ${message}`);
+    return null;
+  }
+}
+
+/**
+ * Marks a task as completed via the GHL API.
+ *
+ * Non-fatal: logs errors but never throws.
+ *
+ * @param contactId - The CRM contact ID the task belongs to
+ * @param taskId - The task ID to mark as completed
+ */
+export async function completeTask(contactId: string, taskId: string): Promise<void> {
+  try {
+    await taskFetch(`/contacts/${contactId}/tasks/${taskId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ completed: true }),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`[completeTask] Failed to complete task ${taskId}: ${message}`);
+  }
+}
+
+/**
+ * Creates a new review task or updates an existing one (deduplication).
+ *
+ * Checks for an existing "Review doc request" task on the contact first.
+ * If found, updates its body with the latest checklist summary.
+ * If not found, creates a new task via createReviewTask.
+ *
+ * Non-fatal: catches all errors, logs them, returns undefined.
+ *
+ * @param contactId - The CRM contact ID
+ * @param borrowerName - Display name for the task title
+ * @param checklistSummary - Optional checklist summary for the task body
+ * @returns The task ID (existing or new), or undefined on error
+ */
+export async function createOrUpdateReviewTask(
+  contactId: string,
+  borrowerName: string,
+  checklistSummary?: string,
+): Promise<string | undefined> {
+  try {
+    const existing = await findReviewTask(contactId);
+
+    if (existing) {
+      // Update the existing task body with latest checklist
+      const defaultBody =
+        'Generated checklist ready for review. Check custom fields for document list. Edit and send email when ready.';
+      const taskBody = checklistSummary
+        ? `${defaultBody}\n\n--- Checklist Summary ---\n${checklistSummary}`
+        : defaultBody;
+
+      await taskFetch(`/contacts/${contactId}/tasks/${existing.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ body: taskBody }),
+      });
+
+      return existing.id;
+    }
+
+    // No existing task — create a new one
+    return await createReviewTask(contactId, borrowerName, checklistSummary);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`[createOrUpdateReviewTask] Failed: ${message}`);
+    return undefined;
+  }
+}
+
+// ============================================================================
 // Utilities
 // ============================================================================
 
