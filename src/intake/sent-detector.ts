@@ -6,8 +6,9 @@
  * custom X-Venture-* headers and updates the CRM:
  *
  * 1. Sets "Doc Request Sent" date on the contact
- * 2. Moves pipeline to "Collecting Documents" stage
- * 3. Creates an audit note
+ * 2. Moves opportunity to "Collecting Documents" stage (opportunity-level API)
+ * 3. Auto-completes the "Review doc request" CRM task
+ * 4. Creates an audit note
  *
  * The intake worker calls isBccCopy() early to short-circuit normal
  * attachment processing for outbound BCC messages.
@@ -17,8 +18,10 @@
 
 import { getContact, upsertContact } from '../crm/contacts.js';
 import { createAuditNote } from '../crm/notes.js';
-import { moveToCollectingDocs } from '../crm/opportunities.js';
+import { searchOpportunities, updateOpportunityStage } from '../crm/opportunities.js';
+import { findReviewTask, completeTask } from '../crm/tasks.js';
 import { crmConfig } from '../crm/config.js';
+import { PIPELINE_IDS } from '../crm/types/index.js';
 import { captureFeedback } from '../feedback/capture.js';
 import type { GmailMessageMeta } from './types.js';
 
@@ -56,10 +59,12 @@ export function isBccCopy(meta: GmailMessageMeta): boolean {
  *
  * 1. Fetches the contact record (to get email/name for upsertContact)
  * 2. Sets docRequestSent field to today's date
- * 3. Moves pipeline to "Collecting Documents"
+ * 3. Moves opportunity to "Collecting Documents" (opportunity-level API)
+ * 3b. Auto-completes the "Review doc request" CRM task
  * 4. Creates an audit note
+ * 5. Captures feedback from Cat's edits
  *
- * Steps 3-4 are non-critical: failures are captured in errors[] but
+ * Steps 3-5 are non-critical: failures are captured in errors[] but
  * don't prevent the result from being detected=true.
  *
  * @param meta - The Gmail message metadata with venture headers
@@ -94,12 +99,37 @@ export async function handleSentDetection(
     sentDate,
   });
 
-  // 3. Move pipeline to "Collecting Documents" (non-critical)
+  // 3. Move opportunity to "Collecting Documents" (non-critical)
+  // Uses opportunity-level API — finds the Live Deals opportunity and updates its stage
   try {
-    await moveToCollectingDocs(contactId, `${contact.firstName} ${contact.lastName}`);
-    console.log('[sent-detector] Pipeline moved to Collecting Documents', { contactId });
+    const opportunities = await searchOpportunities(contactId, PIPELINE_IDS.LIVE_DEALS);
+    if (opportunities.length > 0) {
+      // Move the first Live Deals opportunity (most recent)
+      const opp = opportunities[0];
+      await updateOpportunityStage(opp.id, crmConfig.stageIds.collectingDocuments);
+      console.log('[sent-detector] Opportunity moved to Collecting Documents', {
+        contactId,
+        opportunityId: opp.id,
+      });
+    } else {
+      console.log('[sent-detector] No Live Deals opportunity found for stage move', { contactId });
+    }
   } catch (err) {
-    errors.push(`Pipeline advance failed: ${err instanceof Error ? err.message : String(err)}`);
+    errors.push(`Stage move failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // 3b. Auto-complete "Review checklist" task (non-critical, PIPE-03)
+  try {
+    const reviewTask = await findReviewTask(contactId);
+    if (reviewTask && !reviewTask.completed) {
+      await completeTask(contactId, reviewTask.id);
+      console.log('[sent-detector] Review task auto-completed', {
+        contactId,
+        taskId: reviewTask.id,
+      });
+    }
+  } catch (err) {
+    errors.push(`Task completion failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // 4. Create audit note (non-critical)
