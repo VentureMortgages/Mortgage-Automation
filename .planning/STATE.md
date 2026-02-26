@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 12 (CRM Pipeline Automation) -- first of 5 v1.1 phases (12-16)
-Plan: 12-01 and 12-03 complete, 12-02 remaining (2/3)
-Status: Executing
-Last activity: 2026-02-26 -- 12-03 (professional contact type assignment) executed
+Phase: 12 (CRM Pipeline Automation) -- COMPLETE (all 3 plans executed)
+Plan: 3/3 complete (12-01, 12-02, 12-03)
+Status: Phase complete -- ready for Phase 13
+Last activity: 2026-02-26 -- 12-02 (sent-detector refactor for opportunity-level stage move + task auto-complete)
 
 ## Performance Metrics
 
@@ -34,7 +34,7 @@ Last activity: 2026-02-26 -- 12-03 (professional contact type assignment) execut
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 | 10-opportunity-centric-architecture | 5/5 | 19 min | 4 min |
 | 11-drive-folder-linking-deal-subfolders | 3/3 | 8 min | 3 min |
-| 12-crm-pipeline-automation | 2/3 | 5 min | 3 min |
+| 12-crm-pipeline-automation | 3/3 | 7 min | 2 min |
 
 *Updated after each plan completion*
 
@@ -51,6 +51,8 @@ Recent decisions affecting current work:
 - createOrUpdateReviewTask is public API; createReviewTask remains for internal use
 - Professional contact type stored as GHL tag (additive merge), not custom field -- simplest for filtering
 - assignContactType is non-fatal: catches all errors internally, Cat can tag manually
+- Sent-detector stage move uses searchOpportunities (first result) not findOpportunityByFinmoId (lacks finmoApplicationId context)
+- Review task auto-complete happens inline in sent-detector flow (step 3b), colocated with stage move
 
 ### Pending Todos
 
@@ -64,10 +66,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Completed 12-03-PLAN.md
+Stopped at: Completed 12-02-PLAN.md (Phase 12 complete)
 Resume file: None
-Next: Execute 12-02 (Wave 2, last plan in phase 12)
+Next: Phase 13 (next v1.1 phase)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-26 (12-03 executed)*
+*Last updated: 2026-02-26 (12-02 executed, Phase 12 complete)*

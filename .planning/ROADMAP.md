@@ -36,7 +36,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### v1.1 Production Hardening (Phases 12-16)
 
-- [ ] **Phase 12: CRM Pipeline Automation** - Deduplicate tasks, auto-move stages, auto-complete review tasks, assign realtor contact type
+- [x] **Phase 12: CRM Pipeline Automation** - Deduplicate tasks, auto-move stages, auto-complete review tasks, assign realtor contact type (completed 2026-02-26)
 - [ ] **Phase 13: Timing & Sync Resilience** - Retry CRM sync, file docs before MBP exists, research Finmo external system API
 - [ ] **Phase 14: Folder Matching & Backfill** - CRM-first folder resolution, email/phone fallback, multi-borrower routing, subfolder pre-creation, interactive backfill
 - [ ] **Phase 15: Original Document Preservation** - Store originals before classification, preserve low-confidence docs, handle re-uploads
@@ -272,7 +272,7 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 8.1 Feedback Loop (RAG) | v1.0 | N/A | Complete | 2026-02-21 |
 | 10. Opportunity-Centric | v1.0 | 5/5 | Complete | 2026-02-21 |
 | 11. Drive Folder Linking | v1.0 | 3/3 | Complete | 2026-02-22 |
-| 12. CRM Pipeline Automation | 2/3 | In Progress|  | - |
+| 12. CRM Pipeline Automation | 3/3 | Complete   | 2026-02-26 | - |
 | 13. Timing & Sync Resilience | v1.1 | 0/TBD | Not started | - |
 | 14. Folder Matching & Backfill | v1.1 | 0/TBD | Not started | - |
 | 15. Original Doc Preservation | v1.1 | 0/TBD | Not started | - |
