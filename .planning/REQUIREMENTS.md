@@ -89,9 +89,9 @@ Requirements for milestone v1.1 -- Production Hardening. Each maps to roadmap ph
 
 ### CRM Pipeline (Phase 12)
 
-- [ ] **PIPE-01**: System creates only one "Review checklist" task per Finmo application, even though Finmo creates 2 MBP opportunities (Leads + Live Deals)
+- [x] **PIPE-01**: System creates only one "Review checklist" task per Finmo application, even though Finmo creates 2 MBP opportunities (Leads + Live Deals)
 - [ ] **PIPE-02**: When checklist email draft is created, opportunity automatically moves from "In Progress" to "Collecting Documents"
-- [ ] **PIPE-03**: When opportunity moves to "Collecting Documents", the "Review checklist" task is automatically marked completed
+- [x] **PIPE-03**: When opportunity moves to "Collecting Documents", the "Review checklist" task is automatically marked completed
 - [ ] **PIPE-04**: When Finmo app includes a realtor, the realtor contact in MBP is assigned the correct contact type
 
 ### Timing & Sync (Phase 13)
@@ -188,9 +188,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PIPE-01 | Phase 12 | Pending |
+| PIPE-01 | Phase 12 | Complete |
 | PIPE-02 | Phase 12 | Pending |
-| PIPE-03 | Phase 12 | Pending |
+| PIPE-03 | Phase 12 | Complete |
 | PIPE-04 | Phase 12 | Pending |
 | SYNC-01 | Phase 13 | Pending |
 | SYNC-02 | Phase 13 | Pending |

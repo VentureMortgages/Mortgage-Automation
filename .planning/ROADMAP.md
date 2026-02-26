@@ -192,10 +192,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. When the checklist email draft is created, the opportunity moves from "In Progress" to "Collecting Documents" without Cat doing it manually
   3. When the opportunity reaches "Collecting Documents", the "Review checklist" task is automatically marked completed (Cat does not have to close it herself)
   4. When a Finmo application includes a realtor, the realtor's MBP contact is assigned the correct contact type (so Cat can filter realtors in CRM)
-**Plans**: TBD
+**Plans**: 0/3
 
 Plans:
-- [ ] 12-01: TBD during planning
+- [ ] 12-01: Task dedup + auto-complete (PIPE-01, PIPE-03) — Wave 1
+- [ ] 12-02: Stage move on email send (PIPE-02, PIPE-03) — Wave 2 (depends on 12-01)
+- [ ] 12-03: Professional contact type assignment (PIPE-04) — Wave 1
 
 ### Phase 13: Timing & Sync Resilience
 **Goal**: System handles the real-world timing gap between Finmo webhook and MBP opportunity creation gracefully -- no lost docs, no failed syncs
@@ -270,7 +272,7 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 8.1 Feedback Loop (RAG) | v1.0 | N/A | Complete | 2026-02-21 |
 | 10. Opportunity-Centric | v1.0 | 5/5 | Complete | 2026-02-21 |
 | 11. Drive Folder Linking | v1.0 | 3/3 | Complete | 2026-02-22 |
-| 12. CRM Pipeline Automation | v1.1 | 0/TBD | Not started | - |
+| 12. CRM Pipeline Automation | 1/3 | In Progress|  | - |
 | 13. Timing & Sync Resilience | v1.1 | 0/TBD | Not started | - |
 | 14. Folder Matching & Backfill | v1.1 | 0/TBD | Not started | - |
 | 15. Original Doc Preservation | v1.1 | 0/TBD | Not started | - |

@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 12 (CRM Pipeline Automation) -- first of 5 v1.1 phases (12-16)
-Plan: None yet -- ready to plan
-Status: Ready to plan
-Last activity: 2026-02-25 -- v1.1 roadmap created (phases 12-16)
+Plan: 12-01 complete, 12-02 and 12-03 remaining (1/3)
+Status: Executing
+Last activity: 2026-02-26 -- 12-01 (task dedup + completion) executed
 
 ## Performance Metrics
 
@@ -34,6 +34,7 @@ Last activity: 2026-02-25 -- v1.1 roadmap created (phases 12-16)
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 | 10-opportunity-centric-architecture | 5/5 | 19 min | 4 min |
 | 11-drive-folder-linking-deal-subfolders | 3/3 | 8 min | 3 min |
+| 12-crm-pipeline-automation | 1/3 | 3 min | 3 min |
 
 *Updated after each plan completion*
 
@@ -46,6 +47,8 @@ Recent decisions affecting current work:
 - Multi-borrower folders: "Last/Last, First/First" format matching Cat's Drive convention
 - extractDriveFolderId normalizes both raw IDs and full Drive URLs to folder IDs
 - All CRM persistence operations wrapped in non-fatal try/catch (failures must not block pipeline)
+- Task dedup uses title pattern matching ("Review doc request") on contact tasks
+- createOrUpdateReviewTask is public API; createReviewTask remains for internal use
 
 ### Pending Todos
 
@@ -58,11 +61,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-25
-Stopped at: v1.1 roadmap created (phases 12-16 defined)
+Last session: 2026-02-26
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None
-Next: Plan Phase 12 (CRM Pipeline Automation)
+Next: Execute 12-03 (Wave 1 parallel), then 12-02 (Wave 2)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-25 (v1.1 roadmap created)*
+*Last updated: 2026-02-26 (12-01 executed)*
