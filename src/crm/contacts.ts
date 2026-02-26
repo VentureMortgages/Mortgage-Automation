@@ -254,6 +254,64 @@ export function getContactDriveFolderId(
 }
 
 // ============================================================================
+// Professional Contact Type Assignment
+// ============================================================================
+
+/**
+ * Sets the contact type tag on a professional contact in MBP.
+ *
+ * Finmo pushes professional contacts (realtor, lawyer) to MBP but does
+ * NOT set the contact type. This function finds the contact by email
+ * and adds a tag matching the professional's role.
+ *
+ * Non-fatal: logs errors but never throws (Cat can tag manually).
+ *
+ * @param email - The professional's email address
+ * @param fullName - The professional's full name (for upsert)
+ * @param professionalType - The role from Finmo (e.g., "realtor", "lawyer")
+ */
+export async function assignContactType(
+  email: string,
+  fullName: string,
+  professionalType: string,
+): Promise<void> {
+  try {
+    // Parse name: "First Last" → firstName, lastName
+    const parts = fullName.trim().split(/\s+/);
+    const firstName = parts[0] || fullName;
+    const lastName = parts.slice(1).join(' ') || '';
+
+    // Normalize type for tag (lowercase, trimmed)
+    const tag = professionalType.toLowerCase().trim();
+
+    // Upsert contact with tag — GHL merges tags additively
+    const body = {
+      locationId: crmConfig.locationId,
+      email,
+      firstName,
+      lastName,
+      tags: [tag],
+    };
+
+    await crmFetch('/contacts/upsert', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+
+    console.log('[contacts] Professional contact type assigned', {
+      email,
+      type: tag,
+    });
+  } catch (err) {
+    console.error('[contacts] Failed to assign contact type (non-fatal)', {
+      email,
+      type: professionalType,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+// ============================================================================
 // Internal — HTTP helper with error classification
 // ============================================================================
 

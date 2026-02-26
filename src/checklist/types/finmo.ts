@@ -25,7 +25,7 @@ export interface FinmoApplicationResponse {
   addressSituations: FinmoAddressSituation[];
   creditReports: unknown[];
   activities: unknown[];
-  agents: unknown[];
+  agents: FinmoAgent[];
   fees: unknown[];
   teamMembers: unknown[];
   users: unknown[];
@@ -356,6 +356,26 @@ export interface FinmoLiability {
   importedFromCreditBureau: boolean;
   /** Whether this is the credit bureau source record */
   isCreditBureauSource: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Agent (professional contacts on the application)
+// ---------------------------------------------------------------------------
+
+/** Professional contact on the application (realtor, lawyer, etc.) */
+export interface FinmoAgent {
+  id: string;
+  applicationId: string;
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+  /** Professional type — "realtor", "lawyer", etc. */
+  type: 'realtor' | 'lawyer' | string;
+  fax: string | null;
+  brokerage: string | null;
+  lawFirm: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ---------------------------------------------------------------------------
