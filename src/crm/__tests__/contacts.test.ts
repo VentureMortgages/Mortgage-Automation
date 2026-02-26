@@ -18,7 +18,7 @@ vi.mock('../config.js', () => ({
   devPrefix: (text: string) => text,
 }));
 
-import { getContact, findContactByEmail, findContactByName, resolveContactId, extractDriveFolderId, getContactDriveFolderId } from '../contacts.js';
+import { getContact, findContactByEmail, findContactByName, resolveContactId, extractDriveFolderId, getContactDriveFolderId, assignContactType } from '../contacts.js';
 import { CrmAuthError, CrmApiError } from '../errors.js';
 
 // ============================================================================
@@ -419,5 +419,88 @@ describe('getContactDriveFolderId', () => {
       customFields: [{ id: 'drive-field', value: '' }],
     };
     expect(getContactDriveFolderId(contact, 'drive-field')).toBeNull();
+  });
+});
+
+// ============================================================================
+// assignContactType
+// ============================================================================
+
+describe('assignContactType', () => {
+  test('upserts contact with professional type as tag', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contact: { id: 'contact-1' }, new: false }),
+    } as Response);
+
+    await assignContactType('jane@example.com', 'Jane Doe', 'lawyer');
+
+    expect(mockFetch).toHaveBeenCalledOnce();
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe('https://test-api.example.com/contacts/upsert');
+    expect(init.method).toBe('POST');
+    const body = JSON.parse(init.body as string);
+    expect(body.tags).toEqual(['lawyer']);
+    expect(body.email).toBe('jane@example.com');
+    expect(body.locationId).toBe('test-location-id');
+  });
+
+  test('parses full name into firstName and lastName', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contact: { id: 'contact-1' }, new: false }),
+    } as Response);
+
+    await assignContactType('jane@example.com', 'Jane Marie Doe', 'realtor');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
+    expect(body.firstName).toBe('Jane');
+    expect(body.lastName).toBe('Marie Doe');
+  });
+
+  test('handles single-word name (no lastName)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contact: { id: 'contact-1' }, new: false }),
+    } as Response);
+
+    await assignContactType('jane@example.com', 'Jane', 'realtor');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
+    expect(body.firstName).toBe('Jane');
+    expect(body.lastName).toBe('');
+  });
+
+  test('does not throw when API call fails (non-fatal)', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+    // Should not throw
+    await expect(
+      assignContactType('jane@example.com', 'Jane Doe', 'realtor'),
+    ).resolves.toBeUndefined();
+  });
+
+  test('normalizes type to lowercase for tag', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contact: { id: 'contact-1' }, new: false }),
+    } as Response);
+
+    await assignContactType('jane@example.com', 'Jane Doe', 'REALTOR');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
+    expect(body.tags).toEqual(['realtor']);
+  });
+
+  test('trims whitespace from type', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contact: { id: 'contact-1' }, new: false }),
+    } as Response);
+
+    await assignContactType('jane@example.com', 'Jane Doe', '  lawyer  ');
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1]?.body as string);
+    expect(body.tags).toEqual(['lawyer']);
   });
 });

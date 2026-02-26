@@ -34,7 +34,7 @@ import { getDriveClient } from '../classification/drive-client.js';
 import { findOrCreateFolder } from '../classification/filer.js';
 import { scanClientFolder, filterChecklistByExistingDocs, extractDealReference } from '../drive/index.js';
 import { feedbackConfig, findSimilarEdits, applyFeedbackToChecklist, buildContextText } from '../feedback/index.js';
-import { upsertContact, findContactByEmail } from '../crm/contacts.js';
+import { upsertContact, findContactByEmail, assignContactType } from '../crm/contacts.js';
 import { findOpportunityByFinmoId, updateOpportunityFields } from '../crm/opportunities.js';
 import { crmConfig } from '../crm/config.js';
 import { PIPELINE_IDS } from '../crm/types/index.js';
@@ -244,6 +244,24 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     fieldsUpdated: crmResult.fieldsUpdated,
     errors: crmResult.errors.length,
   });
+
+  // 8a. Assign contact type to professionals (non-fatal, PIPE-04)
+  if (finmoApp.agents && finmoApp.agents.length > 0) {
+    for (const agent of finmoApp.agents) {
+      if (agent.email && agent.type) {
+        try {
+          await assignContactType(agent.email, agent.fullName, agent.type);
+        } catch (err) {
+          console.error('[worker] Professional contact type assignment failed (non-fatal)', {
+            applicationId,
+            agentEmail: agent.email,
+            agentType: agent.type,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    }
+  }
 
   // 8b. Schedule CRM sync retry if opportunity wasn't found yet
   if (crmResult.trackingTarget === 'contact') {
