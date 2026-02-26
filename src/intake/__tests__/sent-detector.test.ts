@@ -33,10 +33,20 @@ vi.mock('../../crm/notes.js', () => ({
   createAuditNote: mockCreateAuditNote,
 }));
 
-const mockMoveToCollectingDocs = vi.hoisted(() => vi.fn());
+const mockSearchOpportunities = vi.hoisted(() => vi.fn());
+const mockUpdateOpportunityStage = vi.hoisted(() => vi.fn());
 
 vi.mock('../../crm/opportunities.js', () => ({
-  moveToCollectingDocs: mockMoveToCollectingDocs,
+  searchOpportunities: mockSearchOpportunities,
+  updateOpportunityStage: mockUpdateOpportunityStage,
+}));
+
+const mockFindReviewTask = vi.hoisted(() => vi.fn());
+const mockCompleteTask = vi.hoisted(() => vi.fn());
+
+vi.mock('../../crm/tasks.js', () => ({
+  findReviewTask: mockFindReviewTask,
+  completeTask: mockCompleteTask,
 }));
 
 vi.mock('../../crm/config.js', () => ({
@@ -44,7 +54,14 @@ vi.mock('../../crm/config.js', () => ({
     fieldIds: {
       docRequestSent: 'field-doc-request-sent-id',
     },
+    stageIds: {
+      collectingDocuments: 'stage-collecting-docs',
+    },
   },
+}));
+
+vi.mock('../../crm/types/index.js', () => ({
+  PIPELINE_IDS: { LIVE_DEALS: 'pipeline-live-deals' },
 }));
 
 const mockCaptureFeedback = vi.hoisted(() => vi.fn());
@@ -140,7 +157,10 @@ describe('Sent Detector', () => {
     beforeEach(() => {
       mockGetContact.mockResolvedValue(mockContact);
       mockUpsertContact.mockResolvedValue({ contactId: 'contact-abc', isNew: false });
-      mockMoveToCollectingDocs.mockResolvedValue('opp-123');
+      mockSearchOpportunities.mockResolvedValue([{ id: 'opp-123', name: 'Test Deal' }]);
+      mockUpdateOpportunityStage.mockResolvedValue(undefined);
+      mockFindReviewTask.mockResolvedValue({ id: 'task-review-1', title: 'Review doc request — TestEmp Borrower', completed: false });
+      mockCompleteTask.mockResolvedValue(undefined);
       mockCreateAuditNote.mockResolvedValue('note-456');
       mockCaptureFeedback.mockResolvedValue(undefined);
     });
@@ -168,7 +188,7 @@ describe('Sent Detector', () => {
       });
     });
 
-    it('moves pipeline to Collecting Documents', async () => {
+    it('moves opportunity to Collecting Documents via opportunity-level API', async () => {
       const meta = createMeta({
         ventureType: 'doc-request',
         ventureContactId: 'contact-abc',
@@ -176,10 +196,8 @@ describe('Sent Detector', () => {
 
       await handleSentDetection(meta);
 
-      expect(mockMoveToCollectingDocs).toHaveBeenCalledWith(
-        'contact-abc',
-        'TestEmp Borrower',
-      );
+      expect(mockSearchOpportunities).toHaveBeenCalledWith('contact-abc', 'pipeline-live-deals');
+      expect(mockUpdateOpportunityStage).toHaveBeenCalledWith('opp-123', 'stage-collecting-docs');
     });
 
     it('creates audit note', async () => {
@@ -197,8 +215,8 @@ describe('Sent Detector', () => {
       });
     });
 
-    it('captures pipeline error without failing', async () => {
-      mockMoveToCollectingDocs.mockRejectedValue(new Error('Pipeline API down'));
+    it('captures stage move error without failing', async () => {
+      mockSearchOpportunities.mockRejectedValue(new Error('Pipeline API down'));
 
       const meta = createMeta({
         ventureType: 'doc-request',
@@ -208,8 +226,7 @@ describe('Sent Detector', () => {
       const result = await handleSentDetection(meta);
 
       expect(result.detected).toBe(true);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('Pipeline advance failed');
+      expect(result.errors).toContainEqual(expect.stringContaining('Stage move failed'));
     });
 
     it('captures audit note error without failing', async () => {
@@ -248,6 +265,53 @@ describe('Sent Detector', () => {
       const result = await handleSentDetection(meta);
 
       expect(result.errors).toHaveLength(0);
+    });
+
+    // -----------------------------------------------------------------------
+    // Task auto-completion tests (PIPE-03)
+    // -----------------------------------------------------------------------
+
+    it('auto-completes review task when email is sent', async () => {
+      const meta = createMeta({ ventureType: 'doc-request', ventureContactId: 'contact-abc' });
+      await handleSentDetection(meta);
+
+      expect(mockFindReviewTask).toHaveBeenCalledWith('contact-abc');
+      expect(mockCompleteTask).toHaveBeenCalledWith('contact-abc', 'task-review-1');
+    });
+
+    it('skips task completion when task is already completed', async () => {
+      mockFindReviewTask.mockResolvedValue({ id: 'task-review-1', title: 'Review', completed: true });
+      const meta = createMeta({ ventureType: 'doc-request', ventureContactId: 'contact-abc' });
+      await handleSentDetection(meta);
+
+      expect(mockCompleteTask).not.toHaveBeenCalled();
+    });
+
+    it('skips task completion when no review task exists', async () => {
+      mockFindReviewTask.mockResolvedValue(null);
+      const meta = createMeta({ ventureType: 'doc-request', ventureContactId: 'contact-abc' });
+      await handleSentDetection(meta);
+
+      expect(mockCompleteTask).not.toHaveBeenCalled();
+    });
+
+    it('handles stage move when no opportunity found', async () => {
+      mockSearchOpportunities.mockResolvedValue([]);
+      const meta = createMeta({ ventureType: 'doc-request', ventureContactId: 'contact-abc' });
+      const result = await handleSentDetection(meta);
+
+      expect(result.detected).toBe(true);
+      expect(mockUpdateOpportunityStage).not.toHaveBeenCalled();
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it('captures task completion error without failing', async () => {
+      mockCompleteTask.mockRejectedValue(new Error('Task API down'));
+      const meta = createMeta({ ventureType: 'doc-request', ventureContactId: 'contact-abc' });
+      const result = await handleSentDetection(meta);
+
+      expect(result.detected).toBe(true);
+      expect(result.errors).toContainEqual(expect.stringContaining('Task completion failed'));
     });
   });
 });
