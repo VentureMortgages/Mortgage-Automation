@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 12 (CRM Pipeline Automation) -- first of 5 v1.1 phases (12-16)
-Plan: 12-01 complete, 12-02 and 12-03 remaining (1/3)
+Plan: 12-01 and 12-03 complete, 12-02 remaining (2/3)
 Status: Executing
-Last activity: 2026-02-26 -- 12-01 (task dedup + completion) executed
+Last activity: 2026-02-26 -- 12-03 (professional contact type assignment) executed
 
 ## Performance Metrics
 
@@ -34,7 +34,7 @@ Last activity: 2026-02-26 -- 12-01 (task dedup + completion) executed
 | 08-tracking-integration | 2/2 | 10 min | 5 min |
 | 10-opportunity-centric-architecture | 5/5 | 19 min | 4 min |
 | 11-drive-folder-linking-deal-subfolders | 3/3 | 8 min | 3 min |
-| 12-crm-pipeline-automation | 1/3 | 3 min | 3 min |
+| 12-crm-pipeline-automation | 2/3 | 5 min | 3 min |
 
 *Updated after each plan completion*
 
@@ -49,6 +49,8 @@ Recent decisions affecting current work:
 - All CRM persistence operations wrapped in non-fatal try/catch (failures must not block pipeline)
 - Task dedup uses title pattern matching ("Review doc request") on contact tasks
 - createOrUpdateReviewTask is public API; createReviewTask remains for internal use
+- Professional contact type stored as GHL tag (additive merge), not custom field -- simplest for filtering
+- assignContactType is non-fatal: catches all errors internally, Cat can tag manually
 
 ### Pending Todos
 
@@ -62,10 +64,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-26
-Stopped at: Completed 12-01-PLAN.md
+Stopped at: Completed 12-03-PLAN.md
 Resume file: None
-Next: Execute 12-03 (Wave 1 parallel), then 12-02 (Wave 2)
+Next: Execute 12-02 (Wave 2, last plan in phase 12)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-26 (12-01 executed)*
+*Last updated: 2026-02-26 (12-03 executed)*
