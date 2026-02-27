@@ -32,7 +32,6 @@ import { createOrUpdateReviewTask } from './tasks.js';
 import {
   findOpportunityByFinmoId,
   updateOpportunityFields,
-  updateOpportunityStage,
 } from './opportunities.js';
 
 // ============================================================================
@@ -150,14 +149,9 @@ export async function syncChecklistToCrm(
           errors.push(`Opportunity field update failed: ${message}`);
         }
 
-        // 4b. Set stage to "Collecting Documents"
-        try {
-          await updateOpportunityStage(opportunityId, crmConfig.stageIds.collectingDocuments);
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown error';
-          console.warn(`[syncChecklistToCrm] Stage update failed: ${message}`);
-          errors.push(`Stage update failed: ${message}`);
-        }
+        // 4b. Stage move to "Collecting Documents" happens on email SEND
+        //     (via sent-detector), not here at webhook time. Removed to avoid
+        //     premature stage advancement before Cat reviews the draft.
       } else {
         // No opportunity found — fall back to contact-level tracking
         console.warn(

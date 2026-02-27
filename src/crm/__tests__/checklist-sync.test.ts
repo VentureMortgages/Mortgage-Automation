@@ -160,13 +160,10 @@ describe('syncChecklistToCrm', () => {
       );
     });
 
-    test('sets stage to Collecting Documents on opportunity', async () => {
+    test('does NOT set stage at webhook time (stage moves on email send)', async () => {
       await syncChecklistToCrm(defaultInput);
 
-      expect(updateOpportunityStage).toHaveBeenCalledWith(
-        'opp-123',
-        'stage-collecting',
-      );
+      expect(updateOpportunityStage).not.toHaveBeenCalled();
     });
 
     test('upserts contact WITHOUT doc tracking custom fields', async () => {
@@ -412,15 +409,7 @@ describe('syncChecklistToCrm', () => {
       expect(result.errors[0]).toContain('Opportunity field update failed');
     });
 
-    test('stage update failure is non-fatal, captured in errors', async () => {
-      vi.mocked(updateOpportunityStage).mockRejectedValueOnce(new Error('Stage API error'));
-
-      const result = await syncChecklistToCrm(defaultInput);
-
-      expect(result.contactId).toBe('test-contact-123');
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('Stage update failed');
-    });
+    // Stage update removed from checklist-sync — happens on email send via sent-detector
 
     test('task creation failure is non-fatal, captured in errors', async () => {
       vi.mocked(createOrUpdateReviewTask).mockRejectedValueOnce(new Error('Task API error'));
