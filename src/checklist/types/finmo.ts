@@ -40,10 +40,10 @@ export interface FinmoApplicationResponse {
 /** Top-level application record — determines deal type, goal, and property context */
 export interface FinmoApplication {
   id: string;
-  /** "purchase" | "refinance" — drives property-section doc requirements */
-  goal: 'purchase' | 'refinance' | string;
-  /** "owner_occupied" | "rental" etc. — determines if rental docs needed */
-  use: 'owner_occupied' | 'rental' | string;
+  /** "purchase" | "refinance" | "renew" — drives property-section doc requirements */
+  goal: 'purchase' | 'refinance' | 'renew' | string;
+  /** "owner_occupied" | "rental" etc. — determines if rental docs needed. Null for renewals. */
+  use: 'owner_occupied' | 'rental' | string | null;
   /** "searching" | "found_property" — controls gift donor proof-of-funds timing */
   process: 'searching' | 'found_property' | string;
   /** ID of the subject property (if linked) */

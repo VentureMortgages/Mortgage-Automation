@@ -1,7 +1,13 @@
 /**
  * Section 15: Property (Deal Type) Rules
  *
- * Covers: Purchase, Refinance, Condo, Multi-Unit, Investment
+ * Covers: Purchase, Refinance, Renewal/Switch, Condo, Multi-Unit, Investment
+ *
+ * Goal handling:
+ * - "purchase": New property acquisition
+ * - "refinance": Refinancing existing mortgage
+ * - "renew" / other existing-property goals: Treated like refinance for docs
+ *   (mortgage statement, property tax bill, + home insurance for switches)
  *
  * Exclusions (CHKL-05):
  * - Home inspection report: Removed ("Not necessary")
@@ -26,6 +32,28 @@ function isRefinance(ctx: RuleContext): boolean {
 }
 
 /**
+ * Check if this is an existing-property deal (refinance, renewal, switch).
+ * These all need mortgage statement + property tax bill.
+ * Matches "refinance", "renew", and any non-purchase goal where a property exists.
+ */
+function isExistingPropertyDeal(ctx: RuleContext): boolean {
+  if (isPurchase(ctx)) return false;
+  // Refinance or renewal/switch — any non-purchase goal with a subject property
+  return ctx.application.goal === 'refinance' ||
+    ctx.application.goal === 'renew' ||
+    // Future-proof: if goal is unknown but there's a subject property, treat as existing
+    (ctx.subjectProperty !== null && ctx.application.goal !== null);
+}
+
+/**
+ * Check if this is a renewal/switch (not a refinance).
+ * Per Cat: home insurance is "only needed for switches, not refinances."
+ */
+function isRenewalOrSwitch(ctx: RuleContext): boolean {
+  return ctx.application.goal === 'renew';
+}
+
+/**
  * Check if the subject property is a condo.
  * Detected by property type "condo" or presence of monthly condo/strata fees.
  */
@@ -39,11 +67,11 @@ function isCondo(ctx: RuleContext): boolean {
 }
 
 /**
- * Condo fee confirmation is ONLY required for refinance (not purchase).
+ * Condo fee confirmation is required for existing-property deals (not purchase).
  * Per Cat: "Only if NOT a purchase."
  */
-function isCondoRefinance(ctx: RuleContext): boolean {
-  return isCondo(ctx) && isRefinance(ctx);
+function isCondoExistingDeal(ctx: RuleContext): boolean {
+  return isCondo(ctx) && isExistingPropertyDeal(ctx);
 }
 
 /** Check if the subject property has multiple units (2+) */
@@ -55,9 +83,14 @@ function isMultiUnit(ctx: RuleContext): boolean {
   );
 }
 
-/** Check if the property is non-owner-occupied (investment) */
+/**
+ * Check if the property is non-owner-occupied (investment).
+ * Null/missing `use` is NOT treated as investment — only explicit non-owner values.
+ */
 function isInvestment(ctx: RuleContext): boolean {
-  return ctx.application.use !== 'owner_occupied';
+  return ctx.application.use !== null &&
+    ctx.application.use !== undefined &&
+    ctx.application.use !== 'owner_occupied';
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +133,7 @@ function refinanceRules(): ChecklistRule[] {
       displayName: 'Current mortgage statement',
       stage: 'PRE',
       scope: 'shared',
-      condition: isRefinance,
+      condition: isExistingPropertyDeal,
     },
     {
       id: 's15_refi_tax',
@@ -109,9 +142,18 @@ function refinanceRules(): ChecklistRule[] {
       displayName: 'Property tax bill (most recent)',
       stage: 'PRE',
       scope: 'shared',
-      condition: isRefinance,
+      condition: isExistingPropertyDeal,
     },
-    // Home insurance: removed per Cat — only needed for switches, not refinances
+    // Home insurance: per Cat — "only needed for switches, not refinances"
+    {
+      id: 's15_switch_insurance',
+      section: '15_property_refinance',
+      document: 'Home insurance',
+      displayName: 'Home insurance policy',
+      stage: 'PRE',
+      scope: 'shared',
+      condition: isRenewalOrSwitch,
+    },
   ];
 }
 
@@ -129,8 +171,8 @@ function condoRules(): ChecklistRule[] {
         'Condo fee confirmation, OR 3 months of bank statements showing strata fee withdrawals',
       stage: 'PRE',
       scope: 'shared',
-      // Per Cat: Only for refinance, NOT purchase
-      condition: isCondoRefinance,
+      // Per Cat: Only for existing-property deals (refinance/renewal), NOT purchase
+      condition: isCondoExistingDeal,
     },
     // Status Certificate / Strata Form B: removed per Cat — handled by lawyers
   ];

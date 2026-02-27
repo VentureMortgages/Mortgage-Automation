@@ -92,16 +92,17 @@ describe('Edge cases', () => {
     expect(loeItems).toHaveLength(1);
   });
 
-  test('empty borrowers array produces empty checklists', () => {
+  test('empty borrowers array synthesizes from applicant and warns', () => {
     const noBorrowerFixture: FinmoApplicationResponse = {
       ...employedPurchase,
       borrowers: [],
     };
     const result = generateChecklist(noBorrowerFixture, undefined, TEST_DATE);
-    expect(result.borrowerChecklists).toHaveLength(0);
-    // Shared items are still evaluated (using main borrower context which is null)
-    // Engine should not crash
-    expect(result.warnings).toBeDefined();
+    // Synthesizes a borrower from applicant data — base pack items still fire
+    expect(result.borrowerChecklists).toHaveLength(1);
+    expect(result.borrowerChecklists[0].items.length).toBeGreaterThan(0);
+    // Should warn about the synthesis
+    expect(result.warnings.some(w => w.includes('synthesized from applicant'))).toBe(true);
   });
 
   test('Finmo hourly_guaranted payType triggers salary/hourly rules', () => {

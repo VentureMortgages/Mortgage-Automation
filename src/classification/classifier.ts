@@ -146,7 +146,12 @@ Instructions:
 - Extract the institution/employer name if visible.
 - Set pageCount to the number of pages in the document.
 - Use additionalNotes for any other relevant context.
-- If the document does not match any specific type, use "other".${filenameSection}`;
+- If the document does not match any specific type, use "other".
+
+Classification guidance for commonly confused types:
+- photo_id vs passport: If the document is any form of government-issued photo ID used for identity verification in a mortgage application (driver's license, passport, health card, PR card), classify it as "photo_id". Only use "passport" for full passport booklet pages showing travel stamps or visa information, not a passport used as ID.
+- loe vs employment_contract: A Letter of Employment (LOE) is a brief letter from an employer confirming current employment status, position, salary, and start date. Classify these as "loe". Only use "employment_contract" for formal multi-page contracts with terms, clauses, termination conditions, and signatures.
+- rrsp_statement vs bank_statement: If the account is labelled RRSP, RSP, or Registered Retirement Savings Plan, classify as "rrsp_statement" even if it looks like a bank statement. Similarly, TFSA accounts are "tfsa_statement" and FHSA accounts are "fhsa_statement".${filenameSection}`;
 }
 
 // ---------------------------------------------------------------------------

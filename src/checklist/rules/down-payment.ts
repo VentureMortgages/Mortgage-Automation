@@ -21,9 +21,9 @@ import type { ChecklistRule, RuleContext } from '../types/index.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** No down payment needed for refinances — skip all DP rules */
-function isNotRefinance(ctx: RuleContext): boolean {
-  return ctx.application.goal !== 'refinance';
+/** No down payment needed for refinances or renewals — skip all DP rules */
+function isNotRefinanceOrRenewal(ctx: RuleContext): boolean {
+  return ctx.application.goal !== 'refinance' && ctx.application.goal !== 'renew';
 }
 
 /**
@@ -32,7 +32,7 @@ function isNotRefinance(ctx: RuleContext): boolean {
  * or any non-gift/non-sale asset.
  */
 function hasDownPaymentAssets(ctx: RuleContext): boolean {
-  if (!isNotRefinance(ctx)) return false;
+  if (!isNotRefinanceOrRenewal(ctx)) return false;
   return ctx.assets.some(
     (a) =>
       a.type === 'cash_savings' ||
@@ -49,7 +49,7 @@ function hasDownPaymentAssets(ctx: RuleContext): boolean {
 
 /** Check if application has gift-sourced down payment (excluded for refinances) */
 function hasGift(ctx: RuleContext): boolean {
-  if (!isNotRefinance(ctx)) return false;
+  if (!isNotRefinanceOrRenewal(ctx)) return false;
   return ctx.assets.some(
     (a) => a.description?.toLowerCase().includes('gift')
   );
@@ -66,7 +66,7 @@ function hasGiftAndFoundProperty(ctx: RuleContext): boolean {
 
 /** Check if any property is being sold as DP source (excluded for refinances) */
 function hasPropertySale(ctx: RuleContext): boolean {
-  if (!isNotRefinance(ctx)) return false;
+  if (!isNotRefinanceOrRenewal(ctx)) return false;
   return ctx.properties.some((p) => p.isSelling === true);
 }
 
@@ -75,7 +75,7 @@ function hasPropertySale(ctx: RuleContext): boolean {
  * Detected by asset description containing "inheritance".
  */
 function hasInheritance(ctx: RuleContext): boolean {
-  if (!isNotRefinance(ctx)) return false;
+  if (!isNotRefinanceOrRenewal(ctx)) return false;
   return ctx.assets.some(
     (a) => a.description?.toLowerCase().includes('inheritance')
   );
@@ -86,7 +86,7 @@ function hasInheritance(ctx: RuleContext): boolean {
  * Detected by asset description containing "borrow" or similar.
  */
 function hasBorrowedDownPayment(ctx: RuleContext): boolean {
-  if (!isNotRefinance(ctx)) return false;
+  if (!isNotRefinanceOrRenewal(ctx)) return false;
   return ctx.assets.some(
     (a) => a.description?.toLowerCase().includes('borrow')
   );

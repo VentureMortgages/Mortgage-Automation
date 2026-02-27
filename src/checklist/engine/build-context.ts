@@ -5,10 +5,14 @@
  * and liabilities pre-filtered. This enables per-borrower rule evaluation (CHKL-04).
  *
  * The main borrower's context is always first in the returned array.
+ *
+ * Resilience: If borrowers array is empty (incomplete submission), creates a
+ * synthetic borrower from applicant data so base-pack rules still fire.
  */
 
 import type {
   FinmoApplicationResponse,
+  FinmoBorrower,
   FinmoProperty,
   RuleContext,
 } from '../types/index.js';
@@ -40,10 +44,52 @@ export function findSubjectProperty(
 export function buildBorrowerContexts(
   response: FinmoApplicationResponse,
   currentDate: Date
-): RuleContext[] {
+): { contexts: RuleContext[]; warnings: string[] } {
   const subjectProperty = findSubjectProperty(response);
+  const warnings: string[] = [];
 
-  const contexts: RuleContext[] = response.borrowers.map((borrower) => {
+  // Resilience: if borrowers array is empty, synthesize from applicant data
+  let borrowers = response.borrowers;
+  if (!borrowers || borrowers.length === 0) {
+    if (response.applicant) {
+      warnings.push(
+        'No borrowers in application — synthesized from applicant data. Some income-specific rules may not fire.'
+      );
+      const syntheticBorrower: FinmoBorrower = {
+        id: response.applicant.id,
+        applicationId: response.application.id,
+        firstName: response.applicant.firstName,
+        lastName: response.applicant.lastName,
+        email: response.applicant.email,
+        phone: response.applicant.phoneNumber,
+        workPhone: null,
+        firstTime: false,
+        sinNumber: '',
+        marital: 'single',
+        birthDate: null,
+        dependents: 0,
+        isMainBorrower: true,
+        relationshipToMainBorrower: null,
+        incomes: [],
+        addressSituations: [],
+        addresses: [],
+        creditReports: [],
+        kycMethod: null,
+        kycCompleted: null,
+        isBusinessLegalEntity: false,
+        pepAffiliated: false,
+        createdAt: new Date().toISOString(),
+      };
+      borrowers = [syntheticBorrower];
+    } else {
+      warnings.push(
+        'No borrowers and no applicant in application — cannot generate borrower-specific checklist items.'
+      );
+      return { contexts: [], warnings };
+    }
+  }
+
+  const contexts: RuleContext[] = borrowers.map((borrower) => {
     const borrowerIncomes = response.incomes.filter(
       (inc) => inc.borrowerId === borrower.id
     );
@@ -58,7 +104,7 @@ export function buildBorrowerContexts(
       application: response.application,
       borrower,
       borrowerIncomes,
-      allBorrowers: response.borrowers,
+      allBorrowers: borrowers,
       allIncomes: response.incomes,
       assets: response.assets,
       borrowerAssets,
@@ -77,5 +123,5 @@ export function buildBorrowerContexts(
     return 0;
   });
 
-  return contexts;
+  return { contexts, warnings };
 }

@@ -1,10 +1,11 @@
 /**
- * Generate draft emails from REAL Finmo applications in admin@'s Gmail.
+ * Generate draft emails from REAL Finmo applications as Gmail drafts.
  *
  * Run with: npx tsx src/email/setup/test-real-apps.ts
+ * Target: TARGET_EMAIL env var (default: admin@venturemortgages.com)
  *
  * Uses service account with domain-wide delegation to impersonate
- * admin@venturemortgages.com and create drafts there for Cat to review.
+ * the target email and create drafts there for review.
  *
  * Fetches diverse real applications from Finmo, runs each through the
  * checklist engine + email body generator, and creates Gmail drafts.
@@ -22,7 +23,7 @@ import type { FinmoApplicationResponse } from '../../checklist/types/index.js';
 // Config
 // ---------------------------------------------------------------------------
 
-const ADMIN_EMAIL = 'admin@venturemortgages.com';
+const TARGET_EMAIL = process.env.TARGET_EMAIL ?? 'admin@venturemortgages.com';
 const DOC_INBOX = process.env.DOC_INBOX ?? 'docs@venturemortgages.com';
 
 // ---------------------------------------------------------------------------
@@ -95,7 +96,7 @@ function createAdminGmailClient() {
     email: key.client_email,
     key: key.private_key,
     scopes: ['https://www.googleapis.com/auth/gmail.compose'],
-    subject: ADMIN_EMAIL,
+    subject: TARGET_EMAIL,
   });
 
   return google.gmail({ version: 'v1', auth });
@@ -127,7 +128,7 @@ async function fetchApplication(appId: string): Promise<FinmoApplicationResponse
 async function main(): Promise<void> {
   console.log('='.repeat(70));
   console.log('  Draft Generator: Real Finmo applications → admin@ Gmail drafts');
-  console.log(`  Drafts will appear in: ${ADMIN_EMAIL}`);
+  console.log(`  Drafts will appear in: ${TARGET_EMAIL}`);
   console.log(`  Doc inbox: ${DOC_INBOX}`);
   console.log(`  Apps to process: ${REAL_APPS.length}`);
   console.log('='.repeat(70));
@@ -185,8 +186,8 @@ async function main(): Promise<void> {
       const subject = `[REVIEW] Documents Needed — ${names}`;
 
       const raw = encodeMimeMessage({
-        to: ADMIN_EMAIL, // draft "To" — Cat will change before sending
-        from: ADMIN_EMAIL,
+        to: TARGET_EMAIL, // draft "To" — Cat will change before sending
+        from: TARGET_EMAIL,
         subject,
         body,
       });
@@ -215,7 +216,7 @@ async function main(): Promise<void> {
 
   console.log('='.repeat(70));
   console.log(
-    `  Done! ${successCount}/${REAL_APPS.length} drafts created in ${ADMIN_EMAIL}'s Gmail.`,
+    `  Done! ${successCount}/${REAL_APPS.length} drafts created in ${TARGET_EMAIL}'s Gmail.`,
   );
   console.log('  Cat can review in Gmail → Drafts.');
   console.log('='.repeat(70));

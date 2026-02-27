@@ -173,14 +173,30 @@ export function generateChecklist(
   currentDate: Date = new Date()
 ): GeneratedChecklist {
   // 1. Build borrower contexts (one per borrower, main first)
-  const borrowerContexts = buildBorrowerContexts(response, currentDate);
+  const { contexts: borrowerContexts, warnings: contextWarnings } =
+    buildBorrowerContexts(response, currentDate);
 
   // 2. Initialize output collectors
   const borrowerChecklists: BorrowerChecklist[] = [];
   const propertyChecklists: PropertyChecklist[] = [];
   const sharedItems: ChecklistItem[] = [];
   const internalFlags: InternalFlag[] = [];
-  const warnings: string[] = [];
+  const warnings: string[] = [...contextWarnings];
+
+  // Warn on unrecognized goal values
+  const knownGoals = ['purchase', 'refinance', 'renew'];
+  if (response.application.goal && !knownGoals.includes(response.application.goal)) {
+    warnings.push(
+      `Unrecognized application goal "${response.application.goal}" — generating checklist with available data`
+    );
+  }
+
+  // Warn on null use field
+  if (response.application.use === null || response.application.use === undefined) {
+    warnings.push(
+      'Application "use" field is null — skipping investment-specific rules'
+    );
+  }
 
   // 3. Separate rules by scope
   const perBorrowerRules = rules.filter((r) => r.scope === 'per_borrower');

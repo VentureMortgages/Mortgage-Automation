@@ -18,6 +18,6 @@ export const emailConfig: EmailConfig = {
   senderAddress: process.env.EMAIL_SENDER ?? (isDev ? 'dev@venturemortgages.com' : 'admin@venturemortgages.com'),
   recipientOverride: isDev ? 'dev@venturemortgages.com' : null,
   subjectPrefix: isDev ? '[TEST] ' : '',
-  docInbox: process.env.DOC_INBOX ?? 'dev@venturemortgages.com',
+  docInbox: process.env.DOC_INBOX ?? (isDev ? 'dev@venturemortgages.com' : 'admin@venturemortgages.com'),
   bccAddress: process.env.EMAIL_BCC ?? (isDev ? 'dev@venturemortgages.com' : 'admin@venturemortgages.com'),
 };
