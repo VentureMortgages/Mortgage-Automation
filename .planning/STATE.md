@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
-**Current focus:** Milestone v1.1 -- Production Hardening (Phase 12: CRM Pipeline Automation)
+**Current focus:** Milestone v1.1 -- Production Hardening (Phase 13: Original Document Preservation)
 
 ## Current Position
 
-Phase: 12 (CRM Pipeline Automation) -- COMPLETE (all 3 plans executed)
-Plan: 3/3 complete (12-01, 12-02, 12-03)
-Status: Phase complete -- ready for Phase 13
-Last activity: 2026-02-26 -- 12-02 (sent-detector refactor for opportunity-level stage move + task auto-complete)
+Phase: 13 (Original Document Preservation) -- NOT STARTED
+Plan: 0/TBD
+Status: Ready to plan -- phases reordered 2026-02-27 (originals before smart matching as safety net)
+Last activity: 2026-02-27 -- Roadmap reorder + Phase 14 redesigned as signal-based AI matching agent
 
 ## Performance Metrics
 
@@ -78,11 +78,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-26
-Stopped at: Completed 12-02-PLAN.md (Phase 12 complete)
-Resume file: None
-Next: Phase 13 (next v1.1 phase)
+Last session: 2026-02-27
+Stopped at: Phase 13 context gathered
+Resume file: .planning/phases/13-original-document-preservation/13-CONTEXT.md
+Next: Plan Phase 13 (Original Document Preservation)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-26 (12-02 executed, Phase 12 complete)*
+*Last updated: 2026-02-27 (roadmap reordered, Phase 14 redesigned as smart matching agent)*
