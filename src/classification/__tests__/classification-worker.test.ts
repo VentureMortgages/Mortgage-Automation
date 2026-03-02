@@ -73,9 +73,16 @@ const mockFiler = vi.hoisted(() => ({
   uploadFile: vi.fn(),
   findExistingFile: vi.fn(),
   updateFileContent: vi.fn(),
+  findOrCreateFolder: vi.fn(),
 }));
 
 vi.mock('../filer.js', () => mockFiler);
+
+const mockOriginals = vi.hoisted(() => ({
+  storeOriginal: vi.fn(),
+}));
+
+vi.mock('../../drive/originals.js', () => mockOriginals);
 
 const mockContacts = vi.hoisted(() => ({
   resolveContactId: vi.fn(),
@@ -200,6 +207,8 @@ describe('classification-worker', () => {
     mockFiler.resolveTargetFolder.mockResolvedValue('target-folder-456');
     mockFiler.findExistingFile.mockResolvedValue(null);
     mockFiler.uploadFile.mockResolvedValue('drive-file-789');
+    mockFiler.findOrCreateFolder.mockResolvedValue('needs-review-folder-id');
+    mockOriginals.storeOriginal.mockResolvedValue('original-file-id');
     mockContacts.resolveContactId.mockResolvedValue({ contactId: 'contact-abc', resolvedVia: 'email' });
     // Default: getContact returns a contact without Drive folder ID (fallback to root)
     mockContacts.getContact.mockResolvedValue({
@@ -253,7 +262,7 @@ describe('classification-worker', () => {
       expect(mockFiler.uploadFile).toHaveBeenCalled();
     });
 
-    it('should route low-confidence classification to manual review (FILE-05)', async () => {
+    it('should route low-confidence classification to Needs Review (FILE-05 + ORIG-02)', async () => {
       mockClassifier.classifyDocument.mockResolvedValue(
         mockClassificationResult({ confidence: 0.3 }),
       );
@@ -263,20 +272,28 @@ describe('classification-worker', () => {
 
       expect(result.filed).toBe(false);
       expect(result.manualReview).toBe(true);
-      expect(result.driveFileId).toBeNull();
+      // driveFileId now contains the Needs Review file ID (ORIG-02)
+      expect(result.driveFileId).toBe('drive-file-789');
       expect(result.error).toBeNull();
       expect(result.classification?.confidence).toBe(0.3);
 
-      // CRM task should be created (contact resolved via resolveContactId)
+      // CRM task should be created with Drive link (contact resolved via resolveContactId)
       expect(mockContacts.resolveContactId).toHaveBeenCalled();
       expect(mockTasks.createReviewTask).toHaveBeenCalledWith(
         'contact-abc',
         'Manual Review: T4_2024.pdf',
-        expect.stringContaining('Classification uncertain'),
+        expect.stringContaining('https://drive.google.com/file/d/drive-file-789/view'),
       );
 
-      // Drive operations should NOT be called
-      expect(mockFiler.uploadFile).not.toHaveBeenCalled();
+      // uploadFile IS called for Needs Review (but not for classification filing)
+      expect(mockFiler.uploadFile).toHaveBeenCalledWith(
+        expect.anything(),
+        Buffer.from('fake-pdf'),
+        'T4_2024.pdf', // original filename, not classified name
+        'needs-review-folder-id',
+      );
+      // resolveTargetFolder should NOT be called (classification filing path not reached)
+      expect(mockFiler.resolveTargetFolder).not.toHaveBeenCalled();
     });
 
     it('should update existing file instead of uploading (FILE-04 versioning)', async () => {
@@ -478,6 +495,207 @@ describe('classification-worker', () => {
       // Doc should still be filed — contact resolution is non-blocking for Drive
       expect(result.filed).toBe(true);
       expect(result.driveFileId).toBe('drive-file-789');
+    });
+
+    // -----------------------------------------------------------------
+    // Phase 13: Original document preservation (ORIG-01)
+    // -----------------------------------------------------------------
+
+    describe('Original document preservation (ORIG-01)', () => {
+      it('stores original in Originals/ before filing classified document', async () => {
+        const job = mockJob();
+        const result = await processClassificationJob(job);
+
+        expect(result.filed).toBe(true);
+        expect(mockOriginals.storeOriginal).toHaveBeenCalledWith(
+          expect.anything(), // drive client
+          'root-folder-123', // clientFolderId (fallback to root since no CRM folder)
+          Buffer.from('fake-pdf'), // pdfBuffer
+          'T4_2024.pdf', // originalFilename from job data
+        );
+      });
+
+      it('stores original at client folder level even for property-specific docs', async () => {
+        // Contact has folder, opportunity has deal subfolder
+        mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
+        const mockOpp = { id: 'opp-1', customFields: [] };
+        mockOpportunities.findOpportunityByFinmoId.mockResolvedValue(mockOpp);
+        mockOpportunities.getOpportunityFieldValue.mockReturnValue('deal-subfolder-888');
+
+        // Property-specific doc type
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ documentType: 'purchase_agreement' }),
+        );
+        mockRouter.routeToSubfolder.mockReturnValue('subject_property');
+
+        const job = mockJob({ applicationId: 'finmo-app-uuid-1' });
+        const result = await processClassificationJob(job);
+
+        expect(result.filed).toBe(true);
+        // storeOriginal should use clientFolderId, NOT deal subfolder
+        expect(mockOriginals.storeOriginal).toHaveBeenCalledWith(
+          expect.anything(),
+          'crm-client-folder-999', // client folder, not deal-subfolder-888
+          expect.any(Buffer),
+          expect.any(String),
+        );
+      });
+
+      it('continues filing when storeOriginal fails', async () => {
+        mockOriginals.storeOriginal.mockRejectedValue(new Error('Drive API error'));
+
+        const job = mockJob();
+        const result = await processClassificationJob(job);
+
+        // Filing should still succeed — storeOriginal is non-fatal
+        expect(result.filed).toBe(true);
+        expect(result.driveFileId).toBe('drive-file-789');
+      });
+
+      it('calls storeOriginal before resolveTargetFolder', async () => {
+        const callOrder: string[] = [];
+        mockOriginals.storeOriginal.mockImplementation(async () => {
+          callOrder.push('storeOriginal');
+          return 'original-file-id';
+        });
+        mockFiler.resolveTargetFolder.mockImplementation(async () => {
+          callOrder.push('resolveTargetFolder');
+          return 'target-folder-456';
+        });
+
+        const job = mockJob();
+        await processClassificationJob(job);
+
+        expect(callOrder.indexOf('storeOriginal')).toBeLessThan(
+          callOrder.indexOf('resolveTargetFolder'),
+        );
+      });
+    });
+
+    // -----------------------------------------------------------------
+    // Phase 13: Low confidence — Needs Review routing (ORIG-02)
+    // -----------------------------------------------------------------
+
+    describe('Low confidence — Needs Review routing (ORIG-02)', () => {
+      it('saves low-confidence doc to Needs Review/ folder', async () => {
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ confidence: 0.5 }),
+        );
+
+        const job = mockJob();
+        const result = await processClassificationJob(job);
+
+        expect(result.manualReview).toBe(true);
+        expect(result.driveFileId).toBe('drive-file-789');
+        // Verify findOrCreateFolder was called for 'Needs Review'
+        expect(mockFiler.findOrCreateFolder).toHaveBeenCalledWith(
+          expect.anything(),
+          'Needs Review',
+          'root-folder-123', // falls back to root (contact has no Drive folder)
+        );
+      });
+
+      it('includes Drive link in CRM task for low-confidence doc', async () => {
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ confidence: 0.5 }),
+        );
+
+        const job = mockJob();
+        await processClassificationJob(job);
+
+        // Verify createReviewTask was called with Drive link in body
+        expect(mockTasks.createReviewTask).toHaveBeenCalledWith(
+          'contact-abc',
+          'Manual Review: T4_2024.pdf',
+          expect.stringContaining('https://drive.google.com/file/d/drive-file-789/view'),
+        );
+      });
+
+      it('includes filename in CRM task body', async () => {
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ confidence: 0.5 }),
+        );
+
+        const job = mockJob();
+        await processClassificationJob(job);
+
+        expect(mockTasks.createReviewTask).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(String),
+          expect.stringContaining('File: T4_2024.pdf'),
+        );
+      });
+
+      it('also stores original in Originals/ for low-confidence docs', async () => {
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ confidence: 0.5 }),
+        );
+
+        const job = mockJob();
+        await processClassificationJob(job);
+
+        expect(mockOriginals.storeOriginal).toHaveBeenCalledWith(
+          expect.anything(),
+          'root-folder-123', // client folder
+          Buffer.from('fake-pdf'),
+          'T4_2024.pdf',
+        );
+      });
+
+      it('still creates CRM task when Needs Review upload fails', async () => {
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ confidence: 0.5 }),
+        );
+        mockFiler.findOrCreateFolder.mockRejectedValue(new Error('Drive error'));
+
+        const job = mockJob();
+        await processClassificationJob(job);
+
+        // CRM task should still be created (without Drive link)
+        expect(mockTasks.createReviewTask).toHaveBeenCalledWith(
+          'contact-abc',
+          'Manual Review: T4_2024.pdf',
+          expect.stringContaining('Classification uncertain'),
+        );
+        // But should NOT contain a Drive link (since upload failed)
+        expect(mockTasks.createReviewTask).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(String),
+          expect.not.stringContaining('https://drive.google.com'),
+        );
+      });
+
+      it('uses CRM contact folder for Needs Review when available', async () => {
+        mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ confidence: 0.5 }),
+        );
+
+        const job = mockJob();
+        await processClassificationJob(job);
+
+        expect(mockFiler.findOrCreateFolder).toHaveBeenCalledWith(
+          expect.anything(),
+          'Needs Review',
+          'crm-client-folder-999', // uses CRM folder, not root fallback
+        );
+      });
+
+      it('falls back to root folder for Needs Review when contact has no folder', async () => {
+        mockContacts.getContactDriveFolderId.mockReturnValue(null);
+        mockClassifier.classifyDocument.mockResolvedValue(
+          mockClassificationResult({ confidence: 0.5 }),
+        );
+
+        const job = mockJob();
+        await processClassificationJob(job);
+
+        expect(mockFiler.findOrCreateFolder).toHaveBeenCalledWith(
+          expect.anything(),
+          'Needs Review',
+          'root-folder-123', // root fallback
+        );
+      });
     });
 
     // -----------------------------------------------------------------

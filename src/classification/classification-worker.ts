@@ -280,7 +280,12 @@ export async function processClassificationJob(
 
     // ORIG-01: Store original in Originals/ before classification/renaming (silent safety net)
     // Always stored at client folder level, not deal subfolder — per CONTEXT.md
-    await storeOriginal(drive, clientFolderId, pdfBuffer, originalFilename);
+    // Belt-and-suspenders try/catch: storeOriginal never throws, but if it somehow does, filing must continue
+    try {
+      await storeOriginal(drive, clientFolderId, pdfBuffer, originalFilename);
+    } catch {
+      // storeOriginal handles its own errors — this is a safety net for the safety net
+    }
 
     const targetFolderId = await resolveTargetFolder(
       drive,
