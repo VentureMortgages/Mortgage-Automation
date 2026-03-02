@@ -233,8 +233,8 @@ Plans:
 
 Plans:
 - [ ] 14-01: Types, config, thread store, decision log, Gmail metadata enrichment (MATCH-01, MATCH-06) -- Wave 1
-- [ ] 14-02: Signal collectors + Gemini matching agent with agentic loop (MATCH-01, MATCH-02, MATCH-05) -- Wave 2
-- [ ] 14-03: Wire into classification worker + auto-create + global Needs Review (MATCH-02, MATCH-03, MATCH-04) -- Wave 3
+- [ ] 14-02: Signal collectors + Gemini matching agent with agentic loop + phone fallback + co-borrower routing (MATCH-01, MATCH-02, MATCH-05, FOLD-02, FOLD-03) -- Wave 2
+- [ ] 14-03: Wire into classification worker + auto-create + global Needs Review + backfill script (MATCH-02, MATCH-03, MATCH-04, FOLD-05) -- Wave 3
 
 ### Phase 15: Timing & Sync Resilience
 **Goal**: System handles the real-world timing gap between Finmo webhook and MBP opportunity creation gracefully -- no lost docs, no failed syncs
