@@ -37,9 +37,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### v1.1 Production Hardening (Phases 12-16)
 
 - [x] **Phase 12: CRM Pipeline Automation** - Deduplicate tasks, auto-move stages, auto-complete review tasks, assign realtor contact type (completed 2026-02-26)
-- [ ] **Phase 13: Timing & Sync Resilience** - Retry CRM sync, file docs before MBP exists, research Finmo external system API
-- [ ] **Phase 14: Folder Matching & Backfill** - CRM-first folder resolution, email/phone fallback, multi-borrower routing, subfolder pre-creation, interactive backfill
-- [ ] **Phase 15: Original Document Preservation** - Store originals before classification, preserve low-confidence docs, handle re-uploads
+- [ ] **Phase 13: Original Document Preservation** - Store originals before classification/renaming, safety net for misroutes and misclassifications
+- [ ] **Phase 14: Smart Document Matching** - Signal-based AI agent for matching incoming docs to client folders, with confidence scoring and human-in-the-loop for low confidence
+- [ ] **Phase 15: Timing & Sync Resilience** - Retry CRM sync, file docs before MBP exists, research Finmo external system API
 - [ ] **Phase 16: Automated Reminders** - CRM tasks + Cat email notifications for outstanding docs every 3 days
 
 ## Phase Details
@@ -199,9 +199,44 @@ Plans:
 - [ ] 12-02: Stage move on email send (PIPE-02, PIPE-03) — Wave 2 (depends on 12-01)
 - [ ] 12-03: Professional contact type assignment (PIPE-04) — Wave 1
 
-### Phase 13: Timing & Sync Resilience
+### Phase 13: Original Document Preservation
+**Goal**: Cat can always find the original file a client submitted, even if AI classification was wrong or the file was renamed -- safety net before smart matching
+**Depends on**: Phase 12 (needs stable CRM + Drive pipeline)
+**Requirements**: ORIG-01, ORIG-02, ORIG-03
+**Success Criteria** (what must be TRUE):
+  1. Every document received (via email or Finmo) appears in `ClientFolder/Originals/` with its original filename before any classification or renaming happens
+  2. Low-confidence documents are preserved in Originals instead of being deleted from temp storage (Cat gets the CRM task AND can find the file)
+  3. When a client re-uploads a document, the new original is stored alongside the previous version in Originals (no overwriting)
+**Plans**: 0/2
+
+Plans:
+- [x] 13-01: Subfolder pre-creation + originals storage utility (ORIG-03) -- Wave 1
+- [ ] 13-02: Wire originals into classification worker + Needs Review routing (ORIG-01, ORIG-02) -- Wave 2 (depends on 13-01)
+
+### Phase 14: Smart Document Matching
+**Goal**: Every incoming document is matched to the correct client folder using a signal-based AI agent -- handles third-party senders (lawyers, accountants, employers), name ambiguity, and joint/solo application overlap
+**Depends on**: Phase 13 (originals stored first = safety net for misroutes)
+**Requirements**: MATCH-01, MATCH-02, MATCH-03, MATCH-04, MATCH-05, MATCH-06
+**Success Criteria** (what must be TRUE):
+  1. When a client replies to the doc request email, the system matches via thread context and auto-files with high confidence
+  2. When a third party (lawyer, accountant, employer) sends docs, the system extracts the client name from the document content (via Gemini) and matches to the correct contact/opportunity
+  3. When confidence is >= 0.8, the document is auto-filed and a CRM note logs the reasoning ("Matched via legal name on T4 to John Smith, confidence 0.92")
+  4. When confidence is < 0.8, a CRM task is created for Cat showing the agent's top candidates with reasoning -- Cat confirms or redirects
+  5. When a joint-application client also has a solo folder from a previous deal, docs route to the correct opportunity's folder (opportunity-level matching, not just contact-level)
+  6. Full matching decision log stored in Redis (signals, candidates, scores, outcome) with 90-day TTL for debugging
+**Signal priority** (highest to lowest):
+  - Tier 1 (deterministic): Email thread match to sent doc request; sender email + single active opportunity
+  - Tier 2 (high confidence): Name extracted from document content matches one active contact; sender email + agent picks opportunity by doc type
+  - Tier 3 (agent reasons): Sender display name fuzzy match; CC/To emails as hints; subject/body client name; document address matches property on file; employer name matches known employer
+  - Tier 4 (tiebreakers): Pipeline stage = "Collecting Documents"; recency of doc request; doc type matches outstanding checklist items; known professional associations
+**Plans**: TBD
+
+Plans:
+- [ ] 14-01: TBD during planning
+
+### Phase 15: Timing & Sync Resilience
 **Goal**: System handles the real-world timing gap between Finmo webhook and MBP opportunity creation gracefully -- no lost docs, no failed syncs
-**Depends on**: Phase 12 (pipeline automation uses opportunity stages)
+**Depends on**: Phase 14 (matching agent routes docs even when CRM isn't ready)
 **Requirements**: SYNC-01, SYNC-02, SYNC-03
 **Success Criteria** (what must be TRUE):
   1. When the Finmo webhook fires before MBP has created the opportunity, the system retries CRM sync at 5/10/20 minute intervals until the opportunity appears (no manual intervention needed)
@@ -210,39 +245,11 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 13-01: TBD during planning
-
-### Phase 14: Folder Matching & Backfill
-**Goal**: Every client's documents land in the right Google Drive folder regardless of name ambiguity, and existing clients are linked to their folders
-**Depends on**: Phase 12 (needs stable CRM integration)
-**Requirements**: FOLD-01, FOLD-02, FOLD-03, FOLD-04, FOLD-05
-**Success Criteria** (what must be TRUE):
-  1. Client folder resolution checks CRM contact's stored Drive folder URL first (not name matching) -- name matching is only a fallback
-  2. When CRM lookup fails and name matching fails, the system tries email address and phone number to find the right folder
-  3. Co-borrower documents are routed through the primary borrower's CRM contact and land in the primary borrower's Drive folder
-  4. When a client folder is first created, doc subfolders (Income/, Property/, Down Payment/, etc.) are pre-created automatically
-  5. Running the backfill script presents each unlinked CRM contact alongside candidate Drive folders and waits for human confirmation before storing the match
-**Plans**: TBD
-
-Plans:
-- [ ] 14-01: TBD during planning
-
-### Phase 15: Original Document Preservation
-**Goal**: Cat can always find the original file a client submitted, even if AI classification was wrong or the file was renamed
-**Depends on**: Phase 14 (needs correct folder resolution + subfolders)
-**Requirements**: ORIG-01, ORIG-02, ORIG-03
-**Success Criteria** (what must be TRUE):
-  1. Every document received (via email or Finmo) appears in `ClientFolder/Originals/` with its original filename before any classification or renaming happens
-  2. Low-confidence documents are preserved in Originals instead of being deleted from temp storage (Cat gets the CRM task AND can find the file)
-  3. When a client re-uploads a document, the new original is stored alongside the previous version in Originals (no overwriting)
-**Plans**: TBD
-
-Plans:
 - [ ] 15-01: TBD during planning
 
 ### Phase 16: Automated Reminders
 **Goal**: Cat is notified when docs are overdue and has a ready-made follow-up message to send, without manually tracking who is late
-**Depends on**: Phase 15 (needs complete filing pipeline including originals)
+**Depends on**: Phase 15 (needs complete filing pipeline)
 **Requirements**: REMIND-01, REMIND-02, REMIND-03, REMIND-04
 **Success Criteria** (what must be TRUE):
   1. When docs have been outstanding for 3+ days, a CRM task appears for Cat listing the missing documents with a draft follow-up email she can copy and paste
@@ -258,6 +265,7 @@ Plans:
 
 **Execution Order:**
 Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
+(Reordered 2026-02-27: originals first as safety net, then smart matching, then timing, then reminders)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -272,10 +280,10 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 8.1 Feedback Loop (RAG) | v1.0 | N/A | Complete | 2026-02-21 |
 | 10. Opportunity-Centric | v1.0 | 5/5 | Complete | 2026-02-21 |
 | 11. Drive Folder Linking | v1.0 | 3/3 | Complete | 2026-02-22 |
-| 12. CRM Pipeline Automation | 3/3 | Complete    | 2026-02-26 | - |
-| 13. Timing & Sync Resilience | v1.1 | 0/TBD | Not started | - |
-| 14. Folder Matching & Backfill | v1.1 | 0/TBD | Not started | - |
-| 15. Original Doc Preservation | v1.1 | 0/TBD | Not started | - |
+| 12. CRM Pipeline Automation | v1.1 | 3/3 | Complete | 2026-02-26 |
+| 13. Original Doc Preservation | 1/2 | In Progress|  | - |
+| 14. Smart Document Matching | v1.1 | 0/TBD | Not started | - |
+| 15. Timing & Sync Resilience | v1.1 | 0/TBD | Not started | - |
 | 16. Automated Reminders | v1.1 | 0/TBD | Not started | - |
 
 ### Action Items (Non-Code)
@@ -286,4 +294,4 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-25 (v1.1 roadmap -- phases 12-16 defined, replacing old unstarted phases 12-17)*
+*Last updated: 2026-02-27 (v1.1 reordered: 13=originals, 14=smart matching, 15=timing, 16=reminders)*

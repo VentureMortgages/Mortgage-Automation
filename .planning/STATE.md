@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 13 (Original Document Preservation) -- NOT STARTED
-Plan: 0/TBD
-Status: Ready to plan -- phases reordered 2026-02-27 (originals before smart matching as safety net)
-Last activity: 2026-02-27 -- Roadmap reorder + Phase 14 redesigned as signal-based AI matching agent
+Phase: 13 (Original Document Preservation) -- IN PROGRESS
+Plan: 1/2
+Status: Plan 13-01 complete (subfolder pre-creation + originals storage utility)
+Last activity: 2026-03-02 -- Executed 13-01-PLAN.md (2 tasks, 14 new tests)
 
 ## Performance Metrics
 
@@ -48,6 +48,7 @@ Last activity: 2026-02-27 -- Roadmap reorder + Phase 14 redesigned as signal-bas
 | 10-opportunity-centric-architecture | 5/5 | 19 min | 4 min |
 | 11-drive-folder-linking-deal-subfolders | 3/3 | 8 min | 3 min |
 | 12-crm-pipeline-automation | 3/3 | 7 min | 2 min |
+| 13-original-document-preservation | 1/2 | 3 min | 3 min |
 
 *Updated after each plan completion*
 
@@ -66,6 +67,9 @@ Recent decisions affecting current work:
 - assignContactType is non-fatal: catches all errors internally, Cat can tag manually
 - Sent-detector stage move uses searchOpportunities (first result) not findOpportunityByFinmoId (lacks finmoApplicationId context)
 - Review task auto-complete happens inline in sent-detector flow (step 3b), colocated with stage move
+- Sequential subfolder creation (not parallel) to avoid Drive API rate limits at low volume
+- preCreateSubfolders is non-fatal at both individual folder and overall function level
+- storeOriginal uses write-once pattern: never checks for existing files, never reads back (ORIG-03)
 
 ### Pending Todos
 
@@ -78,11 +82,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-27
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-original-document-preservation/13-CONTEXT.md
-Next: Plan Phase 13 (Original Document Preservation)
+Last session: 2026-03-02
+Stopped at: Completed 13-01-PLAN.md
+Resume file: .planning/phases/13-original-document-preservation/13-01-SUMMARY.md
+Next: Execute 13-02-PLAN.md (wire originals into classification worker + Needs Review routing)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-02-27 (roadmap reordered, Phase 14 redesigned as smart matching agent)*
+*Last updated: 2026-03-02 (13-01 complete: subfolder pre-creation + originals storage utility)*
