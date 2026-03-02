@@ -229,10 +229,12 @@ Plans:
   - Tier 2 (high confidence): Name extracted from document content matches one active contact; sender email + agent picks opportunity by doc type
   - Tier 3 (agent reasons): Sender display name fuzzy match; CC/To emails as hints; subject/body client name; document address matches property on file; employer name matches known employer
   - Tier 4 (tiebreakers): Pipeline stage = "Collecting Documents"; recency of doc request; doc type matches outstanding checklist items; known professional associations
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 14-01: TBD during planning
+- [ ] 14-01: Types, config, thread store, decision log, Gmail metadata enrichment (MATCH-01, MATCH-06) -- Wave 1
+- [ ] 14-02: Signal collectors + Gemini matching agent with agentic loop (MATCH-01, MATCH-02, MATCH-05) -- Wave 2
+- [ ] 14-03: Wire into classification worker + auto-create + global Needs Review (MATCH-02, MATCH-03, MATCH-04) -- Wave 3
 
 ### Phase 15: Timing & Sync Resilience
 **Goal**: System handles the real-world timing gap between Finmo webhook and MBP opportunity creation gracefully -- no lost docs, no failed syncs
