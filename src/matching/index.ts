@@ -40,3 +40,7 @@ export { MATCHING_TOOLS, executeToolCall } from './agent-tools.js';
 // Matching Agent
 export { matchDocument } from './agent.js';
 export type { MatchInput } from './agent.js';
+
+// Auto-Create (zero-match documents)
+export { autoCreateFromDoc } from './auto-create.js';
+export type { AutoCreateResult } from './auto-create.js';
