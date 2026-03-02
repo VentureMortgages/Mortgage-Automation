@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Production Hardening
-status: unknown
-last_updated: "2026-03-02T20:26:32.130Z"
+status: in-progress
+last_updated: "2026-03-02T23:42:43Z"
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 12
-  total_plans: 40
-  completed_plans: 40
+  total_plans: 42
+  completed_plans: 41
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
-**Current focus:** Milestone v1.1 -- Production Hardening (Phase 14: Smart Document Matching)
+**Current focus:** Milestone v1.1 -- Production Hardening (Phase 15: Timing/Sync Resilience)
 
 ## Current Position
 
-Phase: 14 (Smart Document Matching) -- COMPLETE
-Plan: 3/3
-Status: Phase 14 complete (all 3 plans: foundation, matching agent, classification worker integration)
-Last activity: 2026-03-02 -- Executed 14-03-PLAN.md (3 tasks, 36 new tests, 828 total passing)
+Phase: 15 (Timing/Sync Resilience) -- IN PROGRESS
+Plan: 1/2
+Status: Plan 15-01 complete (createFailureTask + retry exhaustion CRM task + subfolder catch-up)
+Last activity: 2026-03-02 -- Executed 15-01-PLAN.md (2 tasks, 8 new tests, 836 total passing)
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Last activity: 2026-03-02 -- Executed 14-03-PLAN.md (3 tasks, 36 new tests, 828 
 | Phase 14 P01 | 7min | 2 tasks | 14 files |
 | Phase 14 P02 | 8min | 2 tasks | 8 files |
 | Phase 14 P03 | 10min | 3 tasks | 9 files |
+| Phase 15 P01 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,9 @@ Recent decisions affecting current work:
 - Global Needs Review/ at Drive root for matching-uncertain docs, per-client Needs Review/ for classification-uncertain docs
 - autoCreateFromDoc returns null on failure, caller routes to global Needs Review as last resort
 - Error outcome falls back to legacy resolveContactId for zero-risk graceful degradation
+- createFailureTask is non-fatal (catches all errors, returns undefined) matching existing CRM task patterns
+- Deal subfolder catch-up guarded on DRIVE_ROOT_FOLDER_ID to prevent undefined parent folder
+- Subfolder catch-up uses actualDealSubfolderId to thread created folder ID through existing link code
 
 ### Pending Todos
 
@@ -104,10 +108,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 15 context gathered
-Resume file: .planning/phases/15-timing-sync-resilience/15-CONTEXT.md
-Next: /gsd:plan-phase 15
+Stopped at: Completed 15-01-PLAN.md
+Resume file: .planning/phases/15-timing-sync-resilience/15-01-SUMMARY.md
+Next: Execute 15-02-PLAN.md
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-02 (Phase 14 complete: smart document matching)*
+*Last updated: 2026-03-02 (Phase 15 plan 01 complete: CRM retry failure visibility)*

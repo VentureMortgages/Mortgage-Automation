@@ -96,8 +96,8 @@ Requirements for milestone v1.1 -- Production Hardening. Each maps to roadmap ph
 
 ### Timing & Sync (Phase 13)
 
-- [ ] **SYNC-01**: If MBP opportunity doesn't exist when webhook fires, system retries CRM sync at increasing intervals (5/10/20 min) until opportunity appears
-- [ ] **SYNC-02**: Documents uploaded before MBP opportunity exists are filed to Drive immediately; CRM tracking is retried when opportunity becomes available
+- [x] **SYNC-01**: If MBP opportunity doesn't exist when webhook fires, system retries CRM sync at increasing intervals (5/10/20 min) until opportunity appears
+- [x] **SYNC-02**: Documents uploaded before MBP opportunity exists are filed to Drive immediately; CRM tracking is retried when opportunity becomes available
 - [ ] **SYNC-03**: Research whether Finmo "update external system" API can trigger MBP sync on demand (eliminates delay)
 
 ### Folder Matching (Phase 14)
@@ -192,8 +192,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PIPE-02 | Phase 12 | Complete |
 | PIPE-03 | Phase 12 | Complete |
 | PIPE-04 | Phase 12 | Complete |
-| SYNC-01 | Phase 13 | Pending |
-| SYNC-02 | Phase 13 | Pending |
+| SYNC-01 | Phase 13 | Complete |
+| SYNC-02 | Phase 13 | Complete |
 | SYNC-03 | Phase 13 | Pending |
 | FOLD-01 | Phase 14 | Complete |
 | FOLD-02 | Phase 14 | Complete |
