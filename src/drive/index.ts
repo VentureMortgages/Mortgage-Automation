@@ -21,3 +21,6 @@ export { isDocStillValid, PROPERTY_SPECIFIC_TYPES } from './doc-expiry.js';
 // Checklist filter
 export { filterChecklistByExistingDocs } from './checklist-filter.js';
 export type { AlreadyOnFileDoc, FilterResult } from './checklist-filter.js';
+
+// Original document preservation
+export { storeOriginal, preCreateSubfolders, CLIENT_SUBFOLDERS } from './originals.js';
