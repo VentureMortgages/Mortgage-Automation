@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Production Hardening
-status: unknown
-last_updated: "2026-03-02T18:45:27.809Z"
+status: in-progress
+last_updated: "2026-03-02T19:56:49Z"
 progress:
-  total_phases: 11
+  total_phases: 12
   completed_phases: 11
-  total_plans: 37
-  completed_plans: 37
+  total_plans: 40
+  completed_plans: 38
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
-**Current focus:** Milestone v1.1 -- Production Hardening (Phase 13: Original Document Preservation)
+**Current focus:** Milestone v1.1 -- Production Hardening (Phase 14: Smart Document Matching)
 
 ## Current Position
 
-Phase: 13 (Original Document Preservation) -- COMPLETE
-Plan: 2/2
-Status: Phase 13 complete (originals safety net + Needs Review routing fully wired)
-Last activity: 2026-03-02 -- Executed 13-02-PLAN.md (2 tasks, 11 new tests, 767 total passing)
+Phase: 14 (Smart Document Matching) -- IN PROGRESS
+Plan: 1/3
+Status: Plan 01 complete (matching foundation: types, config, thread store, decision log)
+Last activity: 2026-03-02 -- Executed 14-01-PLAN.md (2 tasks, 9 new tests, 776 total passing)
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Last activity: 2026-03-02 -- Executed 13-02-PLAN.md (2 tasks, 11 new tests, 767 
 
 *Updated after each plan completion*
 | Phase 13 P02 | 4min | 2 tasks | 2 files |
+| Phase 14 P01 | 7min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,10 @@ Recent decisions affecting current work:
 - Low-confidence docs get both Needs Review/ copy AND Originals/ copy for full audit trail (ORIG-02)
 - CRM task for low-confidence docs includes direct Drive link for Cat to click
 - Original filename preserved in Needs Review/ (not classified name)
+- createGmailDraft returns { draftId, threadId } to expose Gmail API's threadId for matching
+- Thread mapping stored as JSON { contactId, opportunityId? } in Redis with 30-day TTL
+- Decision log uses 90-day TTL per MATCH-06 requirement
+- All new ClassificationJobData fields are optional to avoid breaking Finmo source
 
 ### Pending Todos
 
@@ -88,10 +93,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 14 planning complete (3 plans, verified, committed)
-Resume file: .planning/phases/14-smart-document-matching/14-01-PLAN.md
-Next: Execute Phase 14 (Smart Document Matching) — /gsd:execute-phase 14
+Stopped at: Completed 14-01-PLAN.md (matching foundation)
+Resume file: .planning/phases/14-smart-document-matching/14-02-PLAN.md
+Next: Execute 14-02-PLAN.md (signal collectors + matching agent)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-02 (Phase 13 complete: originals safety net + Needs Review routing)*
+*Last updated: 2026-03-02 (Phase 14 Plan 01 complete: matching foundation)*
