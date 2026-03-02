@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Production Hardening
 status: in-progress
-last_updated: "2026-03-02T23:42:43Z"
+last_updated: "2026-03-02T23:47:19Z"
 progress:
   total_phases: 13
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 42
-  completed_plans: 41
+  completed_plans: 42
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 15 (Timing/Sync Resilience) -- IN PROGRESS
-Plan: 1/2
-Status: Plan 15-01 complete (createFailureTask + retry exhaustion CRM task + subfolder catch-up)
-Last activity: 2026-03-02 -- Executed 15-01-PLAN.md (2 tasks, 8 new tests, 836 total passing)
+Phase: 15 (Timing/Sync Resilience) -- COMPLETE
+Plan: 2/2
+Status: Phase 15 complete (all SYNC requirements satisfied)
+Last activity: 2026-03-02 -- Executed 15-02-PLAN.md (2 tasks, Finmo API research spike)
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Last activity: 2026-03-02 -- Executed 15-01-PLAN.md (2 tasks, 8 new tests, 836 t
 | Phase 14 P02 | 8min | 2 tasks | 8 files |
 | Phase 14 P03 | 10min | 3 tasks | 9 files |
 | Phase 15 P01 | 4min | 2 tasks | 5 files |
+| Phase 15 P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Recent decisions affecting current work:
 - createFailureTask is non-fatal (catches all errors, returns undefined) matching existing CRM task patterns
 - Deal subfolder catch-up guarded on DRIVE_ROOT_FOLDER_ID to prevent undefined parent folder
 - Subfolder catch-up uses actualDealSubfolderId to thread created folder ID through existing link code
+- No Finmo sync-trigger API exists -- retry mechanism (15-01) is correct fallback for MBP timing gap
+- Finmo API surface is data-access only (applications, documents) with no integration management
 
 ### Pending Todos
 
@@ -108,10 +111,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 15-01-PLAN.md
-Resume file: .planning/phases/15-timing-sync-resilience/15-01-SUMMARY.md
-Next: Execute 15-02-PLAN.md
+Stopped at: Completed 15-02-PLAN.md (Phase 15 complete)
+Resume file: .planning/phases/15-timing-sync-resilience/15-02-SUMMARY.md
+Next: Phase 15 complete -- all v1.1 Production Hardening phases done
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-02 (Phase 15 plan 01 complete: CRM retry failure visibility)*
+*Last updated: 2026-03-02 (Phase 15 complete: Finmo API research -- no sync endpoint, retry confirmed)*
