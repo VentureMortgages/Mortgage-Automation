@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 ## Current Position
 
 Phase: 14 (Smart Document Matching) -- IN PROGRESS
-Plan: 1/3
-Status: Plan 01 complete (matching foundation: types, config, thread store, decision log)
-Last activity: 2026-03-02 -- Executed 14-01-PLAN.md (2 tasks, 9 new tests, 776 total passing)
+Plan: 2/3
+Status: Plan 02 complete (matching agent: signal collectors, agent tools, Gemini agentic loop)
+Last activity: 2026-03-02 -- Executed 14-02-PLAN.md (2 tasks, 30 new tests, 806 total passing)
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Last activity: 2026-03-02 -- Executed 14-01-PLAN.md (2 tasks, 9 new tests, 776 t
 *Updated after each plan completion*
 | Phase 13 P02 | 4min | 2 tasks | 2 files |
 | Phase 14 P01 | 7min | 2 tasks | 14 files |
+| Phase 14 P02 | 8min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,11 @@ Recent decisions affecting current work:
 - Thread mapping stored as JSON { contactId, opportunityId? } in Redis with 30-day TTL
 - Decision log uses 90-day TTL per MATCH-06 requirement
 - All new ClassificationJobData fields are optional to avoid breaking Finmo source
+- Gemini tools use simplified schema (cast to any) — runtime-compatible, avoids brittle SDK coupling
+- Conflict detection checks Tier 1 signals only — weak CC/subject signals do not escalate
+- Max iterations returns needs_review (not auto_created) so Cat reviews unresolved docs
+- Phone normalization uses last-10-digit comparison for +1 prefix and formatting variants
+- Co-borrower lookup traverses contact -> opportunities -> Finmo app -> borrowers chain
 
 ### Pending Todos
 
@@ -93,10 +99,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 14-01-PLAN.md (matching foundation)
-Resume file: .planning/phases/14-smart-document-matching/14-02-PLAN.md
-Next: Execute 14-02-PLAN.md (signal collectors + matching agent)
+Stopped at: Completed 14-02-PLAN.md (signal collectors + matching agent)
+Resume file: .planning/phases/14-smart-document-matching/14-03-PLAN.md
+Next: Execute 14-03-PLAN.md (integration with classification worker)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-02 (Phase 14 Plan 01 complete: matching foundation)*
+*Last updated: 2026-03-02 (Phase 14 Plan 02 complete: matching agent)*

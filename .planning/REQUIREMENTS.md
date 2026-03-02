@@ -103,8 +103,8 @@ Requirements for milestone v1.1 -- Production Hardening. Each maps to roadmap ph
 ### Folder Matching (Phase 14)
 
 - [ ] **FOLD-01**: Client folder resolution uses CRM contact ID -> stored Drive folder URL as primary method (not name matching)
-- [ ] **FOLD-02**: When CRM lookup fails, fallback matching uses email address or phone number in addition to name
-- [ ] **FOLD-03**: Multi-borrower folders are owned by the primary borrower -- co-borrower docs route through primary borrower's CRM contact
+- [x] **FOLD-02**: When CRM lookup fails, fallback matching uses email address or phone number in addition to name
+- [x] **FOLD-03**: Multi-borrower folders are owned by the primary borrower -- co-borrower docs route through primary borrower's CRM contact
 - [ ] **FOLD-04**: Doc subfolders (Income/, Property/, Down Payment/, etc.) are pre-created when the client folder is first set up
 - [ ] **FOLD-05**: Interactive backfill script matches existing CRM contacts to their Drive folders (human confirms each match before storing)
 
@@ -196,8 +196,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SYNC-02 | Phase 13 | Pending |
 | SYNC-03 | Phase 13 | Pending |
 | FOLD-01 | Phase 14 | Pending |
-| FOLD-02 | Phase 14 | Pending |
-| FOLD-03 | Phase 14 | Pending |
+| FOLD-02 | Phase 14 | Complete |
+| FOLD-03 | Phase 14 | Complete |
 | FOLD-04 | Phase 14 | Pending |
 | FOLD-05 | Phase 14 | Pending |
 | ORIG-01 | Phase 15 | Complete |
