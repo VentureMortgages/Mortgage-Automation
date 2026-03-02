@@ -42,7 +42,7 @@ export type { CrmConfig } from './config.js';
 export { upsertContact, findContactByEmail, findContactByName, findContactByPhone, resolveContactId, getContact, assignContactType } from './contacts.js';
 export type { ResolveContactResult } from './contacts.js';
 export { createAuditNote, createCrmNote } from './notes.js';
-export { createReviewTask, createPreReadinessTask, addBusinessDays, findReviewTask, completeTask, createOrUpdateReviewTask } from './tasks.js';
+export { createReviewTask, createPreReadinessTask, addBusinessDays, findReviewTask, completeTask, createOrUpdateReviewTask, createFailureTask } from './tasks.js';
 export {
   searchOpportunities,
   getOpportunity,

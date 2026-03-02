@@ -26,7 +26,7 @@ vi.mock('../config.js', () => ({
   devPrefix: (text: string) => `[TEST] ${text}`,
 }));
 
-import { addBusinessDays, findReviewTask, completeTask, createOrUpdateReviewTask } from '../tasks.js';
+import { addBusinessDays, findReviewTask, completeTask, createOrUpdateReviewTask, createFailureTask } from '../tasks.js';
 
 // Helper to extract YYYY-MM-DD from a Date using local date parts
 // (matches how getDay/setDate operate in addBusinessDays)
@@ -367,5 +367,87 @@ describe('createOrUpdateReviewTask', () => {
     const body = JSON.parse(updateInit.body);
     expect(body.body).toBe('Generated checklist ready for review. Check custom fields for document list. Edit and send email when ready.');
     expect(body.body).not.toContain('Checklist Summary');
+  });
+});
+
+// ============================================================================
+// createFailureTask
+// ============================================================================
+
+describe('createFailureTask', () => {
+  const mockFetch = vi.fn();
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch);
+    mockFetch.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('creates task with correct title, body, assignee, and dueDate', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ task: { id: 'failure-task-001' } }),
+    });
+
+    await createFailureTask('contact-123', 'CRM sync failed — John Smith', 'MBP opportunity not found after 3 retries.');
+
+    expect(mockFetch).toHaveBeenCalledOnce();
+    const [url, init] = mockFetch.mock.calls[0];
+    expect(url).toBe('https://test-api.example.com/contacts/contact-123/tasks');
+    expect(init.method).toBe('POST');
+
+    const body = JSON.parse(init.body);
+    expect(body.assignedTo).toBe('cat-user-id-123');
+    expect(body.body).toBe('MBP opportunity not found after 3 retries.');
+    expect(body.completed).toBe(false);
+    // dueDate should be a valid ISO string
+    expect(body.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  test('returns task ID on success', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ task: { id: 'failure-task-002' } }),
+    });
+
+    const result = await createFailureTask('contact-123', 'CRM sync failed — Jane Doe', 'Details here.');
+
+    expect(result).toBe('failure-task-002');
+  });
+
+  test('returns undefined on API error (non-fatal)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      text: async () => 'Server error',
+    });
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const result = await createFailureTask('contact-123', 'CRM sync failed', 'Body');
+
+    expect(result).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[createFailureTask] Failed'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  test('title uses devPrefix', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ task: { id: 'failure-task-003' } }),
+    });
+
+    await createFailureTask('contact-123', 'CRM sync failed — John Smith', 'Body text');
+
+    const [, init] = mockFetch.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.title).toBe('[TEST] CRM sync failed — John Smith');
   });
 });

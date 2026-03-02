@@ -190,6 +190,50 @@ export async function createOrUpdateReviewTask(
 }
 
 // ============================================================================
+// Generic Failure Task (reusable across pipeline)
+// ============================================================================
+
+/**
+ * Creates a CRM task assigned to Cat for pipeline failure visibility.
+ *
+ * Non-fatal: catches all errors internally, logs a warning, and returns
+ * undefined on failure. This ensures the calling code never fails due to
+ * task creation issues.
+ *
+ * @param contactId - The CRM contact ID to attach the task to
+ * @param title - Task title (will be prefixed with devPrefix)
+ * @param body - Task body with actionable details for Cat
+ * @returns The created task ID, or undefined on failure
+ */
+export async function createFailureTask(
+  contactId: string,
+  title: string,
+  body: string,
+): Promise<string | undefined> {
+  try {
+    const taskPayload = {
+      title: devPrefix(title),
+      body,
+      assignedTo: crmConfig.userIds.cat,
+      dueDate: addBusinessDays(new Date(), 1).toISOString(),
+      completed: false,
+    };
+
+    const response = await taskFetch(`/contacts/${contactId}/tasks`, {
+      method: 'POST',
+      body: JSON.stringify(taskPayload),
+    });
+
+    const data = (await response.json()) as { task: { id: string } };
+    return data.task.id;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn(`[createFailureTask] Failed: ${message}`);
+    return undefined;
+  }
+}
+
+// ============================================================================
 // Utilities
 // ============================================================================
 
