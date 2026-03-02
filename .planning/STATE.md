@@ -6,9 +6,9 @@ status: in-progress
 last_updated: "2026-03-02T19:56:49Z"
 progress:
   total_phases: 12
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 40
-  completed_plans: 38
+  completed_plans: 40
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 14 (Smart Document Matching) -- IN PROGRESS
-Plan: 2/3
-Status: Plan 02 complete (matching agent: signal collectors, agent tools, Gemini agentic loop)
-Last activity: 2026-03-02 -- Executed 14-02-PLAN.md (2 tasks, 30 new tests, 806 total passing)
+Phase: 14 (Smart Document Matching) -- COMPLETE
+Plan: 3/3
+Status: Phase 14 complete (all 3 plans: foundation, matching agent, classification worker integration)
+Last activity: 2026-03-02 -- Executed 14-03-PLAN.md (3 tasks, 36 new tests, 828 total passing)
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Last activity: 2026-03-02 -- Executed 14-02-PLAN.md (2 tasks, 30 new tests, 806 
 | Phase 13 P02 | 4min | 2 tasks | 2 files |
 | Phase 14 P01 | 7min | 2 tasks | 14 files |
 | Phase 14 P02 | 8min | 2 tasks | 8 files |
+| Phase 14 P03 | 10min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,10 @@ Recent decisions affecting current work:
 - Max iterations returns needs_review (not auto_created) so Cat reviews unresolved docs
 - Phone normalization uses last-10-digit comparison for +1 prefix and formatting variants
 - Co-borrower lookup traverses contact -> opportunities -> Finmo app -> borrowers chain
+- CRM note (createCrmNote) for auto_filed, CRM task (createReviewTask) for needs_review/conflict/auto_created
+- Global Needs Review/ at Drive root for matching-uncertain docs, per-client Needs Review/ for classification-uncertain docs
+- autoCreateFromDoc returns null on failure, caller routes to global Needs Review as last resort
+- Error outcome falls back to legacy resolveContactId for zero-risk graceful degradation
 
 ### Pending Todos
 
@@ -99,10 +104,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 14-02-PLAN.md (signal collectors + matching agent)
-Resume file: .planning/phases/14-smart-document-matching/14-03-PLAN.md
-Next: Execute 14-03-PLAN.md (integration with classification worker)
+Stopped at: Completed 14-03-PLAN.md (classification worker integration + backfill script)
+Resume file: N/A (Phase 14 complete)
+Next: Phase 14 complete. All MATCH and FOLD requirements fulfilled. Ready for production deployment.
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-02 (Phase 14 Plan 02 complete: matching agent)*
+*Last updated: 2026-03-02 (Phase 14 complete: smart document matching)*

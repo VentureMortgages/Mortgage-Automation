@@ -38,7 +38,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 12: CRM Pipeline Automation** - Deduplicate tasks, auto-move stages, auto-complete review tasks, assign realtor contact type (completed 2026-02-26)
 - [x] **Phase 13: Original Document Preservation** - Store originals before classification/renaming, safety net for misroutes and misclassifications (completed 2026-03-02)
-- [ ] **Phase 14: Smart Document Matching** - Signal-based AI agent for matching incoming docs to client folders, with confidence scoring and human-in-the-loop for low confidence
+- [x] **Phase 14: Smart Document Matching** - Signal-based AI agent for matching incoming docs to client folders, with confidence scoring and human-in-the-loop for low confidence (completed 2026-03-02)
 - [ ] **Phase 15: Timing & Sync Resilience** - Retry CRM sync, file docs before MBP exists, research Finmo external system API
 - [ ] **Phase 16: Automated Reminders** - CRM tasks + Cat email notifications for outstanding docs every 3 days
 
@@ -284,7 +284,7 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 11. Drive Folder Linking | v1.0 | 3/3 | Complete | 2026-02-22 |
 | 12. CRM Pipeline Automation | v1.1 | 3/3 | Complete | 2026-02-26 |
 | 13. Original Doc Preservation | 2/2 | Complete    | 2026-03-02 | - |
-| 14. Smart Document Matching | 2/3 | In Progress|  | - |
+| 14. Smart Document Matching | 3/3 | Complete   | 2026-03-02 | - |
 | 15. Timing & Sync Resilience | v1.1 | 0/TBD | Not started | - |
 | 16. Automated Reminders | v1.1 | 0/TBD | Not started | - |
 
