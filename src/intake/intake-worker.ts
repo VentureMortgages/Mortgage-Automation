@@ -221,6 +221,7 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
       await writeFile(tempFilePath, pdfBuffer);
 
       // Enqueue for classification (Phase 7)
+      // Include Gmail metadata for Phase 14 smart matching
       const classificationJob: ClassificationJobData = {
         intakeDocumentId: doc.id,
         tempFilePath,
@@ -229,6 +230,9 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
         applicationId: doc.applicationId,
         source: doc.source,
         receivedAt: doc.receivedAt,
+        threadId: messageMeta.threadId ?? undefined,
+        emailSubject: messageMeta.subject,
+        ccAddresses: messageMeta.cc,
       };
 
       await getClassificationQueue().add(

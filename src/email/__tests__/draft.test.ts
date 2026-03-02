@@ -23,10 +23,15 @@ vi.mock('../../feedback/original-store.js', () => ({
   storeSubjectMapping: vi.fn(),
 }));
 
+vi.mock('../../matching/thread-store.js', () => ({
+  storeThreadMapping: vi.fn(),
+}));
+
 import { createEmailDraft } from '../draft.js';
 import { sendEmailDraft } from '../send.js';
 import { createGmailDraft } from '../gmail-client.js';
 import { sendGmailDraft } from '../gmail-client.js';
+import { storeThreadMapping } from '../../matching/thread-store.js';
 
 // ---------------------------------------------------------------------------
 // Test Fixtures
@@ -96,7 +101,7 @@ const mockedSendGmailDraft = vi.mocked(sendGmailDraft);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockedCreateGmailDraft.mockResolvedValue('draft-123');
+  mockedCreateGmailDraft.mockResolvedValue({ draftId: 'draft-123', threadId: 'thread-001' });
   mockedSendGmailDraft.mockResolvedValue({
     messageId: 'msg-456',
     threadId: 'thread-789',
@@ -171,6 +176,24 @@ describe('createEmailDraft', () => {
     };
     const result = await createEmailDraft(multiInput);
     expect(result.subject).toContain('Megan & Cory');
+  });
+
+  test('stores thread->contact mapping when threadId available', async () => {
+    const mockedStoreThreadMapping = vi.mocked(storeThreadMapping);
+    mockedStoreThreadMapping.mockResolvedValue(undefined);
+
+    await createEmailDraft(input);
+
+    expect(mockedStoreThreadMapping).toHaveBeenCalledWith('thread-001', 'contact-001');
+  });
+
+  test('thread mapping failure is non-fatal', async () => {
+    const mockedStoreThreadMapping = vi.mocked(storeThreadMapping);
+    mockedStoreThreadMapping.mockRejectedValue(new Error('Redis down'));
+
+    // Should NOT throw
+    const result = await createEmailDraft(input);
+    expect(result.draftId).toBe('draft-123');
   });
 });
 

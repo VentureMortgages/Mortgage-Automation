@@ -79,6 +79,8 @@ export interface CreateEmailDraftInput {
 /** Result of creating a Gmail draft */
 export interface CreateEmailDraftResult {
   draftId: string;
+  /** Gmail thread ID (for thread-based matching in Phase 14) */
+  threadId?: string;
   subject: string;
   recipientEmail: string;
   bodyPreview: string;

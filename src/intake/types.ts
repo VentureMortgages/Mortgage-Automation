@@ -37,6 +37,10 @@ export interface GmailMessageMeta {
   /** Custom X-Venture-* headers (for outbound BCC detection) */
   ventureType?: string;
   ventureContactId?: string;
+  /** CC recipients (for matching signals in Phase 14) */
+  cc?: string[];
+  /** To recipients (for matching signals in Phase 14) */
+  to?: string[];
 }
 
 /** Attachment info extracted from a Gmail message part */

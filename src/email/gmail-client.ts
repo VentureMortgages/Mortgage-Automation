@@ -247,7 +247,7 @@ function wrapAuthError(err: unknown): never {
  * @param rawMessage - base64url-encoded MIME message (from encodeMimeMessage)
  * @returns The draft ID (used for sending later)
  */
-export async function createGmailDraft(rawMessage: string): Promise<string> {
+export async function createGmailDraft(rawMessage: string): Promise<{ draftId: string; threadId?: string }> {
   try {
     const gmail = getGmailClient();
     const response = await gmail.users.drafts.create({
@@ -264,7 +264,9 @@ export async function createGmailDraft(rawMessage: string): Promise<string> {
       throw new Error('Gmail API returned draft with no ID');
     }
 
-    return draftId;
+    const threadId = response.data.message?.threadId ?? undefined;
+
+    return { draftId, threadId };
   } catch (err) {
     if (err instanceof GmailAuthError) throw err;
     return wrapAuthError(err);

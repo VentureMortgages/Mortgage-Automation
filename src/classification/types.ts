@@ -219,6 +219,12 @@ export interface ClassificationJobData {
   source: 'gmail' | 'finmo';
   /** ISO timestamp */
   receivedAt: string;
+  /** Gmail thread ID (for thread-based matching in Phase 14) */
+  threadId?: string;
+  /** CC/To email addresses from the Gmail message (matching signals) */
+  ccAddresses?: string[];
+  /** Gmail message subject (matching signal) */
+  emailSubject?: string;
 }
 
 /** Outcome of a classification + filing job */

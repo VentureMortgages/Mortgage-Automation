@@ -21,6 +21,7 @@ import { generateEmailBody } from './body.js';
 import { encodeMimeMessage } from './mime.js';
 import { createGmailDraft } from './gmail-client.js';
 import { storeOriginalEmail, storeSubjectMapping } from '../feedback/original-store.js';
+import { storeThreadMapping } from '../matching/thread-store.js';
 
 /**
  * Creates an email draft in admin@venturemortgages.com's Gmail.
@@ -87,9 +88,21 @@ export async function createEmailDraft(
   });
 
   // 5. Create Gmail draft
-  const draftId = await createGmailDraft(raw);
+  const draftResult = await createGmailDraft(raw);
+  const draftId = draftResult.draftId;
 
-  // 5b. Store subject→contactId mapping for BCC detection (non-fatal)
+  // 5b. Store thread->contact mapping for Phase 14 matching agent (non-fatal)
+  if (draftResult.threadId && input.contactId) {
+    try {
+      await storeThreadMapping(draftResult.threadId, input.contactId);
+    } catch (err) {
+      console.error('[email] Failed to store thread mapping (non-fatal)', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // 5c. Store subject→contactId mapping for BCC detection (non-fatal)
   // Gmail strips all tracking metadata (X- headers, HTML comments, data-* attrs)
   // so we match sent emails back to contacts via subject line
   if (input.contactId) {
@@ -112,6 +125,7 @@ export async function createEmailDraft(
 
   return {
     draftId,
+    threadId: draftResult.threadId,
     subject,
     recipientEmail: recipient,
     bodyPreview: body.substring(0, 200),
