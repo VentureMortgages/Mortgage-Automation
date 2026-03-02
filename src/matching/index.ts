@@ -36,3 +36,7 @@ export { collectThreadSignal, collectSenderSignal, collectEmailMetadataSignals }
 
 // Agent Tools
 export { MATCHING_TOOLS, executeToolCall } from './agent-tools.js';
+
+// Matching Agent
+export { matchDocument } from './agent.js';
+export type { MatchInput } from './agent.js';
