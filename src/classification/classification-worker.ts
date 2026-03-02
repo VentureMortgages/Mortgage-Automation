@@ -30,7 +30,8 @@ import { classifyDocument } from './classifier.js';
 import { generateFilename } from './naming.js';
 import { routeToSubfolder, getPersonSubfolderName } from './router.js';
 import { getDriveClient } from './drive-client.js';
-import { resolveTargetFolder, uploadFile, findExistingFile, updateFileContent } from './filer.js';
+import { resolveTargetFolder, uploadFile, findExistingFile, updateFileContent, findOrCreateFolder } from './filer.js';
+import { storeOriginal } from '../drive/originals.js';
 import { resolveContactId, getContact, getContactDriveFolderId, extractDriveFolderId } from '../crm/contacts.js';
 import { crmConfig } from '../crm/config.js';
 import { findOpportunityByFinmoId, getOpportunityFieldValue } from '../crm/opportunities.js';
@@ -91,21 +92,64 @@ export async function processClassificationJob(
       hasContactId: !!contactId,
     });
 
-    // d. Check confidence threshold (FILE-05: low confidence -> manual review)
+    // d. Check confidence threshold (FILE-05 + ORIG-02: low confidence -> Needs Review/)
     if (classification.confidence < classificationConfig.confidenceThreshold) {
-      console.log('[classification] Low confidence, routing to manual review:', {
+      console.log('[classification] Low confidence, routing to Needs Review:', {
         confidence: classification.confidence,
         threshold: classificationConfig.confidenceThreshold,
       });
 
+      // ORIG-02: Save low-confidence doc to Needs Review/ folder
+      let needsReviewFileId: string | null = null;
+      let needsReviewFileLink: string | null = null;
+
+      // Resolve client folder (needed for Needs Review/)
+      let lowConfClientFolderId: string | null = null;
+      if (contactId) {
+        try {
+          const contact = await getContact(contactId);
+          lowConfClientFolderId = getContactDriveFolderId(contact, crmConfig.driveFolderIdFieldId);
+        } catch (err) {
+          console.error('[classification] Failed to resolve contact folder for low-confidence doc (non-fatal):', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      if (!lowConfClientFolderId && classificationConfig.driveRootFolderId) {
+        lowConfClientFolderId = classificationConfig.driveRootFolderId;
+      }
+
+      if (lowConfClientFolderId) {
+        try {
+          const drive = getDriveClient();
+          const needsReviewFolderId = await findOrCreateFolder(drive, 'Needs Review', lowConfClientFolderId);
+          needsReviewFileId = await uploadFile(drive, pdfBuffer, originalFilename, needsReviewFolderId);
+          needsReviewFileLink = `https://drive.google.com/file/d/${needsReviewFileId}/view`;
+          console.log('[classification] Saved to Needs Review:', {
+            fileId: needsReviewFileId,
+            filename: originalFilename,
+          });
+
+          // Also store a copy in Originals/ for the full audit trail
+          await storeOriginal(drive, lowConfClientFolderId, pdfBuffer, originalFilename);
+        } catch (err) {
+          console.error('[classification] Failed to save to Needs Review (non-fatal):', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // Create CRM task with filename and Drive link
       try {
         if (contactId) {
+          const taskBody = needsReviewFileLink
+            ? `File: ${originalFilename}\nDrive link: ${needsReviewFileLink}\n\nClassification uncertain (confidence: ${classification.confidence}). Best guess: ${classification.documentType}. Please review and file manually.`
+            : `Classification uncertain (confidence: ${classification.confidence}). Best guess: ${classification.documentType}. Source: ${source}. Please review and file manually.`;
+
           await createReviewTask(
             contactId,
             `Manual Review: ${originalFilename}`,
-            `Classification uncertain (confidence: ${classification.confidence}). ` +
-              `Best guess: ${classification.documentType}. Source: ${source}. ` +
-              `Please review and file manually.`,
+            taskBody,
           );
         } else {
           console.warn('[classification] No CRM contact found for manual review task:', {
@@ -126,7 +170,7 @@ export async function processClassificationJob(
         intakeDocumentId,
         classification,
         filed: false,
-        driveFileId: null,
+        driveFileId: needsReviewFileId,
         manualReview: true,
         error: null,
       };
@@ -233,6 +277,10 @@ export async function processClassificationJob(
     const baseFolderId = (isPropertySpecific && dealSubfolderId)
       ? dealSubfolderId   // Property-specific docs -> deal subfolder
       : clientFolderId;   // Reusable docs -> client folder
+
+    // ORIG-01: Store original in Originals/ before classification/renaming (silent safety net)
+    // Always stored at client folder level, not deal subfolder — per CONTEXT.md
+    await storeOriginal(drive, clientFolderId, pdfBuffer, originalFilename);
 
     const targetFolderId = await resolveTargetFolder(
       drive,
