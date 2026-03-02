@@ -37,6 +37,7 @@ import { preCreateSubfolders } from '../drive/originals.js';
 import { feedbackConfig, findSimilarEdits, applyFeedbackToChecklist, buildContextText } from '../feedback/index.js';
 import { upsertContact, findContactByEmail, assignContactType } from '../crm/contacts.js';
 import { findOpportunityByFinmoId, updateOpportunityFields } from '../crm/opportunities.js';
+import { createFailureTask } from '../crm/index.js';
 import { crmConfig } from '../crm/config.js';
 import { PIPELINE_IDS } from '../crm/types/index.js';
 import type { ApplicationContext } from '../feedback/types.js';
@@ -392,6 +393,22 @@ export async function processCrmRetry(job: Job<CrmRetryJobData>): Promise<void> 
         applicationId,
         attempts: retryAttempt,
       });
+
+      // Create CRM task for Cat (non-fatal)
+      try {
+        const borrowerName = `${job.data.borrowerFirstName} ${job.data.borrowerLastName}`;
+        const dealRef = job.data.finmoDealId ? ` Finmo deal: ${job.data.finmoDealId}.` : '';
+        await createFailureTask(
+          contactId,
+          `CRM sync failed — ${borrowerName}`,
+          `MBP opportunity not found after ${retryAttempt} retries over 35 min.${dealRef} Checklist tracked at contact level. Please verify the Live Deals opportunity exists in MBP.\n\n[Automated by Venture Mortgages Doc System]`,
+        );
+      } catch (err) {
+        console.error('[worker] Failed to create failure task (non-fatal)', {
+          applicationId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
     return;
   }
@@ -477,11 +494,32 @@ export async function processCrmRetry(job: Job<CrmRetryJobData>): Promise<void> 
     opportunityId: crmResult.opportunityId,
   });
 
+  // Deal subfolder catch-up: create if it was null during initial webhook
+  let actualDealSubfolderId = job.data.dealSubfolderId;
+  if (!actualDealSubfolderId && crmResult.opportunityId && driveRootFolderId) {
+    try {
+      const clientFolderName = buildClientFolderName(finmoApp.borrowers);
+      const clientFolderId = await findOrCreateFolder(getDriveClient(), clientFolderName, driveRootFolderId!);
+      const subfolderName = job.data.finmoDealId || `Deal-${applicationId.slice(0, 8)}`;
+      actualDealSubfolderId = await findOrCreateFolder(getDriveClient(), subfolderName, clientFolderId);
+      await preCreateSubfolders(getDriveClient(), actualDealSubfolderId);
+      console.log('[worker] Deal subfolder created on retry', {
+        applicationId,
+        dealSubfolderId: actualDealSubfolderId,
+      });
+    } catch (err) {
+      console.error('[worker] Deal subfolder creation on retry failed (non-fatal)', {
+        applicationId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   // Store deal subfolder link on opportunity
-  if (job.data.dealSubfolderId && crmResult.opportunityId && crmConfig.oppDealSubfolderIdFieldId) {
+  if (actualDealSubfolderId && crmResult.opportunityId && crmConfig.oppDealSubfolderIdFieldId) {
     try {
       await updateOpportunityFields(crmResult.opportunityId, [
-        { id: crmConfig.oppDealSubfolderIdFieldId, field_value: `https://drive.google.com/drive/folders/${job.data.dealSubfolderId}` },
+        { id: crmConfig.oppDealSubfolderIdFieldId, field_value: `https://drive.google.com/drive/folders/${actualDealSubfolderId}` },
       ]);
       console.log('[worker] Deal subfolder link stored on opportunity', {
         applicationId,

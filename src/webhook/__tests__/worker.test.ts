@@ -19,7 +19,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Module-level mocks
 // ============================================================================
 
-const { mockConfig, mockQueueAdd, mockFindOpp, mockUpdateOpp, mockPreCreateSubfolders } = vi.hoisted(() => ({
+const { mockConfig, mockQueueAdd, mockFindOpp, mockUpdateOpp, mockPreCreateSubfolders, mockCreateFailureTask } = vi.hoisted(() => ({
   mockConfig: {
     appConfig: {
       killSwitch: false,
@@ -33,6 +33,7 @@ const { mockConfig, mockQueueAdd, mockFindOpp, mockUpdateOpp, mockPreCreateSubfo
   mockFindOpp: vi.fn(),
   mockUpdateOpp: vi.fn(),
   mockPreCreateSubfolders: vi.fn(),
+  mockCreateFailureTask: vi.fn(),
 }));
 
 vi.mock('../../config.js', () => mockConfig);
@@ -47,6 +48,7 @@ vi.mock('../../checklist/engine/index.js', () => ({
 
 vi.mock('../../crm/index.js', () => ({
   syncChecklistToCrm: vi.fn(),
+  createFailureTask: (...args: unknown[]) => mockCreateFailureTask(...args),
 }));
 
 vi.mock('../../crm/opportunities.js', () => ({
@@ -969,5 +971,82 @@ describe('processCrmRetry', () => {
     await processCrmRetry(createMockRetryJob({ dealSubfolderId: null }));
 
     expect(mockUpdateOpp).not.toHaveBeenCalled();
+  });
+
+  it('should create CRM failure task when retry exhausted', async () => {
+    mockFindOpp.mockResolvedValue(null);
+    mockCreateFailureTask.mockResolvedValue('failure-task-id');
+
+    await processCrmRetry(createMockRetryJob({ retryAttempt: 3, finmoDealId: 'BRXM-F050746' }));
+
+    expect(mockCreateFailureTask).toHaveBeenCalledWith(
+      'crm-contact-456',
+      'CRM sync failed — Jane Doe',
+      expect.stringContaining('MBP opportunity not found'),
+    );
+    // Body should include Finmo deal ID
+    expect(mockCreateFailureTask).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.stringContaining('BRXM-F050746'),
+    );
+  });
+
+  it('should not throw when failure task creation fails on exhaustion', async () => {
+    mockFindOpp.mockResolvedValue(null);
+    mockCreateFailureTask.mockRejectedValue(new Error('CRM API down'));
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Should NOT throw — non-fatal
+    await expect(
+      processCrmRetry(createMockRetryJob({ retryAttempt: 3 })),
+    ).resolves.toBeUndefined();
+
+    errorSpy.mockRestore();
+  });
+
+  it('should create deal subfolder on retry success when dealSubfolderId is null', async () => {
+    process.env.DRIVE_ROOT_FOLDER_ID = 'root-folder-id';
+    mockFindOpp.mockResolvedValue({ id: 'opp-101', name: 'Jane Doe' });
+    mockFetch.mockResolvedValue(createMockFinmoApp());
+    mockGenerate.mockReturnValue(createMockChecklist());
+    mockCrm.mockResolvedValue({
+      ...createMockCrmResult(),
+      opportunityId: 'opp-101',
+    });
+    mockPreCreateSubfolders.mockResolvedValue({});
+
+    await processCrmRetry(createMockRetryJob({ dealSubfolderId: null, finmoDealId: 'BRXM-F050746' }));
+
+    // Should have stored subfolder link on opportunity (findOrCreateFolder returns 'folder-123')
+    expect(mockUpdateOpp).toHaveBeenCalledWith('opp-101', [
+      {
+        id: 'opp-subfolder-field-id',
+        field_value: 'https://drive.google.com/drive/folders/folder-123',
+      },
+    ]);
+
+    delete process.env.DRIVE_ROOT_FOLDER_ID;
+  });
+
+  it('should not create subfolder on retry success when dealSubfolderId is already set', async () => {
+    mockFindOpp.mockResolvedValue({ id: 'opp-101', name: 'Jane Doe' });
+    mockFetch.mockResolvedValue(createMockFinmoApp());
+    mockGenerate.mockReturnValue(createMockChecklist());
+    mockCrm.mockResolvedValue({
+      ...createMockCrmResult(),
+      opportunityId: 'opp-101',
+    });
+
+    await processCrmRetry(createMockRetryJob({ dealSubfolderId: 'existing-subfolder-789' }));
+
+    // Should store existing subfolder link on opportunity (NOT create a new one)
+    expect(mockUpdateOpp).toHaveBeenCalledWith('opp-101', [
+      {
+        id: 'opp-subfolder-field-id',
+        field_value: 'https://drive.google.com/drive/folders/existing-subfolder-789',
+      },
+    ]);
   });
 });
