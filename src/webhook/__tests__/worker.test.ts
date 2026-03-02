@@ -19,7 +19,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Module-level mocks
 // ============================================================================
 
-const { mockConfig, mockQueueAdd, mockFindOpp, mockUpdateOpp } = vi.hoisted(() => ({
+const { mockConfig, mockQueueAdd, mockFindOpp, mockUpdateOpp, mockPreCreateSubfolders } = vi.hoisted(() => ({
   mockConfig: {
     appConfig: {
       killSwitch: false,
@@ -32,6 +32,7 @@ const { mockConfig, mockQueueAdd, mockFindOpp, mockUpdateOpp } = vi.hoisted(() =
   mockQueueAdd: vi.fn().mockResolvedValue({ id: 'retry-job-id' }),
   mockFindOpp: vi.fn(),
   mockUpdateOpp: vi.fn(),
+  mockPreCreateSubfolders: vi.fn(),
 }));
 
 vi.mock('../../config.js', () => mockConfig);
@@ -108,6 +109,10 @@ vi.mock('../../drive/index.js', () => ({
   scanClientFolder: vi.fn(() => Promise.resolve([])),
   filterChecklistByExistingDocs: vi.fn(),
   extractDealReference: vi.fn(),
+}));
+
+vi.mock('../../drive/originals.js', () => ({
+  preCreateSubfolders: (...args: unknown[]) => mockPreCreateSubfolders(...args),
 }));
 
 vi.mock('../../feedback/index.js', () => ({
@@ -335,6 +340,15 @@ describe('processJob', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockConfig.appConfig.killSwitch = false;
+    mockPreCreateSubfolders.mockResolvedValue({
+      'Income': 'income-folder-id',
+      'Property': 'property-folder-id',
+      'Down Payment': 'dp-folder-id',
+      'ID': 'id-folder-id',
+      'Originals': 'originals-folder-id',
+      'Needs Review': 'needs-review-folder-id',
+      'Signed Docs': 'signed-docs-folder-id',
+    });
   });
 
   it('should execute the full pipeline and return ProcessingResult', async () => {
@@ -755,6 +769,50 @@ describe('processJob', () => {
 
       delete process.env.DRIVE_ROOT_FOLDER_ID;
       mockBudgetConfig.budgetConfig.enabled = false;
+    });
+  });
+
+  describe('subfolder pre-creation (step 3a)', () => {
+    beforeEach(() => {
+      mockFetch.mockResolvedValue(createMockFinmoApp());
+      mockGenerate.mockReturnValue(createMockChecklist());
+      mockCrm.mockResolvedValue(createMockCrmResult());
+      mockEmail.mockResolvedValue(createMockEmailResult());
+      process.env.DRIVE_ROOT_FOLDER_ID = 'root-folder-id';
+    });
+
+    afterEach(() => {
+      delete process.env.DRIVE_ROOT_FOLDER_ID;
+    });
+
+    it('should call preCreateSubfolders after client folder is created', async () => {
+      await processJob(createMockJob());
+
+      expect(mockPreCreateSubfolders).toHaveBeenCalledWith(
+        expect.anything(), // DriveClient mock
+        'folder-123', // clientFolderId from findOrCreateFolder mock
+      );
+    });
+
+    it('should continue pipeline when preCreateSubfolders fails', async () => {
+      mockPreCreateSubfolders.mockRejectedValue(new Error('Drive API explosion'));
+
+      const result = await processJob(createMockJob());
+
+      // Pipeline still completes — email draft created, CRM synced
+      expect(result.applicationId).toBe('app-123');
+      expect(result.contactId).toBe('crm-contact-456');
+      expect(result.draftId).toBe('draft-abc');
+      expect(mockCrm).toHaveBeenCalled();
+      expect(mockEmail).toHaveBeenCalled();
+    });
+
+    it('should skip preCreateSubfolders when DRIVE_ROOT_FOLDER_ID is not set', async () => {
+      delete process.env.DRIVE_ROOT_FOLDER_ID;
+
+      await processJob(createMockJob());
+
+      expect(mockPreCreateSubfolders).not.toHaveBeenCalled();
     });
   });
 

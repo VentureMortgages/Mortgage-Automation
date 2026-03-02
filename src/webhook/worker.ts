@@ -33,6 +33,7 @@ import { createBudgetSheet, buildClientFolderName, budgetConfig } from '../budge
 import { getDriveClient } from '../classification/drive-client.js';
 import { findOrCreateFolder } from '../classification/filer.js';
 import { scanClientFolder, filterChecklistByExistingDocs, extractDealReference } from '../drive/index.js';
+import { preCreateSubfolders } from '../drive/originals.js';
 import { feedbackConfig, findSimilarEdits, applyFeedbackToChecklist, buildContextText } from '../feedback/index.js';
 import { upsertContact, findContactByEmail, assignContactType } from '../crm/contacts.js';
 import { findOpportunityByFinmoId, updateOpportunityFields } from '../crm/opportunities.js';
@@ -84,6 +85,17 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
   if (driveRootFolderId) {
     const clientFolderName = buildClientFolderName(finmoApp.borrowers);
     clientFolderId = await findOrCreateFolder(getDriveClient(), clientFolderName, driveRootFolderId);
+
+    // 3a. Pre-create standard subfolders (ORIG-01 safety net, non-fatal)
+    try {
+      await preCreateSubfolders(getDriveClient(), clientFolderId);
+      console.log('[worker] Subfolders pre-created', { applicationId });
+    } catch (err) {
+      console.error('[worker] Subfolder pre-creation failed (non-fatal)', {
+        applicationId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   // 3b. Store client Drive folder ID on CRM contact (DRIVE-01)
