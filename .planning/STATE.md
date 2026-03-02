@@ -88,9 +88,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-smart-document-matching/14-CONTEXT.md
-Next: Plan Phase 14 (Smart Document Matching)
+Stopped at: Phase 14 planning complete (3 plans, verified, committed)
+Resume file: .planning/phases/14-smart-document-matching/14-01-PLAN.md
+Next: Execute Phase 14 (Smart Document Matching) — /gsd:execute-phase 14
 
 ---
 *State initialized: 2026-02-09*
