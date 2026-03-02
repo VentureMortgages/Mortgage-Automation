@@ -244,10 +244,11 @@ Plans:
   1. When the Finmo webhook fires before MBP has created the opportunity, the system retries CRM sync at 5/10/20 minute intervals until the opportunity appears (no manual intervention needed)
   2. Documents uploaded by a client before the MBP opportunity exists are filed to Google Drive immediately and their CRM tracking is retroactively applied once the opportunity becomes available
   3. A decision is documented on whether Finmo's "update external system" API can trigger MBP sync on demand (research spike with findings recorded)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: TBD during planning
+- [ ] 15-01: Failure notifications + CRM retry enhancements (SYNC-01, SYNC-02) -- Wave 1
+- [ ] 15-02: Finmo API research spike (SYNC-03) -- Wave 1
 
 ### Phase 16: Automated Reminders
 **Goal**: Cat is notified when docs are overdue and has a ready-made follow-up message to send, without manually tracking who is late
