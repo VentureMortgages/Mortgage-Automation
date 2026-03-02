@@ -110,8 +110,8 @@ Requirements for milestone v1.1 -- Production Hardening. Each maps to roadmap ph
 
 ### Original Preservation (Phase 15)
 
-- [ ] **ORIG-01**: Every received document is stored in `ClientFolder/Originals/` with its original filename before classification
-- [ ] **ORIG-02**: Low-confidence documents are preserved in Originals (not deleted from temp storage)
+- [x] **ORIG-01**: Every received document is stored in `ClientFolder/Originals/` with its original filename before classification
+- [x] **ORIG-02**: Low-confidence documents are preserved in Originals (not deleted from temp storage)
 - [x] **ORIG-03**: When a document is re-uploaded, new original is stored alongside previous versions (no overwrite in Originals)
 
 ### Reminders (Phase 16)
@@ -200,8 +200,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOLD-03 | Phase 14 | Pending |
 | FOLD-04 | Phase 14 | Pending |
 | FOLD-05 | Phase 14 | Pending |
-| ORIG-01 | Phase 15 | Pending |
-| ORIG-02 | Phase 15 | Pending |
+| ORIG-01 | Phase 15 | Complete |
+| ORIG-02 | Phase 15 | Complete |
 | ORIG-03 | Phase 15 | Complete |
 | REMIND-01 | Phase 16 | Pending |
 | REMIND-02 | Phase 16 | Pending |
