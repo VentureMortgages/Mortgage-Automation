@@ -83,7 +83,7 @@ export async function autoCreateFromDoc(input: {
         email,
         firstName,
         lastName,
-        customFields: [{ id: crmConfig.driveFolderIdFieldId, value: driveFolderId }],
+        customFields: [{ id: crmConfig.driveFolderIdFieldId, field_value: driveFolderId }],
       });
     } catch (err) {
       console.error('[auto-create] Failed to store folder ID on contact (non-fatal):', {

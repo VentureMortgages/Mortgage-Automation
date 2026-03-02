@@ -41,7 +41,7 @@ export type { CrmConfig } from './config.js';
 // CRM services
 export { upsertContact, findContactByEmail, findContactByName, findContactByPhone, resolveContactId, getContact, assignContactType } from './contacts.js';
 export type { ResolveContactResult } from './contacts.js';
-export { createAuditNote } from './notes.js';
+export { createAuditNote, createCrmNote } from './notes.js';
 export { createReviewTask, createPreReadinessTask, addBusinessDays, findReviewTask, completeTask, createOrUpdateReviewTask } from './tasks.js';
 export {
   searchOpportunities,

@@ -4,19 +4,27 @@
  * Processes jobs from the doc-classification queue, orchestrating:
  * 1. Read PDF from temp file
  * 2. Classify document via Claude API
- * 3. Check confidence threshold (low -> CRM manual review task)
- * 4. Resolve client Drive folder from CRM contact (fallback: DRIVE_ROOT_FOLDER_ID)
- * 5. For property-specific docs, resolve deal subfolder from opportunity
- * 6. Generate filename (Cat's naming convention)
- * 7. Route to correct subfolder
- * 8. File to Google Drive (upload or update existing)
- * 9. Clean up temp file
+ * 3. Match document to CRM contact via smart matching agent (Phase 14)
+ * 4. Route by match outcome:
+ *    - auto_filed: file to matched folder, CRM note with reasoning (MATCH-03)
+ *    - needs_review/conflict: file to global Needs Review/, CRM task (MATCH-04)
+ *    - auto_created: create new contact + folder, file there (MATCH-02)
+ *    - error: fall back to legacy resolveContactId
+ * 5. Check classification confidence (low -> per-client Needs Review)
+ * 6. For property-specific docs, resolve deal subfolder from opportunity
+ * 7. Generate filename (Cat's naming convention)
+ * 8. Route to correct subfolder
+ * 9. File to Google Drive (upload or update existing)
+ * 10. Clean up temp file
  *
  * Error handling is per-stage: classification failure, Drive failure, and CRM
  * failure are each caught independently. Temp files are cleaned up in all paths.
  *
  * Implements:
- * - FILE-05: Low confidence -> manual review via CRM task
+ * - MATCH-03: Auto-filed docs get CRM note (not task) with reasoning
+ * - MATCH-04: Low-confidence matching -> global Needs Review with CRM task
+ * - MATCH-02: Zero-match -> auto-create contact + folder
+ * - FILE-05: Low confidence classification -> manual review via CRM task
  * - FILE-04: Existing files are updated, not duplicated
  *
  * Follows the same lazy singleton Worker pattern as intake-worker.ts.
@@ -38,8 +46,11 @@ import { findOpportunityByFinmoId, getOpportunityFieldValue } from '../crm/oppor
 import { PIPELINE_IDS } from '../crm/types/index.js';
 import type { CrmContact } from '../crm/types/index.js';
 import { createReviewTask } from '../crm/tasks.js';
+import { createCrmNote } from '../crm/notes.js';
 import { updateDocTracking } from '../crm/tracking-sync.js';
 import { PROPERTY_SPECIFIC_TYPES } from '../drive/doc-expiry.js';
+import { matchDocument } from '../matching/agent.js';
+import { autoCreateFromDoc } from '../matching/auto-create.js';
 import { DOC_TYPE_LABELS } from './types.js';
 import type { ClassificationJobData, ClassificationJobResult } from './types.js';
 
@@ -79,20 +90,123 @@ export async function processClassificationJob(
       confidence: classification.confidence,
     });
 
-    // c. Resolve CRM contact (once — email first, name fallback)
-    const resolved = await resolveContactId({
+    // c. Smart matching: resolve CRM contact via matching agent (Phase 14)
+    const matchDecision = await matchDocument({
+      intakeDocumentId,
+      classificationResult: classification,
       senderEmail,
-      borrowerFirstName: classification.borrowerFirstName ?? null,
-      borrowerLastName: classification.borrowerLastName ?? null,
+      threadId: job.data.threadId,
+      ccAddresses: job.data.ccAddresses,
+      emailSubject: job.data.emailSubject,
+      applicationId,
+      originalFilename,
     });
 
-    const contactId = resolved.contactId;
-    console.log('[classification] Contact resolution:', {
-      resolvedVia: resolved.resolvedVia,
+    let contactId = matchDecision.chosenContactId;
+    let clientFolderId = matchDecision.chosenDriveFolderId;
+
+    console.log('[classification] Match decision:', {
+      outcome: matchDecision.outcome,
+      confidence: matchDecision.confidence,
       hasContactId: !!contactId,
     });
 
-    // d. Check confidence threshold (FILE-05 + ORIG-02: low confidence -> Needs Review/)
+    // d. Handle match outcomes
+    switch (matchDecision.outcome) {
+      case 'auto_filed':
+        // High confidence match — proceed with normal filing
+        // CRM note created after filing (below)
+        break;
+
+      case 'needs_review':
+      case 'conflict': {
+        // Low confidence or conflicting signals — route to global Needs Review/
+        const drive = getDriveClient();
+        const globalNeedsReviewId = await findOrCreateFolder(
+          drive, 'Needs Review', classificationConfig.driveRootFolderId,
+        );
+        const fileId = await uploadFile(drive, pdfBuffer, originalFilename, globalNeedsReviewId);
+
+        // Also store in Originals/ if we have a best-guess contact folder
+        if (clientFolderId) {
+          try { await storeOriginal(drive, clientFolderId, pdfBuffer, originalFilename); } catch { /* non-fatal */ }
+        }
+
+        // CRM task with signals + Drive link (MATCH-04)
+        const signalSummary = matchDecision.signals.map(s => `${s.type}=${s.value}`).join(', ');
+        const bestGuess = matchDecision.candidates[0]?.contactName ?? 'Unknown';
+        const taskBody = `Incoming doc may belong to [${bestGuess}] (${(matchDecision.confidence * 100).toFixed(0)}%). ` +
+          `Signals: ${signalSummary || 'none'}. File: https://drive.google.com/file/d/${fileId}/view`;
+
+        const taskContactId = contactId ?? matchDecision.candidates[0]?.contactId;
+        if (taskContactId) {
+          try {
+            await createReviewTask(
+              taskContactId,
+              `Match Review: ${originalFilename}`,
+              taskBody,
+            );
+          } catch { /* non-fatal */ }
+        }
+
+        // Clean up temp file
+        await unlink(tempFilePath).catch(() => {});
+
+        return {
+          intakeDocumentId,
+          classification,
+          filed: false,
+          driveFileId: fileId,
+          manualReview: true,
+          error: null,
+        };
+      }
+
+      case 'auto_created': {
+        // No match found — create new contact + folder
+        const created = await autoCreateFromDoc({
+          classificationResult: classification,
+          senderEmail,
+          originalFilename,
+        });
+        if (created) {
+          contactId = created.contactId;
+          clientFolderId = created.driveFolderId;
+        } else {
+          // autoCreateFromDoc failed — route to global Needs Review as last resort
+          const drive = getDriveClient();
+          const globalNrId = await findOrCreateFolder(
+            drive, 'Needs Review', classificationConfig.driveRootFolderId,
+          );
+          const fileId = await uploadFile(drive, pdfBuffer, originalFilename, globalNrId);
+          await unlink(tempFilePath).catch(() => {});
+          return {
+            intakeDocumentId,
+            classification,
+            filed: false,
+            driveFileId: fileId,
+            manualReview: true,
+            error: null,
+          };
+        }
+        break;
+      }
+
+      case 'error': {
+        // Matching failed — fall back to legacy resolveContactId
+        console.warn('[classification] Matching agent error, falling back to legacy resolveContactId');
+        const fallback = await resolveContactId({
+          senderEmail,
+          borrowerFirstName: classification.borrowerFirstName ?? null,
+          borrowerLastName: classification.borrowerLastName ?? null,
+        });
+        contactId = fallback.contactId;
+        break;
+      }
+    }
+
+    // e. Check classification confidence threshold (FILE-05 + ORIG-02: low confidence -> Needs Review/)
+    // This is SEPARATE from matching confidence — classification confidence measures doc type certainty
     if (classification.confidence < classificationConfig.confidenceThreshold) {
       console.log('[classification] Low confidence, routing to Needs Review:', {
         confidence: classification.confidence,
@@ -104,8 +218,8 @@ export async function processClassificationJob(
       let needsReviewFileLink: string | null = null;
 
       // Resolve client folder (needed for Needs Review/)
-      let lowConfClientFolderId: string | null = null;
-      if (contactId) {
+      let lowConfClientFolderId: string | null = clientFolderId;
+      if (!lowConfClientFolderId && contactId) {
         try {
           const contact = await getContact(contactId);
           lowConfClientFolderId = getContactDriveFolderId(contact, crmConfig.driveFolderIdFieldId);
@@ -176,12 +290,11 @@ export async function processClassificationJob(
       };
     }
 
-    // e. Resolve client Drive folder from CRM contact (DRIVE-02)
-    let clientFolderId: string | null = null;
+    // f. Resolve client Drive folder from CRM contact (DRIVE-02)
     let dealSubfolderId: string | null = null;
     let contact: CrmContact | null = null;
 
-    if (contactId) {
+    if (!clientFolderId && contactId) {
       try {
         // Fetch contact ONCE — shared with tracking-sync later (DRIVE-02, rate limit optimization)
         contact = await getContact(contactId);
@@ -196,6 +309,13 @@ export async function processClassificationJob(
         console.error('[classification] Failed to read contact folder ID (non-fatal):', {
           error: err instanceof Error ? err.message : String(err),
         });
+      }
+    } else if (contactId) {
+      // If we already have clientFolderId (from matching), still fetch contact for tracking
+      try {
+        contact = await getContact(contactId);
+      } catch {
+        // non-fatal
       }
     }
 
@@ -259,12 +379,12 @@ export async function processClassificationJob(
       }
     }
 
-    // e. Generate filename
+    // g. Generate filename
     const fallbackName =
       classification.borrowerFirstName ?? originalFilename.replace(/\.[^.]+$/, '');
     const filename = generateFilename(classification, fallbackName);
 
-    // f. Route to subfolder
+    // h. Route to subfolder
     const subfolderTarget = routeToSubfolder(classification.documentType);
     const personName = getPersonSubfolderName(
       classification.borrowerFirstName,
@@ -272,7 +392,7 @@ export async function processClassificationJob(
       'Borrower',
     );
 
-    // g. Resolve target folder in Drive (DRIVE-04/DRIVE-05)
+    // i. Resolve target folder in Drive (DRIVE-04/DRIVE-05)
     const drive = getDriveClient();
     const baseFolderId = (isPropertySpecific && dealSubfolderId)
       ? dealSubfolderId   // Property-specific docs -> deal subfolder
@@ -294,12 +414,12 @@ export async function processClassificationJob(
       personName,
     );
 
-    // h. Check for existing file (versioning — FILE-04)
+    // j. Check for existing file (versioning — FILE-04)
     const docLabel =
       DOC_TYPE_LABELS[classification.documentType] ?? classification.documentType;
     const existing = await findExistingFile(drive, docLabel, targetFolderId);
 
-    // i. Upload or update
+    // k. Upload or update
     let driveFileId: string;
     if (existing) {
       await updateFileContent(drive, existing.id, pdfBuffer, filename);
@@ -316,7 +436,21 @@ export async function processClassificationJob(
       });
     }
 
-    // j. Update CRM tracking (Phase 8 — non-fatal)
+    // l. CRM note for auto_filed (MATCH-03): informational note, not task
+    if (matchDecision.outcome === 'auto_filed' && contactId) {
+      try {
+        await createCrmNote(
+          contactId,
+          `${DOC_TYPE_LABELS[classification.documentType] ?? classification.documentType} filed to ${classification.borrowerFirstName ?? 'client'}'s folder. ` +
+          `Matched: ${matchDecision.reasoning} (confidence: ${matchDecision.confidence.toFixed(2)})\n\n` +
+          `[Automated by Venture Mortgages Doc System]`,
+        );
+      } catch {
+        // CRM note creation is non-fatal
+      }
+    }
+
+    // m. Update CRM tracking (Phase 8 — non-fatal)
     if (senderEmail || contactId) {
       try {
         const trackingResult = await updateDocTracking({
@@ -358,10 +492,10 @@ export async function processClassificationJob(
       }
     }
 
-    // k. Clean up temp file
+    // n. Clean up temp file
     await unlink(tempFilePath).catch(() => {});
 
-    // l. Return result
+    // o. Return result
     return {
       intakeDocumentId,
       classification,

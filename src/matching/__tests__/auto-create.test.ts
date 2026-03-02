@@ -170,7 +170,7 @@ describe('autoCreateFromDoc', () => {
     expect(mockContacts.upsertContact).toHaveBeenCalledTimes(2);
     expect(mockContacts.upsertContact).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        customFields: [{ id: 'field-drive-folder-id', value: 'new-folder-1' }],
+        customFields: [{ id: 'field-drive-folder-id', field_value: 'new-folder-1' }],
       }),
     );
   });

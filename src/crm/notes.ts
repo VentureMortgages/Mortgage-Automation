@@ -45,6 +45,31 @@ export async function createAuditNote(
   return result.note.id;
 }
 
+/**
+ * Creates a general-purpose note on a contact's CRM timeline.
+ *
+ * Unlike createAuditNote which has a rigid format, this accepts free-form
+ * body text for any purpose (matching reasoning, auto-filing notes, etc.).
+ *
+ * The note is attributed to Cat's user account so it shows as her activity.
+ *
+ * @param contactId - The CRM contact ID to attach the note to
+ * @param body - Free-form note body text
+ * @returns The created note ID
+ */
+export async function createCrmNote(
+  contactId: string,
+  body: string,
+): Promise<string> {
+  const response = await noteFetch(`/contacts/${contactId}/notes`, {
+    method: 'POST',
+    body: JSON.stringify({ body, userId: crmConfig.userIds.cat }),
+  });
+
+  const result = (await response.json()) as { note: { id: string } };
+  return result.note.id;
+}
+
 // ============================================================================
 // Internal — HTTP helper with error classification
 // ============================================================================
