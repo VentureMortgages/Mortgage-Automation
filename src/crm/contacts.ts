@@ -167,6 +167,52 @@ export async function findContactByName(
 }
 
 /**
+ * Searches for a contact by phone number.
+ *
+ * Uses POST /contacts/search with phone number as query.
+ * Normalizes to last 10 digits to handle formatting variants (+1, dashes, etc.).
+ * Returns null if 0 matches or 2+ matches (ambiguity guard).
+ *
+ * Covers FOLD-02: phone number fallback when email lookup fails.
+ */
+export async function findContactByPhone(phone: string): Promise<string | null> {
+  // Normalize: strip non-digits, take last 10 digits
+  const normalized = phone.replace(/\D/g, '').slice(-10);
+  if (normalized.length < 10) return null;
+
+  const body = {
+    locationId: crmConfig.locationId,
+    query: phone,
+    pageLimit: 5,
+  };
+
+  const response = await crmFetch('/contacts/search', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+
+  const data = (await response.json()) as {
+    contacts: Array<{ id: string; phone?: string }>;
+  };
+
+  if (!data.contacts || data.contacts.length === 0) {
+    return null;
+  }
+
+  // Exact-match filter: compare last 10 digits of each contact's phone
+  const matches = data.contacts.filter(
+    (c) => c.phone?.replace(/\D/g, '').slice(-10) === normalized,
+  );
+
+  // Ambiguity guard: 2+ matches → return null (manual review)
+  if (matches.length !== 1) {
+    return null;
+  }
+
+  return matches[0].id;
+}
+
+/**
  * Resolves a CRM contact ID using email first, then name as fallback.
  *
  * Used by the classification worker to find the borrower's CRM contact

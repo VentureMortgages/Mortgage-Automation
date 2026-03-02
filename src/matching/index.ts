@@ -8,6 +8,8 @@
  * - Config: matchingConfig, MatchingConfig
  * - Thread Store: storeThreadMapping, getThreadContactId
  * - Decision Log: logMatchDecision, getMatchDecision
+ * - Signal Collectors: collectThreadSignal, collectSenderSignal, collectEmailMetadataSignals
+ * - Agent Tools: MATCHING_TOOLS, executeToolCall
  */
 
 // Types
@@ -28,3 +30,9 @@ export { storeThreadMapping, getThreadContactId } from './thread-store.js';
 
 // Decision Log
 export { logMatchDecision, getMatchDecision } from './decision-log.js';
+
+// Signal Collectors
+export { collectThreadSignal, collectSenderSignal, collectEmailMetadataSignals } from './signal-collectors.js';
+
+// Agent Tools
+export { MATCHING_TOOLS, executeToolCall } from './agent-tools.js';
