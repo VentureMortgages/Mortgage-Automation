@@ -111,8 +111,9 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 15-02-PLAN.md (Phase 15 complete)
-Resume file: .planning/phases/15-timing-sync-resilience/15-02-SUMMARY.md
+Stopped at: Phase 16 context gathered, plan-phase initialized but not yet spawned
+Resume file: .planning/phases/16-automated-reminders/16-CONTEXT.md
+Next: /gsd:plan-phase 16
 Next: Phase 15 complete -- all v1.1 Production Hardening phases done
 
 ---
