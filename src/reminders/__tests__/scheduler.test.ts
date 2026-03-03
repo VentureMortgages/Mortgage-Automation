@@ -81,6 +81,7 @@ describe('runReminderScan', () => {
       emailSentDate: '2026-02-25',
       businessDaysOverdue: 5,
       reminderCycle: 1,
+      driveFolderId: 'folder-abc123',
     },
     {
       opportunityId: 'opp-2',
@@ -91,6 +92,7 @@ describe('runReminderScan', () => {
       emailSentDate: '2026-02-24',
       businessDaysOverdue: 6,
       reminderCycle: 2,
+      driveFolderId: null,
     },
   ];
 
@@ -140,10 +142,12 @@ describe('runReminderScan', () => {
     await runReminderScan();
 
     expect(mockSendReminderNotification).toHaveBeenCalledWith(
-      'John Smith',
-      'john@example.com',
-      2, // missingDocs.length
-      5, // businessDaysOverdue
+      expect.objectContaining({
+        borrowerName: 'John Smith',
+        borrowerEmail: 'john@example.com',
+        businessDaysOverdue: 5,
+        driveFolderUrl: 'https://drive.google.com/drive/folders/folder-abc123',
+      }),
     );
   });
 

@@ -110,8 +110,10 @@ describe('generateReminderTaskBody', () => {
       followUpText,
     );
 
-    // The task body should contain the follow-up text for Cat to copy/paste
-    expect(body).toContain(followUpText);
+    // The task body should contain the missing doc names
+    expect(body).toContain('2 recent pay stubs');
+    expect(body).toContain('T4 for 2024');
+    expect(body).toContain('90-day bank statements');
   });
 
   test('includes borrower name and email', () => {

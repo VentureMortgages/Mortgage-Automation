@@ -82,13 +82,20 @@ export async function runReminderScan(
       // Create/update CRM task
       await createOrUpdateReminderTask(opp.contactId, opp.borrowerName, taskBody);
 
+      // Build Drive folder URL if available
+      const driveFolderUrl = opp.driveFolderId
+        ? `https://drive.google.com/drive/folders/${opp.driveFolderId}`
+        : null;
+
       // Send Cat email notification
-      await sendReminderNotification(
-        opp.borrowerName,
-        opp.borrowerEmail,
-        opp.missingDocs.length,
-        opp.businessDaysOverdue,
-      );
+      await sendReminderNotification({
+        borrowerName: opp.borrowerName,
+        borrowerEmail: opp.borrowerEmail,
+        missingDocs: opp.missingDocs,
+        businessDaysOverdue: opp.businessDaysOverdue,
+        followUpText,
+        driveFolderUrl,
+      });
 
       processed++;
 

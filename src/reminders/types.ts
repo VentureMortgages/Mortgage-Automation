@@ -40,6 +40,8 @@ export interface OverdueOpportunity {
   businessDaysOverdue: number;
   /** Which reminder cycle this is (1 = first reminder at 3 days, 2 = second at 6 days, etc.) */
   reminderCycle: number;
+  /** Google Drive folder ID for the client (null if not linked) */
+  driveFolderId: string | null;
 }
 
 /** Result of scanning for overdue reminders */

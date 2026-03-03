@@ -1,27 +1,11 @@
 // ============================================================================
 // Follow-up Text Generator — Creates reminder content for Cat
 // ============================================================================
-//
-// Generates two types of content:
-// 1. Follow-up email text that Cat can copy/paste to send to the client
-// 2. CRM task body with context for Cat + the draft email text
-//
-// Tone matches existing doc request emails: professional, friendly, specific.
-// Lists each missing document by name so the client knows exactly what to send.
-//
-// PII safety: Only document type names and borrower first name are included.
 
 import type { MissingDocEntry } from '../crm/types/index.js';
 
 /**
  * Generates a follow-up email body that Cat can copy/paste to send to the client.
- *
- * Lists each missing document by name. Matches the professional, friendly tone
- * of the initial doc request emails.
- *
- * @param borrowerFirstName - Client's first name for the greeting
- * @param missingDocs - List of documents still needed
- * @returns Plain text email body ready to copy/paste
  */
 export function generateFollowUpText(
   borrowerFirstName: string,
@@ -46,43 +30,38 @@ export function generateFollowUpText(
 }
 
 /**
- * Generates a CRM task body for Cat with context and a ready-to-send draft.
+ * Generates a concise CRM task body for Cat.
  *
- * Includes:
- * - Missing doc list for Cat's quick reference
- * - Days since the original request was sent
- * - The full follow-up email text ready to copy/paste
- * - Borrower contact info
- *
- * @param borrowerName - Full name (First Last)
- * @param borrowerEmail - Email address for sending follow-up
- * @param missingDocs - List of documents still needed
- * @param businessDaysOverdue - Business days since doc request was sent
- * @param followUpText - Pre-generated follow-up email text
- * @returns Formatted CRM task body
+ * Kept under 2000 chars (GHL limit) by listing doc names only,
+ * without the full draft email (that's in Cat's email notification).
  */
 export function generateReminderTaskBody(
   borrowerName: string,
   borrowerEmail: string,
   missingDocs: MissingDocEntry[],
   businessDaysOverdue: number,
-  followUpText: string,
+  _followUpText: string,
 ): string {
   const docList = missingDocs
-    .map((doc) => `  - ${doc.name} (${doc.stage})`)
+    .map((doc) => `- ${doc.name}`)
     .join('\n');
 
-  return [
-    `--- Follow-up Reminder ---`,
+  const lines = [
     `Client: ${borrowerName}`,
     `Email: ${borrowerEmail}`,
-    `Days since doc request: ${businessDaysOverdue} business days`,
+    `Days overdue: ${businessDaysOverdue} business days`,
+    `Missing: ${missingDocs.length} documents`,
     '',
-    `--- Missing Documents (${missingDocs.length}) ---`,
     docList,
-    '',
-    '--- Draft Follow-up Email (copy/paste below) ---',
-    '',
-    followUpText,
-  ].join('\n');
+  ];
+
+  const body = lines.join('\n');
+
+  // GHL task body limit is ~2000 chars — truncate if needed
+  if (body.length > 1900) {
+    const truncated = body.slice(0, 1900);
+    return truncated + '\n\n... (see email for full list)';
+  }
+
+  return body;
 }

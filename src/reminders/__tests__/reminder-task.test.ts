@@ -307,7 +307,14 @@ describe('sendReminderNotification', () => {
     mockCreateGmailDraft.mockResolvedValueOnce({ draftId: 'draft-123' });
     mockSendGmailDraft.mockResolvedValueOnce({ messageId: 'msg-123' });
 
-    await sendReminderNotification('John Smith', 'john@example.com', 3, 5);
+    await sendReminderNotification({
+      borrowerName: 'John Smith',
+      borrowerEmail: 'john@example.com',
+      missingDocs: [{ name: 'Pay Stub', stage: 'PRE' }, { name: 'T4', stage: 'PRE' }, { name: 'Bank Statements', stage: 'PRE' }] as any,
+      businessDaysOverdue: 5,
+      followUpText: 'Hi John,\n\nJust a friendly follow-up...',
+      driveFolderUrl: 'https://drive.google.com/drive/folders/abc123',
+    });
 
     // Verify draft was created
     expect(mockCreateGmailDraft).toHaveBeenCalledTimes(1);
@@ -319,7 +326,14 @@ describe('sendReminderNotification', () => {
     mockCreateGmailDraft.mockResolvedValueOnce({ draftId: 'draft-123' });
     mockSendGmailDraft.mockResolvedValueOnce({ messageId: 'msg-123' });
 
-    await sendReminderNotification('John Smith', 'john@example.com', 3, 5);
+    await sendReminderNotification({
+      borrowerName: 'John Smith',
+      borrowerEmail: 'john@example.com',
+      missingDocs: [{ name: 'Pay Stub', stage: 'PRE' }, { name: 'T4', stage: 'PRE' }, { name: 'Bank Statements', stage: 'PRE' }] as any,
+      businessDaysOverdue: 5,
+      followUpText: 'Hi John,\n\nJust a friendly follow-up...',
+      driveFolderUrl: 'https://drive.google.com/drive/folders/abc123',
+    });
 
     // In dev mode, the recipient should be overridden
     expect(mockEncodeMimeMessage).toHaveBeenCalledWith(
@@ -334,14 +348,28 @@ describe('sendReminderNotification', () => {
     mockCreateGmailDraft.mockRejectedValueOnce(new Error('Gmail auth error'));
 
     // Should not throw
-    await sendReminderNotification('John Smith', 'john@example.com', 3, 5);
+    await sendReminderNotification({
+      borrowerName: 'John Smith',
+      borrowerEmail: 'john@example.com',
+      missingDocs: [{ name: 'Pay Stub', stage: 'PRE' }, { name: 'T4', stage: 'PRE' }, { name: 'Bank Statements', stage: 'PRE' }] as any,
+      businessDaysOverdue: 5,
+      followUpText: 'Hi John,\n\nJust a friendly follow-up...',
+      driveFolderUrl: 'https://drive.google.com/drive/folders/abc123',
+    });
   });
 
   test('email body includes client details', async () => {
     mockCreateGmailDraft.mockResolvedValueOnce({ draftId: 'draft-123' });
     mockSendGmailDraft.mockResolvedValueOnce({ messageId: 'msg-123' });
 
-    await sendReminderNotification('John Smith', 'john@example.com', 3, 5);
+    await sendReminderNotification({
+      borrowerName: 'John Smith',
+      borrowerEmail: 'john@example.com',
+      missingDocs: [{ name: 'Pay Stub', stage: 'PRE' }, { name: 'T4', stage: 'PRE' }, { name: 'Bank Statements', stage: 'PRE' }] as any,
+      businessDaysOverdue: 5,
+      followUpText: 'Hi John,\n\nJust a friendly follow-up...',
+      driveFolderUrl: 'https://drive.google.com/drive/folders/abc123',
+    });
 
     expect(mockEncodeMimeMessage).toHaveBeenCalledWith(
       expect.objectContaining({

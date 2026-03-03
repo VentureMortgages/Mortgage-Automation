@@ -2,9 +2,8 @@
 // Cat Email Notification — Send reminder notification to Cat
 // ============================================================================
 //
-// Sends Cat a short email notification when documents are overdue.
-// This is NOT the follow-up email to the client -- it's an internal
-// notification pointing Cat to the CRM task for the full list and draft.
+// Sends Cat a structured email when documents are overdue.
+// Includes: Drive link, client info, email subject + body ready to copy/paste.
 //
 // Non-fatal: all errors are caught and logged as warnings.
 // This ensures notification failures never block the reminder pipeline.
@@ -12,31 +11,35 @@
 import { emailConfig } from '../email/config.js';
 import { encodeMimeMessage } from '../email/mime.js';
 import { createGmailDraft, sendGmailDraft } from '../email/gmail-client.js';
+import type { MissingDocEntry } from '../crm/types/index.js';
+
+export interface ReminderNotificationInput {
+  borrowerName: string;
+  borrowerEmail: string;
+  missingDocs: MissingDocEntry[];
+  businessDaysOverdue: number;
+  followUpText: string;
+  driveFolderUrl: string | null;
+}
 
 /**
- * Sends Cat an email notification about overdue documents.
+ * Sends Cat a structured email notification about overdue documents.
  *
- * Creates a Gmail draft and immediately sends it. The email contains
- * client name, email, doc count, and days overdue. Cat should check
- * the CRM task for the full missing doc list and draft follow-up email.
- *
- * Recipient: In dev mode uses emailConfig.recipientOverride.
- * In production uses CAT_EMAIL env var (fallback: docs@venturemortgages.com).
+ * Format:
+ *   Link to drive: [url]
+ *   Client name: [name]
+ *   Email: [email]
+ *   Subject: [ready-to-use subject line]
+ *   Body: [draft follow-up email text]
  *
  * Non-fatal: catches all errors, logs warning. Never throws.
- *
- * @param borrowerName - Client's full name
- * @param borrowerEmail - Client's email address
- * @param missingDocCount - Number of outstanding documents
- * @param businessDaysOverdue - Business days since doc request was sent
  */
 export async function sendReminderNotification(
-  borrowerName: string,
-  borrowerEmail: string,
-  missingDocCount: number,
-  businessDaysOverdue: number,
+  input: ReminderNotificationInput,
 ): Promise<void> {
   try {
+    const { borrowerName, borrowerEmail, missingDocs, businessDaysOverdue, followUpText, driveFolderUrl } = input;
+
     // Determine recipient
     const recipient = emailConfig.recipientOverride
       ?? process.env.CAT_EMAIL
@@ -44,13 +47,20 @@ export async function sendReminderNotification(
 
     const subject = `${emailConfig.subjectPrefix}Follow up: Need docs - ${borrowerName}`;
 
+    const followUpSubject = `Outstanding documents - ${borrowerName}`;
+
     const body = [
-      `Reminder: Outstanding documents for ${borrowerName}`,
+      `Follow-up reminder: ${missingDocs.length} docs still outstanding (${businessDaysOverdue} business days)`,
       '',
-      `Client: ${borrowerName} (${borrowerEmail})`,
-      `${missingDocCount} docs still outstanding (${businessDaysOverdue} business days since request).`,
+      `Link to drive: ${driveFolderUrl ?? 'Not linked'}`,
+      `Client name: ${borrowerName}`,
+      `Email: ${borrowerEmail}`,
+      `Subject: ${followUpSubject}`,
       '',
-      'Please check the CRM task for the full list and draft follow-up email.',
+      'Body:',
+      '---',
+      followUpText,
+      '---',
       '',
       '-- Venture Mortgages Doc Automation',
     ].join('\n');
@@ -67,7 +77,7 @@ export async function sendReminderNotification(
 
     console.log('[notify-cat] Reminder notification sent', {
       borrowerName,
-      missingDocCount,
+      missingDocCount: missingDocs.length,
       businessDaysOverdue,
     });
   } catch (error) {

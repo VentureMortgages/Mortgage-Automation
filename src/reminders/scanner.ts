@@ -16,7 +16,7 @@
 import { crmConfig } from '../crm/config.js';
 import { getOpportunity, getOpportunityFieldValue } from '../crm/opportunities.js';
 import { parseOpportunityTrackingFields } from '../crm/tracking-sync.js';
-import { getContact } from '../crm/contacts.js';
+import { getContact, getContactDriveFolderId } from '../crm/contacts.js';
 import { searchOpportunitiesByStage } from './scanner-search.js';
 import { countBusinessDays, isBusinessDay } from './business-days.js';
 import { reminderConfig, isTerminalStage } from './types.js';
@@ -119,6 +119,11 @@ export async function scanForOverdueReminders(
 
     const contact = await getContact(contactId);
 
+    // Get Drive folder ID from contact (may be null if not linked)
+    const driveFolderId = crmConfig.driveFolderIdFieldId
+      ? getContactDriveFolderId(contact, crmConfig.driveFolderIdFieldId)
+      : null;
+
     // Build overdue entry
     const entry: OverdueOpportunity = {
       opportunityId: fullOpp.id,
@@ -129,6 +134,7 @@ export async function scanForOverdueReminders(
       emailSentDate: sentDateRaw,
       businessDaysOverdue,
       reminderCycle,
+      driveFolderId,
     };
 
     result.overdue.push(entry);

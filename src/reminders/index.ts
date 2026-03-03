@@ -31,6 +31,7 @@ export { findReminderTask, createOrUpdateReminderTask, closeReminderTask } from 
 
 // Cat email notification (Plan 02)
 export { sendReminderNotification } from './notify-cat.js';
+export type { ReminderNotificationInput } from './notify-cat.js';
 
 // Scheduler (Plan 02)
 export { runReminderScan, startReminderScheduler, stopReminderScheduler } from './scheduler.js';
