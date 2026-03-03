@@ -259,10 +259,11 @@ Plans:
   2. Cat receives an email with subject "Follow up: Need docs - [Client Name]" containing client details and the draft follow-up text
   3. If docs are still missing after another 3 days, the existing reminder task is updated (not duplicated) with a refreshed missing-docs list
   4. When all required docs are received, any pending reminder tasks are automatically closed and no further reminder emails are sent
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 16-01: TBD during planning
+- [ ] 16-01-PLAN.md -- Core reminder engine: types, business day math, scanner, follow-up text generator (REMIND-01, REMIND-03)
+- [ ] 16-02-PLAN.md -- CRM task CRUD, Cat email notification, auto-close hook, BullMQ scheduler, system wiring (REMIND-01, REMIND-02, REMIND-03, REMIND-04)
 
 ## Progress
 
@@ -284,10 +285,10 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 10. Opportunity-Centric | v1.0 | 5/5 | Complete | 2026-02-21 |
 | 11. Drive Folder Linking | v1.0 | 3/3 | Complete | 2026-02-22 |
 | 12. CRM Pipeline Automation | v1.1 | 3/3 | Complete | 2026-02-26 |
-| 13. Original Doc Preservation | 2/2 | Complete    | 2026-03-02 | - |
-| 14. Smart Document Matching | 3/3 | Complete    | 2026-03-02 | - |
-| 15. Timing & Sync Resilience | 2/2 | Complete    | 2026-03-02 | - |
-| 16. Automated Reminders | v1.1 | 0/TBD | Not started | - |
+| 13. Original Doc Preservation | v1.1 | 2/2 | Complete | 2026-03-02 |
+| 14. Smart Document Matching | v1.1 | 3/3 | Complete | 2026-03-02 |
+| 15. Timing & Sync Resilience | v1.1 | 2/2 | Complete | 2026-03-02 |
+| 16. Automated Reminders | v1.1 | 0/2 | Not started | - |
 
 ### Action Items (Non-Code)
 | Item | Owner | Status |
@@ -297,4 +298,4 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-02-27 (v1.1 reordered: 13=originals, 14=smart matching, 15=timing, 16=reminders)*
+*Last updated: 2026-03-02 (Phase 16 plans created: 2 plans in 2 waves)*
