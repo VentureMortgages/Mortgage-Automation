@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Production Hardening
 status: in-progress
-last_updated: "2026-03-03T00:39:12.000Z"
+last_updated: "2026-03-03T00:48:00.000Z"
 progress:
   total_phases: 13
   completed_phases: 13
-  total_plans: 43
-  completed_plans: 43
+  total_plans: 45
+  completed_plans: 45
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-02-25)
 
 ## Current Position
 
-Phase: 16 (Automated Reminders) -- IN PROGRESS
-Plan: 1/2
-Status: Plan 16-01 complete (core reminder engine: types, business days, scanner, follow-up text)
-Last activity: 2026-03-03 -- Executed 16-01-PLAN.md (2 tasks, TDD, 39 new tests)
+Phase: 16 (Automated Reminders) -- COMPLETE
+Plan: 2/2
+Status: Phase 16 complete (all REMIND requirements fulfilled)
+Last activity: 2026-03-03 -- Executed 16-02-PLAN.md (2 tasks, 20 new tests, 895 total)
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Last activity: 2026-03-03 -- Executed 16-01-PLAN.md (2 tasks, TDD, 39 new tests)
 | Phase 15 P01 | 4min | 2 tasks | 5 files |
 | Phase 15 P02 | 2min | 2 tasks | 2 files |
 | Phase 16 P01 | 6min | 2 tasks | 9 files |
+| Phase 16 P02 | 5min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,10 @@ Recent decisions affecting current work:
 - searchOpportunitiesByStage: separate module for stage-based GHL search without contactId
 - Follow-up text: plain text format (not HTML) for easy copy/paste from CRM task body
 - reminderConfig reads REMINDER_ENABLED + REMINDER_INTERVAL_DAYS from env (kill switch + interval control)
+- Reminder task dedup: search by title pattern "Follow up: Need docs", update body on match (not duplicate)
+- Cat notification uses draft+send pattern matching existing Gmail flows
+- BullMQ repeatable job cron: 0 9 * * 1-5 (9 AM UTC, Mon-Fri)
+- Auto-close hook in both opportunity and contact fallback paths of tracking-sync
 
 ### Pending Todos
 
@@ -116,10 +121,10 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 16-01-PLAN.md (core reminder engine)
-Resume file: .planning/phases/16-automated-reminders/16-01-SUMMARY.md
-Next: Execute 16-02-PLAN.md (wire scanner into scheduler, CRM tasks, Cat notifications)
+Stopped at: Completed 16-02-PLAN.md (reminder system wiring -- phase 16 complete)
+Resume file: .planning/phases/16-automated-reminders/16-02-SUMMARY.md
+Next: Phase 16 complete. Await next milestone planning or production deployment.
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-03 (Phase 16 Plan 01 complete: core reminder engine with 39 tests)*
+*Last updated: 2026-03-03 (Phase 16 complete: automated reminders with 59 tests, 895 total)*
