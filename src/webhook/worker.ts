@@ -30,6 +30,7 @@ import { generateChecklist } from '../checklist/engine/index.js';
 import { syncChecklistToCrm } from '../crm/index.js';
 import { createEmailDraft } from '../email/index.js';
 import { createBudgetSheet, buildClientFolderName, budgetConfig } from '../budget/index.js';
+import { runReminderScan } from '../reminders/index.js';
 import { getDriveClient } from '../classification/drive-client.js';
 import { findOrCreateFolder } from '../classification/filer.js';
 import { scanClientFolder, filterChecklistByExistingDocs, extractDealReference } from '../drive/index.js';
@@ -547,6 +548,9 @@ export function createWorker(): Worker {
   if (_worker) return _worker;
 
   _worker = new Worker(QUEUE_NAME, async (job) => {
+    if (job.name === 'reminder-scan') {
+      return runReminderScan();
+    }
     if (job.name === 'crm-sync-retry') {
       return processCrmRetry(job as Job<CrmRetryJobData>);
     }

@@ -40,6 +40,7 @@ import {
   getOpportunityFieldValue,
 } from './opportunities.js';
 import { PROPERTY_SPECIFIC_TYPES } from '../drive/doc-expiry.js';
+import { closeReminderTask } from '../reminders/index.js';
 import { crmConfig } from './config.js';
 import type { CrmConfig } from './config.js';
 import { PIPELINE_IDS, EXISTING_OPP_FIELDS } from './types/index.js';
@@ -323,6 +324,14 @@ export async function updateDocTracking(
       } catch (err) {
         errors.push(`Pipeline advance failed for opp ${opp.id}: ${err instanceof Error ? err.message : String(err)}`);
       }
+
+      // Auto-close reminder task when all docs received (REMIND-04)
+      try {
+        await closeReminderTask(contactId);
+        console.log('[tracking-sync] Reminder task auto-closed', { contactId, opportunityId: opp.id });
+      } catch (err) {
+        errors.push(`Reminder task close failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     // Milestone: PRE readiness task (only ONCE across all opportunities)
@@ -460,6 +469,14 @@ async function updateDocTrackingOnContact(
   if (newStatus === 'All Complete') {
     // Contact fallback doesn't have an opportunity ID; skip pipeline stage update
     // (no opportunity to advance)
+
+    // Auto-close reminder task when all docs received (REMIND-04)
+    try {
+      await closeReminderTask(contactId);
+      console.log('[tracking-sync] Reminder task auto-closed (contact fallback)', { contactId });
+    } catch (err) {
+      errors.push(`Reminder task close failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   return {

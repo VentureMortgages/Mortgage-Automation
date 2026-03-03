@@ -28,6 +28,7 @@ import { getIntakeQueue, closeIntakeQueue, startGmailMonitor } from './intake/gm
 import { createIntakeWorker, closeIntakeWorker, closeClassificationQueue } from './intake/intake-worker.js';
 import { createClassificationWorker, closeClassificationWorker } from './classification/classification-worker.js';
 import { appConfig } from './config.js';
+import { startReminderScheduler, stopReminderScheduler } from './reminders/index.js';
 
 async function main() {
   console.log('[startup] Venture Mortgages Doc Automation starting...');
@@ -49,6 +50,9 @@ async function main() {
   const intakeQueue = getIntakeQueue();
   await startGmailMonitor(intakeQueue);
 
+  // Start reminder scheduler (daily scan for overdue docs)
+  await startReminderScheduler();
+
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     console.log(`[shutdown] Received ${signal} — shutting down gracefully...`);
@@ -57,6 +61,10 @@ async function main() {
     server.close(() => {
       console.log('[shutdown] HTTP server closed');
     });
+
+    // Stop reminder scheduler
+    await stopReminderScheduler();
+    console.log('[shutdown] Reminder scheduler stopped');
 
     // Close all workers
     await closeWorker();
