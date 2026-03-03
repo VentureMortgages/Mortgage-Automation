@@ -150,6 +150,10 @@ export function getOpportunityFieldValue(
   if (field.fieldValueDate !== undefined && field.fieldValueDate !== null) {
     return field.fieldValueDate;
   }
+  // GHL sometimes returns generic fieldValue instead of typed fields
+  if (field.fieldValue !== undefined && field.fieldValue !== null) {
+    return field.fieldValue;
+  }
 
   return undefined;
 }

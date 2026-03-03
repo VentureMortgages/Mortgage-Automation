@@ -174,6 +174,8 @@ export interface CrmOpportunityCustomField {
   fieldValueString?: string;
   fieldValueNumber?: number;
   fieldValueDate?: number;
+  /** Generic fallback — GHL sometimes returns this instead of typed fields */
+  fieldValue?: string | number;
   type?: string;
 }
 
