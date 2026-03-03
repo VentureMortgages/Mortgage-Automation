@@ -18,6 +18,7 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { appConfig } from '../config.js';
 import { getWebhookQueue } from './queue.js';
+import { runReminderScan } from '../reminders/index.js';
 import { sanitizeForLog } from './sanitize.js';
 import { healthHandler } from './health.js';
 import { getIntakeQueue } from '../intake/gmail-monitor.js';
@@ -143,6 +144,13 @@ export function createApp() {
 
     console.log('[admin] Reprocessing message', { messageId, jobId });
     res.json({ success: true, jobId });
+  });
+
+  // Admin: manually trigger a reminder scan (bypasses BullMQ cron)
+  app.post('/admin/trigger-reminder-scan', async (_req: Request, res: Response) => {
+    console.log('[admin] Manual reminder scan triggered');
+    const result = await runReminderScan();
+    res.json({ success: true, ...result });
   });
 
   // Global error handler
