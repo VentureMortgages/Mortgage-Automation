@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Production Hardening
-status: unknown
-last_updated: "2026-03-02T23:51:57.216Z"
+status: in-progress
+last_updated: "2026-03-03T00:39:12.000Z"
 progress:
   total_phases: 13
   completed_phases: 13
-  total_plans: 42
-  completed_plans: 42
+  total_plans: 43
+  completed_plans: 43
 ---
 
 # Project State
@@ -18,14 +18,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-25)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
-**Current focus:** Milestone v1.1 -- Production Hardening (Phase 15: Timing/Sync Resilience)
+**Current focus:** Milestone v1.1 -- Production Hardening (Phase 16: Automated Reminders)
 
 ## Current Position
 
-Phase: 15 (Timing/Sync Resilience) -- COMPLETE
-Plan: 2/2
-Status: Phase 15 complete (all SYNC requirements satisfied)
-Last activity: 2026-03-02 -- Executed 15-02-PLAN.md (2 tasks, Finmo API research spike)
+Phase: 16 (Automated Reminders) -- IN PROGRESS
+Plan: 1/2
+Status: Plan 16-01 complete (core reminder engine: types, business days, scanner, follow-up text)
+Last activity: 2026-03-03 -- Executed 16-01-PLAN.md (2 tasks, TDD, 39 new tests)
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Last activity: 2026-03-02 -- Executed 15-02-PLAN.md (2 tasks, Finmo API research
 | Phase 14 P03 | 10min | 3 tasks | 9 files |
 | Phase 15 P01 | 4min | 2 tasks | 5 files |
 | Phase 15 P02 | 2min | 2 tasks | 2 files |
+| Phase 16 P01 | 6min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,10 @@ Recent decisions affecting current work:
 - Subfolder catch-up uses actualDealSubfolderId to thread created folder ID through existing link code
 - No Finmo sync-trigger API exists -- retry mechanism (15-01) is correct fallback for MBP timing gap
 - Finmo API surface is data-access only (applications, documents) with no integration management
+- Weekend start dates advance clock to next Monday for business day counting (Sat->Mon = 0 elapsed)
+- searchOpportunitiesByStage: separate module for stage-based GHL search without contactId
+- Follow-up text: plain text format (not HTML) for easy copy/paste from CRM task body
+- reminderConfig reads REMINDER_ENABLED + REMINDER_INTERVAL_DAYS from env (kill switch + interval control)
 
 ### Pending Todos
 
@@ -110,12 +115,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-02
-Stopped at: Phase 16 context gathered, plan-phase initialized but not yet spawned
-Resume file: .planning/phases/16-automated-reminders/16-CONTEXT.md
-Next: /gsd:plan-phase 16
-Next: Phase 15 complete -- all v1.1 Production Hardening phases done
+Last session: 2026-03-03
+Stopped at: Completed 16-01-PLAN.md (core reminder engine)
+Resume file: .planning/phases/16-automated-reminders/16-01-SUMMARY.md
+Next: Execute 16-02-PLAN.md (wire scanner into scheduler, CRM tasks, Cat notifications)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-02 (Phase 15 complete: Finmo API research -- no sync endpoint, retry confirmed)*
+*Last updated: 2026-03-03 (Phase 16 Plan 01 complete: core reminder engine with 39 tests)*

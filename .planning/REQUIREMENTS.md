@@ -116,9 +116,9 @@ Requirements for milestone v1.1 -- Production Hardening. Each maps to roadmap ph
 
 ### Reminders (Phase 16)
 
-- [ ] **REMIND-01**: When docs are outstanding for 3+ days, a CRM task is created for Cat listing missing documents with a draft follow-up email to copy/paste
+- [x] **REMIND-01**: When docs are outstanding for 3+ days, a CRM task is created for Cat listing missing documents with a draft follow-up email to copy/paste
 - [ ] **REMIND-02**: Cat receives an email notification: Subject "Follow up: Need docs - [Client Name]", Body includes client details and draft follow-up email text
-- [ ] **REMIND-03**: Reminder task refreshes every 3 days if docs are still missing (updated task, not duplicates)
+- [x] **REMIND-03**: Reminder task refreshes every 3 days if docs are still missing (updated task, not duplicates)
 - [ ] **REMIND-04**: Reminders stop automatically when all required docs are received
 
 ## v1.2 Requirements
@@ -203,9 +203,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ORIG-01 | Phase 15 | Complete |
 | ORIG-02 | Phase 15 | Complete |
 | ORIG-03 | Phase 15 | Complete |
-| REMIND-01 | Phase 16 | Pending |
+| REMIND-01 | Phase 16 | Complete |
 | REMIND-02 | Phase 16 | Pending |
-| REMIND-03 | Phase 16 | Pending |
+| REMIND-03 | Phase 16 | Complete |
 | REMIND-04 | Phase 16 | Pending |
 
 **Coverage:**
