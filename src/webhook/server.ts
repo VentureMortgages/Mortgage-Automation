@@ -22,6 +22,7 @@ import { runReminderScan } from '../reminders/index.js';
 import { sanitizeForLog } from './sanitize.js';
 import { healthHandler } from './health.js';
 import { getIntakeQueue } from '../intake/gmail-monitor.js';
+import { testIntakeHandler, recentMessagesHandler } from '../admin/test-intake.js';
 import type { WebhookPayload, JobData } from './types.js';
 
 /**
@@ -152,6 +153,12 @@ export function createApp() {
     const result = await runReminderScan();
     res.json({ success: true, ...result });
   });
+
+  // Admin: test the full intake pipeline synchronously (battle testing)
+  app.post('/admin/test-intake', testIntakeHandler);
+
+  // Admin: list recent messages in the docs inbox
+  app.get('/admin/recent-messages', recentMessagesHandler);
 
   // Global error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

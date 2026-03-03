@@ -59,7 +59,11 @@ export function generateFilename(
 
   const parts: string[] = [name, '-', docLabel];
 
-  if (classification.institution) {
+  // T1 is a personal tax return — one per year per person.
+  // Institution (employer from schedules) and amount are not useful for naming.
+  const isT1 = classification.documentType === 't1';
+
+  if (classification.institution && !isT1) {
     parts.push(classification.institution);
   }
 
@@ -67,7 +71,7 @@ export function generateFilename(
     parts.push(String(classification.taxYear));
   }
 
-  if (classification.amount) {
+  if (classification.amount && !isT1) {
     parts.push(classification.amount);
   }
 

@@ -156,6 +156,28 @@ describe('Naming Module', () => {
       expect(generateFilename(result, 'Unknown')).toBe('Jane - Document.pdf');
     });
 
+    it('T1 with tax year only', () => {
+      const result = makeResult({
+        documentType: 't1',
+        borrowerFirstName: 'Simran',
+        taxYear: 2023,
+      });
+
+      expect(generateFilename(result, 'Unknown')).toBe('Simran - T1 2023.pdf');
+    });
+
+    it('T1 strips institution and amount from filename', () => {
+      const result = makeResult({
+        documentType: 't1',
+        borrowerFirstName: 'Simran',
+        taxYear: 2023,
+        institution: 'Dart Bryant LLP',
+        amount: '$4.3k',
+      });
+
+      expect(generateFilename(result, 'Unknown')).toBe('Simran - T1 2023.pdf');
+    });
+
     it('amount with no institution', () => {
       const result = makeResult({
         documentType: 'bank_statement',

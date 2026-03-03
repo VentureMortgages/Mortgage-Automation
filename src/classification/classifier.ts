@@ -151,6 +151,7 @@ Instructions:
 Classification guidance for commonly confused types:
 - photo_id vs passport: If the document is any form of government-issued photo ID used for identity verification in a mortgage application (driver's license, passport, health card, PR card), classify it as "photo_id". Only use "passport" for full passport booklet pages showing travel stamps or visa information, not a passport used as ID.
 - loe vs employment_contract: A Letter of Employment (LOE) is a brief letter from an employer confirming current employment status, position, salary, and start date. Classify these as "loe". Only use "employment_contract" for formal multi-page contracts with terms, clauses, termination conditions, and signatures.
+- T1 (Personal tax return): Extract ONLY the tax year. Do NOT extract institution/employer names or dollar amounts from T1 forms or their schedules — they are not relevant for filing. Set institution and amount to null for T1 documents.
 - rrsp_statement vs bank_statement: If the account is labelled RRSP, RSP, or Registered Retirement Savings Plan, classify as "rrsp_statement" even if it looks like a bank statement. Similarly, TFSA accounts are "tfsa_statement" and FHSA accounts are "fhsa_statement".${filenameSection}`;
 }
 
