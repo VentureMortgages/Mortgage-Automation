@@ -8,11 +8,16 @@
 
 import { describe, test, expect } from 'vitest';
 import { generateChecklist } from '../engine/index.js';
+import type { FinmoApplicationResponse } from '../types/index.js';
 import {
   employedPurchase,
   selfEmployedRefi,
   retiredCondo,
   minimalApplication,
+  pensionPurchase,
+  rentalMixedUse,
+  supportIncome,
+  emptyAssetsDp,
 } from './fixtures/index.js';
 
 /** Fixed date for deterministic tax year: Feb 2026 => currentTaxYear=2025, previousTaxYear=2024 */
@@ -250,5 +255,303 @@ describe('CHKL-03: PRE + FULL upfront', () => {
       ...result.sharedItems.map((i) => i.stage),
     ]);
     expect(allStages.size).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG 1: Per-property rental rule evaluation
+// ---------------------------------------------------------------------------
+
+describe('BUG 1: Per-property rental rule evaluation', () => {
+  const result = generateChecklist(rentalMixedUse, undefined, TEST_DATE);
+
+  test('rental property (owner_occupied_rental) gets rental docs', () => {
+    // prop-rm-002 is the rental property (use=owner_occupied_rental, rentalIncome=1500)
+    const rentalPropertyChecklist = result.propertyChecklists.find(
+      (pc) => pc.propertyId === 'prop-rm-002'
+    );
+    expect(rentalPropertyChecklist).toBeDefined();
+    const ruleIds = rentalPropertyChecklist!.items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s10_rental_lease');
+    expect(ruleIds).toContain('s10_rental_mortgage');
+  });
+
+  test('owner-occupied subject property does NOT get rental docs', () => {
+    // prop-rm-001 is the subject property (use=owner_occupied, rentalIncome=0)
+    const subjectPropertyChecklist = result.propertyChecklists.find(
+      (pc) => pc.propertyId === 'prop-rm-001'
+    );
+    // Either it has no checklist at all (no per-property items), or it has no rental items
+    if (subjectPropertyChecklist) {
+      const ruleIds = subjectPropertyChecklist.items.map((i) => i.ruleId);
+      expect(ruleIds).not.toContain('s10_rental_lease');
+      expect(ruleIds).not.toContain('s10_rental_tax');
+      expect(ruleIds).not.toContain('s10_rental_mortgage');
+    }
+  });
+
+  test('rental T1 (per_borrower scope) still fires for any property with rental income', () => {
+    // s10_rental_t1 is per_borrower scope, should fire when ANY property has rental income
+    const borrowerRuleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(borrowerRuleIds).toContain('s10_rental_t1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG 2: DP bank statement with empty assets
+// ---------------------------------------------------------------------------
+
+describe('BUG 2: DP bank statement with empty assets', () => {
+  test('purchase with downPayment > 0 and empty assets still generates DP bank statement', () => {
+    const result = generateChecklist(emptyAssetsDp, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).toContain('s14_dp_bank_statement');
+  });
+
+  test('refinance with downPayment=0 and empty assets does NOT generate DP bank statement', () => {
+    // Use the self-employed refi fixture (goal=refinance, DP=0)
+    const result = generateChecklist(selfEmployedRefi, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).not.toContain('s14_dp_bank_statement');
+  });
+
+  test('purchase with downPayment=0 and empty assets does NOT generate DP bank statement', () => {
+    // Create a modified empty-assets fixture with DP=0
+    const zeroDpFixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(emptyAssetsDp));
+    zeroDpFixture.application.downPayment = 0;
+    const result = generateChecklist(zeroDpFixture, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).not.toContain('s14_dp_bank_statement');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG 3: Gift detection uses asset.type
+// ---------------------------------------------------------------------------
+
+describe('BUG 3: Gift detection uses asset.type', () => {
+  test('asset with type="gift" triggers gift rules (no description needed)', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(employedPurchase));
+    fixture.assets = [
+      {
+        id: 'asset-gift-type',
+        applicationId: fixture.application.id,
+        type: 'gift' as any,
+        value: 30000,
+        downPayment: 30000,
+        description: '',
+        owners: [fixture.borrowers[0].id],
+        visibility: null,
+      },
+    ];
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).toContain('s14_gift_donor_info');
+    expect(sharedRuleIds).toContain('s14_gift_amount');
+  });
+
+  test('asset with type="gift_family" triggers gift rules', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(employedPurchase));
+    fixture.assets = [
+      {
+        id: 'asset-gift-family',
+        applicationId: fixture.application.id,
+        type: 'gift_family' as any,
+        value: 25000,
+        downPayment: 25000,
+        description: '',
+        owners: [fixture.borrowers[0].id],
+        visibility: null,
+      },
+    ];
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).toContain('s14_gift_donor_info');
+  });
+
+  test('asset with type="other" and description="Gift from parents" still triggers gift (backward compat)', () => {
+    // The existing gift-down-payment fixture uses this pattern
+    const result = generateChecklist(
+      // use the existing gift fixture which has type=other, description="Gift from parents"
+      JSON.parse(JSON.stringify(employedPurchase)) as FinmoApplicationResponse,
+      undefined,
+      TEST_DATE
+    );
+    // Modify to have gift description
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(employedPurchase));
+    fixture.assets = [
+      {
+        id: 'asset-desc-gift',
+        applicationId: fixture.application.id,
+        type: 'other' as any,
+        value: 40000,
+        downPayment: 40000,
+        description: 'Gift from parents',
+        owners: [fixture.borrowers[0].id],
+        visibility: null,
+      },
+    ];
+    const result2 = generateChecklist(fixture, undefined, TEST_DATE);
+    const sharedRuleIds = result2.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).toContain('s14_gift_donor_info');
+  });
+
+  test('asset with type="cash_savings" and no gift description does NOT trigger gift rules', () => {
+    // The employed-purchase fixture has type=cash_savings, description="Savings account"
+    const result = generateChecklist(employedPurchase, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).not.toContain('s14_gift_donor_info');
+    expect(sharedRuleIds).not.toContain('s14_gift_amount');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG 4: Pension/CPP/OAS income detection
+// ---------------------------------------------------------------------------
+
+describe('BUG 4: Pension/CPP/OAS income detection', () => {
+  test('income with source="pension" triggers retired rules', () => {
+    const result = generateChecklist(pensionPurchase, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s7_pension_letter');
+    expect(ruleIds).toContain('s7_cpp_oas_t4a');
+    expect(ruleIds).toContain('s7_bank_pension');
+  });
+
+  test('income with source="cpp" triggers retired rules', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(pensionPurchase));
+    fixture.incomes[0].source = 'cpp';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s7_pension_letter');
+  });
+
+  test('income with source="oas" triggers retired rules', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(pensionPurchase));
+    fixture.incomes[0].source = 'oas';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s7_pension_letter');
+  });
+
+  test('income with source="canada_pension_plan" triggers retired rules', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(pensionPurchase));
+    fixture.incomes[0].source = 'canada_pension_plan';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s7_pension_letter');
+  });
+
+  test('income with source="old_age_security" triggers retired rules', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(pensionPurchase));
+    fixture.incomes[0].source = 'old_age_security';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s7_pension_letter');
+  });
+
+  test('income with source="retired" still triggers retired rules (backward compat)', () => {
+    const result = generateChecklist(retiredCondo, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s7_pension_letter');
+    expect(ruleIds).toContain('s7_cpp_oas_t4a');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG 5: Activated support and CCB rules
+// ---------------------------------------------------------------------------
+
+describe('BUG 5: Activated support and CCB rules', () => {
+  test('income with source="child_support" triggers support rules', () => {
+    const result = generateChecklist(supportIncome, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s10_support_agreement');
+    expect(ruleIds).toContain('s10_support_proof');
+  });
+
+  test('income with source="spousal_support" triggers support rules', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(supportIncome));
+    fixture.incomes[1].source = 'spousal_support';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s10_support_agreement');
+    expect(ruleIds).toContain('s10_support_proof');
+  });
+
+  test('income with source="ccb" triggers CCB proof rule', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(supportIncome));
+    fixture.incomes[1].source = 'ccb';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s10_ccb_proof');
+  });
+
+  test('income with source="canada_child_benefit" triggers CCB proof rule', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(supportIncome));
+    fixture.incomes[1].source = 'canada_child_benefit';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s10_ccb_proof');
+  });
+
+  test('employed income alone does NOT trigger support or CCB rules', () => {
+    const result = generateChecklist(employedPurchase, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).not.toContain('s10_support_agreement');
+    expect(ruleIds).not.toContain('s10_support_proof');
+    expect(ruleIds).not.toContain('s10_ccb_proof');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// BUG 7: Owner-occupied/rental property use type
+// ---------------------------------------------------------------------------
+
+describe('BUG 7: Owner-occupied/rental property use type', () => {
+  test('application with use="owner_occupied_rental" triggers investment appraisal', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(employedPurchase));
+    fixture.application.use = 'owner_occupied_rental';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    // s15_investment_appraisal is LENDER_CONDITION stage so it won't be in sharedItems
+    // but it should be generated. Check all items including internal flags.
+    const allRuleIds = [
+      ...result.sharedItems.map((i) => i.ruleId),
+      ...result.internalFlags.map((f) => f.ruleId),
+    ];
+    // Investment appraisal is LENDER_CONDITION which sets forEmail=false
+    // So it goes to internalFlags
+    expect(allRuleIds).toContain('s15_investment_appraisal');
+  });
+
+  test('application with use="rental_investment" triggers investment appraisal', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(employedPurchase));
+    fixture.application.use = 'rental_investment';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const allRuleIds = [
+      ...result.sharedItems.map((i) => i.ruleId),
+      ...result.internalFlags.map((f) => f.ruleId),
+    ];
+    expect(allRuleIds).toContain('s15_investment_appraisal');
+  });
+
+  test('application with use="owner_occupied" does NOT trigger investment rules', () => {
+    const result = generateChecklist(employedPurchase, undefined, TEST_DATE);
+    const allRuleIds = [
+      ...result.sharedItems.map((i) => i.ruleId),
+      ...result.internalFlags.map((f) => f.ruleId),
+    ];
+    expect(allRuleIds).not.toContain('s15_investment_appraisal');
+  });
+
+  test('application with use="second_home" does NOT trigger investment rules', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(employedPurchase));
+    fixture.application.use = 'second_home';
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const allRuleIds = [
+      ...result.sharedItems.map((i) => i.ruleId),
+      ...result.internalFlags.map((f) => f.ruleId),
+    ];
+    expect(allRuleIds).not.toContain('s15_investment_appraisal');
   });
 });

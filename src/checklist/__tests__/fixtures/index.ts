@@ -13,6 +13,10 @@ import retiredCondoJson from './retired-condo.json' with { type: 'json' };
 import coBorrowerMixedJson from './co-borrower-mixed.json' with { type: 'json' };
 import giftDownPaymentJson from './gift-down-payment.json' with { type: 'json' };
 import minimalApplicationJson from './minimal-application.json' with { type: 'json' };
+import pensionPurchaseJson from './pension-purchase.json' with { type: 'json' };
+import rentalMixedUseJson from './rental-mixed-use.json' with { type: 'json' };
+import supportIncomeJson from './support-income.json' with { type: 'json' };
+import emptyAssetsDpJson from './empty-assets-dp.json' with { type: 'json' };
 
 /** Single employed borrower purchasing a detached home */
 export const employedPurchase = employedPurchaseJson as unknown as FinmoApplicationResponse;
@@ -32,6 +36,18 @@ export const giftDownPayment = giftDownPaymentJson as unknown as FinmoApplicatio
 /** Minimal application — no incomes, no assets, no properties */
 export const minimalApplication = minimalApplicationJson as unknown as FinmoApplicationResponse;
 
+/** Single borrower with pension income source (BUG 4 test) */
+export const pensionPurchase = pensionPurchaseJson as unknown as FinmoApplicationResponse;
+
+/** Single borrower with 2 properties: owner-occupied subject + owner_occupied_rental existing (BUG 1, 7 test) */
+export const rentalMixedUse = rentalMixedUseJson as unknown as FinmoApplicationResponse;
+
+/** Single borrower with child_support income source (BUG 5 test) */
+export const supportIncome = supportIncomeJson as unknown as FinmoApplicationResponse;
+
+/** Single borrower with purchase, downPayment=10000, empty assets array (BUG 2 test) */
+export const emptyAssetsDp = emptyAssetsDpJson as unknown as FinmoApplicationResponse;
+
 /** All fixtures as a named collection */
 export const fixtures = {
   employedPurchase,
@@ -40,4 +56,8 @@ export const fixtures = {
   coBorrowerMixed,
   giftDownPayment,
   minimalApplication,
+  pensionPurchase,
+  rentalMixedUse,
+  supportIncome,
+  emptyAssetsDp,
 } as const;
