@@ -28,17 +28,37 @@ function hasBonus(ctx: RuleContext): boolean {
   return ctx.borrowerIncomes.some((inc) => inc.bonuses === true);
 }
 
-/** Check if any property on the application has rental income */
+/** Rental property use types that indicate rental/investment activity */
+const RENTAL_USE_TYPES = ['owner_occupied_rental', 'rental_investment', 'rental'];
+
+/**
+ * Check if the relevant property has rental income.
+ * BUG 1 FIX: When currentProperty is set (per-property evaluation), check ONLY that property.
+ * When not set (per-borrower / shared rules like s10_rental_t1), check ALL properties.
+ * BUG 7 FIX: Also checks property use type, not just rentalIncome > 0.
+ */
 function hasRentalIncome(ctx: RuleContext): boolean {
-  return ctx.properties.some((prop) => prop.rentalIncome > 0);
+  if (ctx.currentProperty) {
+    // Per-property evaluation: check THIS property only
+    return ctx.currentProperty.rentalIncome > 0 ||
+      RENTAL_USE_TYPES.includes(ctx.currentProperty.use);
+  }
+  // Per-borrower / shared: any property has rental income or rental use type
+  return ctx.properties.some((prop) =>
+    prop.rentalIncome > 0 || RENTAL_USE_TYPES.includes(prop.use)
+  );
 }
 
 /**
- * Support income (receiving) is NOT auto-detectable from Finmo fields.
- * Always returns false — requires Cat's manual activation.
+ * BUG 5 FIX: Support income IS auto-detectable from Finmo income source field.
+ * Detects child_support and spousal_support income sources.
  */
-function isReceivingSupport(_ctx: RuleContext): boolean {
-  return false;
+const SUPPORT_SOURCES = ['child_support', 'spousal_support'];
+
+function isReceivingSupport(ctx: RuleContext): boolean {
+  return ctx.borrowerIncomes.some((inc) =>
+    SUPPORT_SOURCES.includes(inc.source?.toLowerCase())
+  );
 }
 
 /**
@@ -124,7 +144,9 @@ function rentalRules(): ChecklistRule[] {
       scope: 'per_property',
       condition: hasRentalIncome,
       excludeWhen: (ctx) =>
-        ctx.properties.filter((p) => p.rentalIncome > 0).every((p) => p.isSelling === true),
+        ctx.currentProperty
+          ? ctx.currentProperty.isSelling === true
+          : ctx.properties.filter((p) => p.rentalIncome > 0).every((p) => p.isSelling === true),
     },
     {
       id: 's10_rental_t1',
@@ -194,11 +216,15 @@ function supportReceivingRules(): ChecklistRule[] {
 // ---------------------------------------------------------------------------
 
 /**
- * CCB is NOT auto-detectable from Finmo data.
- * Always returns false — requires Cat's manual activation.
+ * BUG 5 FIX: CCB IS auto-detectable from Finmo income source field.
+ * Detects 'ccb' and 'canada_child_benefit' income sources.
  */
-function hasChildBenefit(_ctx: RuleContext): boolean {
-  return false;
+const CCB_SOURCES = ['ccb', 'canada_child_benefit'];
+
+function hasChildBenefit(ctx: RuleContext): boolean {
+  return ctx.borrowerIncomes.some((inc) =>
+    CCB_SOURCES.includes(inc.source?.toLowerCase())
+  );
 }
 
 function ccbRules(): ChecklistRule[] {

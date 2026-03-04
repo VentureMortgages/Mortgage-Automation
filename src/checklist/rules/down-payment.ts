@@ -30,9 +30,19 @@ function isNotRefinanceOrRenewal(ctx: RuleContext): boolean {
  * Check if application has any down-payment-related assets (excluded for refinances).
  * Fires when any DP-relevant asset exists: cash_savings, rrsp, tfsa, fhsa,
  * or any non-gift/non-sale asset.
+ *
+ * BUG 2 FIX: Also fires when goal=purchase and downPayment > 0, even if assets array is empty.
+ * This handles cases where Finmo records a declared DP amount but the applicant
+ * hasn't specified asset sources yet.
  */
 function hasDownPaymentAssets(ctx: RuleContext): boolean {
   if (!isNotRefinanceOrRenewal(ctx)) return false;
+
+  // BUG 2 FIX: Purchase with declared DP always needs bank statements
+  if (ctx.application.goal === 'purchase' && ctx.application.downPayment > 0) {
+    return true;
+  }
+
   return ctx.assets.some(
     (a) =>
       a.type === 'cash_savings' ||
@@ -47,11 +57,20 @@ function hasDownPaymentAssets(ctx: RuleContext): boolean {
   );
 }
 
-/** Check if application has gift-sourced down payment (excluded for refinances) */
+/**
+ * Check if application has gift-sourced down payment (excluded for refinances).
+ * BUG 3 FIX: Checks asset.type first for explicit gift types, falls back to description.
+ */
 function hasGift(ctx: RuleContext): boolean {
   if (!isNotRefinanceOrRenewal(ctx)) return false;
   return ctx.assets.some(
-    (a) => a.description?.toLowerCase().includes('gift')
+    (a) =>
+      // Type-first: check explicit gift asset type
+      a.type === 'gift' ||
+      a.type === 'gift_family' ||
+      a.type === 'gift_from_immediate_family_member' ||
+      // Description fallback: backward compatibility
+      a.description?.toLowerCase().includes('gift')
   );
 }
 
@@ -72,23 +91,23 @@ function hasPropertySale(ctx: RuleContext): boolean {
 
 /**
  * Check if application has inheritance-sourced funds (excluded for refinances).
- * Detected by asset description containing "inheritance".
+ * BUG 3 FIX: Checks asset.type first, falls back to description.
  */
 function hasInheritance(ctx: RuleContext): boolean {
   if (!isNotRefinanceOrRenewal(ctx)) return false;
   return ctx.assets.some(
-    (a) => a.description?.toLowerCase().includes('inheritance')
+    (a) => a.type === 'inheritance' || a.description?.toLowerCase().includes('inheritance')
   );
 }
 
 /**
  * Check if application has borrowed down payment funds (excluded for refinances).
- * Detected by asset description containing "borrow" or similar.
+ * BUG 3 FIX: Checks asset.type first, falls back to description.
  */
 function hasBorrowedDownPayment(ctx: RuleContext): boolean {
   if (!isNotRefinanceOrRenewal(ctx)) return false;
   return ctx.assets.some(
-    (a) => a.description?.toLowerCase().includes('borrow')
+    (a) => a.type === 'borrowed' || a.description?.toLowerCase().includes('borrow')
   );
 }
 

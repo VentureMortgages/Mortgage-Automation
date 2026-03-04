@@ -198,6 +198,46 @@ export function generateChecklist(
     );
   }
 
+  // 2b. Warn on unrecognized field values for monitoring
+  const KNOWN_INCOME_SOURCES = [
+    'employed', 'self_employed', 'retired', 'pension', 'cpp', 'oas',
+    'canada_pension_plan', 'old_age_security', 'child_support', 'spousal_support',
+    'ccb', 'canada_child_benefit',
+  ];
+  const KNOWN_PROPERTY_USES = [
+    'owner_occupied', 'owner_occupied_rental', 'rental_investment', 'rental',
+    'investment', 'second_home',
+  ];
+  const KNOWN_ASSET_TYPES = [
+    'cash_savings', 'rrsp', 'tfsa', 'vehicle', 'other',
+    'gift', 'gift_family', 'gift_from_immediate_family_member',
+    'inheritance', 'borrowed',
+  ];
+
+  for (const income of response.incomes) {
+    if (income.source && !KNOWN_INCOME_SOURCES.includes(income.source.toLowerCase())) {
+      warnings.push(
+        `Unrecognized income source "${income.source}" — rules for this income type may not fire`
+      );
+    }
+  }
+
+  for (const property of response.properties) {
+    if (property.use && !KNOWN_PROPERTY_USES.includes(property.use.toLowerCase())) {
+      warnings.push(
+        `Unrecognized property use "${property.use}" — property-specific rules may not fire`
+      );
+    }
+  }
+
+  for (const asset of response.assets) {
+    if (asset.type && !KNOWN_ASSET_TYPES.includes(asset.type.toLowerCase())) {
+      warnings.push(
+        `Unrecognized asset type "${asset.type}" — asset-specific rules may not fire`
+      );
+    }
+  }
+
   // 3. Separate rules by scope
   const perBorrowerRules = rules.filter((r) => r.scope === 'per_borrower');
   const perPropertyRules = rules.filter((r) => r.scope === 'per_property');
@@ -269,11 +309,15 @@ export function generateChecklist(
       );
       if (!isSubject) nonSubjectIdx++;
 
-      // Reuse main borrower context for property rule evaluation
+      // BUG 1 FIX: Create per-property context with currentProperty set to this specific property
+      const propertyCtx: RuleContext = {
+        ...mainBorrowerCtx,
+        currentProperty: property,
+      };
       const rawItems: ChecklistItem[] = [];
 
       for (const rule of perPropertyRules) {
-        const [item, warning] = evaluateRule(rule, mainBorrowerCtx);
+        const [item, warning] = evaluateRule(rule, propertyCtx);
         if (warning) warnings.push(warning);
         if (item) rawItems.push(item);
       }

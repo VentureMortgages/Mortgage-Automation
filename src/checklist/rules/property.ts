@@ -84,13 +84,16 @@ function isMultiUnit(ctx: RuleContext): boolean {
 }
 
 /**
- * Check if the property is non-owner-occupied (investment).
- * Null/missing `use` is NOT treated as investment — only explicit non-owner values.
+ * BUG 7 FIX: Check if the property is non-owner-occupied (investment/rental).
+ * Uses explicit inclusion of rental/investment use types instead of negation.
+ * Null/missing `use` is NOT treated as investment.
  */
+const RENTAL_USE_TYPES = ['rental', 'investment', 'rental_investment', 'owner_occupied_rental'];
+
 function isInvestment(ctx: RuleContext): boolean {
   return ctx.application.use !== null &&
     ctx.application.use !== undefined &&
-    ctx.application.use !== 'owner_occupied';
+    RENTAL_USE_TYPES.includes(ctx.application.use);
 }
 
 // ---------------------------------------------------------------------------

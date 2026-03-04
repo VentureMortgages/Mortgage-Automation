@@ -114,6 +114,8 @@ export interface RuleContext {
   borrowerLiabilities: FinmoLiability[];
   /** Current date — used for dynamic tax year calculation and time-based rules */
   currentDate: Date;
+  /** BUG 1 FIX: Current property being evaluated (set during per-property rule evaluation) */
+  currentProperty?: FinmoProperty;
 }
 
 // ---------------------------------------------------------------------------

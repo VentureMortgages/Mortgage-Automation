@@ -16,9 +16,16 @@ import type { ChecklistRule, RuleContext } from '../types/index.js';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Check if borrower has retired income */
+/**
+ * BUG 4 FIX: Check if borrower has retired/pension income.
+ * Detects all pension-related source values from Finmo, not just 'retired'.
+ */
+const RETIRED_SOURCES = ['retired', 'pension', 'cpp', 'oas', 'canada_pension_plan', 'old_age_security'];
+
 function isRetired(ctx: RuleContext): boolean {
-  return ctx.borrowerIncomes.some((inc) => inc.source === 'retired');
+  return ctx.borrowerIncomes.some((inc) =>
+    RETIRED_SOURCES.includes(inc.source?.toLowerCase())
+  );
 }
 
 /**
