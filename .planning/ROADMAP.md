@@ -382,6 +382,28 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | SPF/DKIM/DMARC setup on venturemortgages.com | Taylor (DNS registrar) | NOT DONE -- emails may go to spam |
 | Confirm Finmo "smart docs" stays OFF (no overlap) | Taylor | Confirmed OFF (2026-02-21) |
 
+### Phase 23: Forwarding notes parsing and backfill script fix
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 22
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 23 to break down)
+
+### Phase 24: Fix checklist engine bugs and comprehensive rule coverage
+
+**Goal:** Fix all 9 known bugs in the checklist engine and CRM contact handling, activate dormant auto-detectable rules, harden fragile detection patterns, and audit every Finmo UI field for complete rule coverage
+**Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-06, BUG-07, BUG-08, BUG-09, AUDIT-01
+**Depends on:** Phase 23
+**Plans:** 3 plans
+
+Plans:
+- [ ] 24-01-PLAN.md -- Fix checklist engine bugs 1-5 and 7 (per-property eval, empty assets DP, gift detection, pension/CPP/OAS, dormant rules, rental use types)
+- [ ] 24-02-PLAN.md -- Fix CRM bugs 8-9 (borrower contact type, professional sync)
+- [ ] 24-03-PLAN.md -- Comprehensive field audit and BUG 6 documentation
+
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-03-04 (v1.2 Production Go-Live roadmap -- Phases 17-22)*
+*Last updated: 2026-03-04 (Phase 24 planned -- 3 plans in 2 waves)*
