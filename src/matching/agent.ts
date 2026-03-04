@@ -23,7 +23,7 @@
 
 import { GoogleGenerativeAI, type Content, type Part } from '@google/generative-ai';
 import { matchingConfig } from './config.js';
-import { collectThreadSignal, collectSenderSignal, collectEmailMetadataSignals } from './signal-collectors.js';
+import { collectThreadSignal, collectSenderSignal, collectDocNameSignal, collectEmailMetadataSignals } from './signal-collectors.js';
 import { executeToolCall, MATCHING_TOOLS } from './agent-tools.js';
 import { logMatchDecision } from './decision-log.js';
 import { resolveContactId } from '../crm/contacts.js';
@@ -150,6 +150,12 @@ export async function matchDocument(input: MatchInput): Promise<MatchDecision> {
 
   const senderSignal = await collectSenderSignal(input.senderEmail);
   if (senderSignal) signals.push(senderSignal);
+
+  const docNameSignal = await collectDocNameSignal(
+    input.classificationResult.borrowerFirstName,
+    input.classificationResult.borrowerLastName,
+  );
+  if (docNameSignal) signals.push(docNameSignal);
 
   const metadataSignals = await collectEmailMetadataSignals(
     input.ccAddresses,

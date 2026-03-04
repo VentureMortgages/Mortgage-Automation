@@ -11,7 +11,7 @@
  */
 
 import { getThreadContactId } from './thread-store.js';
-import { findContactByEmail } from '../crm/contacts.js';
+import { findContactByEmail, findContactByName } from '../crm/contacts.js';
 import type { MatchSignal } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -73,6 +73,45 @@ export async function collectSenderSignal(
     contactId,
     confidence: 0.9,
     tier: 1,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Doc Content Name Signal (Tier 2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Collect a doc-content-name signal by looking up the borrower name
+ * extracted from the document (via Gemini classification) in the CRM.
+ *
+ * This is the primary matching signal for Cat-forwarded emails where
+ * the sender (admin@) doesn't match any client. The classification
+ * already extracted the borrower name from the PDF, so we do a
+ * deterministic CRM lookup here instead of relying on the agent
+ * to call search_contact_by_name.
+ *
+ * Tier 2, confidence 0.85 — strong signal (Gemini read the name from
+ * the actual document), but slightly below sender email (Tier 1, 0.9).
+ *
+ * @param firstName - Borrower first name from classification
+ * @param lastName - Borrower last name from classification
+ * @returns MatchSignal or null
+ */
+export async function collectDocNameSignal(
+  firstName: string | null,
+  lastName: string | null,
+): Promise<MatchSignal | null> {
+  if (!firstName || !lastName) return null;
+
+  const contactId = await findContactByName(firstName, lastName);
+  if (!contactId) return null;
+
+  return {
+    type: 'doc_content_name',
+    value: `${firstName} ${lastName}`,
+    contactId,
+    confidence: 0.85,
+    tier: 2,
   };
 }
 

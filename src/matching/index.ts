@@ -32,7 +32,7 @@ export { storeThreadMapping, getThreadContactId } from './thread-store.js';
 export { logMatchDecision, getMatchDecision } from './decision-log.js';
 
 // Signal Collectors
-export { collectThreadSignal, collectSenderSignal, collectEmailMetadataSignals } from './signal-collectors.js';
+export { collectThreadSignal, collectSenderSignal, collectDocNameSignal, collectEmailMetadataSignals } from './signal-collectors.js';
 
 // Agent Tools
 export { MATCHING_TOOLS, executeToolCall } from './agent-tools.js';
