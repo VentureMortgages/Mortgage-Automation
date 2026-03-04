@@ -22,7 +22,7 @@ import { runReminderScan } from '../reminders/index.js';
 import { sanitizeForLog } from './sanitize.js';
 import { healthHandler } from './health.js';
 import { getIntakeQueue } from '../intake/gmail-monitor.js';
-import { testIntakeHandler, recentMessagesHandler } from '../admin/test-intake.js';
+import { testIntakeHandler, recentMessagesHandler, cleanupInboxHandler } from '../admin/test-intake.js';
 import type { WebhookPayload, JobData } from './types.js';
 
 /**
@@ -159,6 +159,9 @@ export function createApp() {
 
   // Admin: list recent messages in the docs inbox
   app.get('/admin/recent-messages', recentMessagesHandler);
+
+  // Admin: move all inbox messages to Processed label (pre-demo cleanup)
+  app.post('/admin/cleanup-inbox', cleanupInboxHandler);
 
   // Global error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

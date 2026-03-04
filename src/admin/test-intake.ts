@@ -20,7 +20,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { intakeConfig, getConversionStrategy } from '../intake/config.js';
-import { getGmailReadonlyClient } from '../email/gmail-client.js';
+import { getGmailReadonlyClient, markMessageProcessed } from '../email/gmail-client.js';
 import { getMessageDetails } from '../intake/gmail-reader.js';
 import { extractAttachments, downloadAttachment } from '../intake/attachment-extractor.js';
 import { convertToPdf, ConversionError } from '../intake/pdf-converter.js';
@@ -545,6 +545,50 @@ export async function recentMessagesHandler(_req: Request, res: Response): Promi
       messageCount: results.filter(Boolean).length,
       messages: results.filter(Boolean),
     });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /admin/cleanup-inbox
+// ---------------------------------------------------------------------------
+
+export async function cleanupInboxHandler(req: Request, res: Response): Promise<void> {
+  try {
+    const gmailClient = getGmailReadonlyClient(intakeConfig.docsInbox);
+
+    // List all messages currently in INBOX
+    const listResponse = await gmailClient.users.messages.list({
+      userId: 'me',
+      maxResults: 100,
+      labelIds: ['INBOX'],
+    });
+
+    const messages = listResponse.data.messages ?? [];
+
+    if (messages.length === 0) {
+      res.json({ success: true, moved: 0, message: 'Inbox already clean' });
+      return;
+    }
+
+    let moved = 0;
+    const errors: string[] = [];
+
+    for (const msg of messages) {
+      if (!msg.id) continue;
+      try {
+        await markMessageProcessed(intakeConfig.docsInbox, msg.id);
+        moved++;
+      } catch (err) {
+        errors.push(`${msg.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+
+    console.log(`[admin] Inbox cleanup: moved ${moved}/${messages.length} messages to Processed`);
+    res.json({ success: true, moved, total: messages.length, errors: errors.length > 0 ? errors : undefined });
   } catch (err) {
     res.status(500).json({
       error: err instanceof Error ? err.message : String(err),
