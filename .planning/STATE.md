@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Go-Live
 status: verifying
-stopped_at: Phase 24 context gathered
-last_updated: "2026-03-04T20:37:27.989Z"
-last_activity: 2026-03-04 -- Railway deployment verified healthy (APP_ENV=production, all services running)
+stopped_at: Completed 24-01-PLAN.md
+last_updated: "2026-03-04T21:03:00.000Z"
+last_activity: 2026-03-04 -- Phase 24 Plan 01 complete (6 checklist bugs fixed, 88 tests passing)
 progress:
   total_phases: 25
   completed_phases: 15
   total_plans: 48
-  completed_plans: 45
-  percent: 67
+  completed_plans: 46
+  percent: 69
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
-**Current focus:** Phase 17 -- Deploy & Configure (v1.2 Production Go-Live) -- COMPLETE
+**Current focus:** Phase 24 -- Fix Checklist Engine Bugs (Plan 01 complete, 2 plans remaining)
 
 ## Current Position
 
-Phase: 17 of 22 (Deploy & Configure) -- COMPLETE
-Plan: 17-01 complete (1/1)
-Status: Phase complete, pending verification
-Last activity: 2026-03-04 -- Railway deployment verified healthy (APP_ENV=production, all services running)
+Phase: 24 of 25 (Fix Checklist Engine Bugs and Comprehensive Rule Coverage)
+Plan: 24-01 complete (1/3)
+Status: Executing
+Last activity: 2026-03-04 -- Phase 24 Plan 01 complete (6 checklist bugs fixed, 88 tests passing)
 
-Progress: [####################..........] 67% (v1.0 + v1.1 complete, v1.2 starting)
+Progress: [#####################.........] 69% (v1.0 + v1.1 complete, v1.2 in progress)
 
 ## Performance Metrics
 
@@ -49,11 +49,11 @@ Progress: [####################..........] 67% (v1.0 + v1.1 complete, v1.2 start
 ### Decisions
 
 Recent decisions affecting current work:
-- T1 naming fix: Skip institution AND amount for T1 docs (personal tax returns only need year)
-- Battle-test endpoint: Synchronous inline pipeline (not BullMQ queue) for immediate JSON trace
-- Domain filter kept: External senders blocked, Cat must forward docs
-- Contact matching for forwards: Primary signal is borrower name from PDF via Gemini
-- dryRun=true by default on test-intake endpoint for safety
+- Per-property evaluation uses context spread with currentProperty injection (not separate builder)
+- Gift detection uses type-first pattern: check asset.type before description fallback
+- isInvestment uses explicit rental use type inclusion (not negation of owner_occupied)
+- Support and CCB rules activated directly into client-facing output (no staging period)
+- hasOtherIncome left dormant (not auto-detectable from Finmo dropdown)
 
 ### Pending Todos
 
@@ -73,11 +73,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T20:37:27.986Z
-Stopped at: Phase 24 context gathered
-Resume file: .planning/phases/24-fix-checklist-engine-bugs-and-comprehensive-rule-coverage/24-CONTEXT.md
-Next: Verify phase 17 goal → Phase 18 (Battle Test -- Core Pipeline)
+Last session: 2026-03-04T21:03:00.000Z
+Stopped at: Completed 24-01-PLAN.md
+Resume file: .planning/phases/24-fix-checklist-engine-bugs-and-comprehensive-rule-coverage/24-01-SUMMARY.md
+Next: Phase 24 Plan 02 (new rules for coverage gaps) or Plan 03 (CRM bugs 8-9)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-04 (v1.2 roadmap created)*
+*Last updated: 2026-03-04 (Phase 24 Plan 01 complete)*
