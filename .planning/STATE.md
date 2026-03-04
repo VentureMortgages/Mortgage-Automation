@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Go-Live
 status: executing
-stopped_at: Completed 17.1-01-PLAN.md
-last_updated: "2026-03-04T21:26:22.478Z"
+stopped_at: Completed 17.1-02-PLAN.md
+last_updated: "2026-03-04T21:27:56.439Z"
 last_activity: 2026-03-04 -- Phase 24 complete (all 3 plans, 9 bugs fixed, comprehensive audit, 944 tests)
 progress:
   total_phases: 25
   completed_phases: 16
   total_plans: 51
-  completed_plans: 49
+  completed_plans: 50
   percent: 94
 ---
 
@@ -59,6 +59,7 @@ Recent decisions affecting current work:
 - BUG 6 (TFSA/FHSA) left as-is -- bank statement rule covers same docs, TFSA/FHSA checks harmless
 - 30 dormant rules documented as requiring Cat manual activation (not auto-detectable from Finmo)
 - [Phase 17.1]: Co-borrower upsert failures are non-fatal (logged, don't fail the job)
+- [Phase 17.1]: Spreadsheet-first approach for Drive folder backfill -- no CRM writes, Taylor reviews matches manually
 
 ### Pending Todos
 
@@ -78,8 +79,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T21:26:22.475Z
-Stopped at: Completed 17.1-01-PLAN.md
+Last session: 2026-03-04T21:27:56.436Z
+Stopped at: Completed 17.1-02-PLAN.md
 Resume file: None
 Next: Phase 20 (Data Preparation -- backfill Drive folder links, clean test data)
 

@@ -154,7 +154,7 @@ Requirements for milestone v1.2 -- Production Go-Live. Deploy, verify, and hand 
 
 ### Data Preparation
 
-- [ ] **DATA-01**: Backfill script links existing CRM contacts to their Drive folders
+- [x] **DATA-01**: Backfill script links existing CRM contacts to their Drive folders
 - [ ] **DATA-02**: [TEST] contacts and opportunities removed from MBP
 - [ ] **DATA-03**: Stale/broken Drive folder IDs identified and corrected in CRM
 
@@ -248,7 +248,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EDGE-03 | Phase 19 | Pending |
 | EDGE-04 | Phase 19 | Pending |
 | EDGE-05 | Phase 19 | Pending |
-| DATA-01 | Phase 20 | Pending |
+| DATA-01 | Phase 20 | Complete |
 | DATA-02 | Phase 20 | Pending |
 | DATA-03 | Phase 20 | Pending |
 | REMIND-05 | Phase 21 | Pending |
