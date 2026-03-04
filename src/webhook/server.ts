@@ -23,6 +23,8 @@ import { sanitizeForLog } from './sanitize.js';
 import { healthHandler } from './health.js';
 import { getIntakeQueue } from '../intake/gmail-monitor.js';
 import { testIntakeHandler, recentMessagesHandler, cleanupInboxHandler } from '../admin/test-intake.js';
+import { backfillSpreadsheetHandler } from '../admin/backfill-spreadsheet.js';
+import { finmoDocumentHandler } from '../intake/index.js';
 import type { WebhookPayload, JobData } from './types.js';
 
 /**
@@ -118,6 +120,12 @@ export function createApp() {
     res.status(202).json({ accepted: true, applicationId });
   });
 
+  // Finmo document upload webhook (Phase 17.1)
+  // Lazy queue access to avoid eager Redis connection during tests
+  app.post('/webhooks/finmo/documents', (req: Request, res: Response) => {
+    finmoDocumentHandler(getIntakeQueue())(req, res);
+  });
+
   // Admin: reprocess a Gmail message (bypasses history.list + BullMQ dedup)
   app.post('/admin/reprocess-message', async (req: Request, res: Response) => {
     const { messageId } = req.body as { messageId?: string };
@@ -162,6 +170,9 @@ export function createApp() {
 
   // Admin: move all inbox messages to Processed label (pre-demo cleanup)
   app.post('/admin/cleanup-inbox', cleanupInboxHandler);
+
+  // Admin: generate Drive folder backfill spreadsheet (Phase 17.1)
+  app.post('/admin/backfill-spreadsheet', backfillSpreadsheetHandler);
 
   // Global error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

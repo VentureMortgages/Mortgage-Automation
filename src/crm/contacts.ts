@@ -261,6 +261,76 @@ export async function getContact(contactId: string): Promise<CrmContact> {
 }
 
 // ============================================================================
+// Bulk Contact Listing (used by backfill tools)
+// ============================================================================
+
+export interface ContactSummary {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  customFields: Array<{ id: string; value: unknown }>;
+}
+
+/**
+ * Lists all contacts in the CRM location, paginated.
+ * Returns a flat array of contact summaries with custom fields.
+ * Used by the backfill spreadsheet to match contacts to Drive folders.
+ */
+export async function listAllContacts(): Promise<ContactSummary[]> {
+  const contacts: ContactSummary[] = [];
+  let startAfterId: string | undefined;
+  const limit = 100;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const params = new URLSearchParams({
+      locationId: crmConfig.locationId,
+      limit: String(limit),
+    });
+    if (startAfterId) {
+      params.set('startAfterId', startAfterId);
+    }
+
+    const response = await crmFetch(`/contacts/?${params.toString()}`, { method: 'GET' });
+    const data = (await response.json()) as {
+      contacts: Array<{
+        id: string;
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+        customFields: Array<{ id: string; value: unknown }>;
+      }>;
+      meta?: { startAfterId?: string; total?: number };
+    };
+
+    if (!data.contacts || data.contacts.length === 0) break;
+
+    for (const c of data.contacts) {
+      contacts.push({
+        id: c.id,
+        firstName: c.firstName ?? '',
+        lastName: c.lastName ?? '',
+        email: c.email ?? '',
+        phone: c.phone ?? null,
+        customFields: c.customFields ?? [],
+      });
+    }
+
+    // GHL pagination: use meta.startAfterId for next page
+    if (data.meta?.startAfterId && data.contacts.length === limit) {
+      startAfterId = data.meta.startAfterId;
+    } else {
+      break;
+    }
+  }
+
+  return contacts;
+}
+
+// ============================================================================
 // Drive Folder Helpers
 // ============================================================================
 

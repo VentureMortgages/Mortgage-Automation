@@ -119,6 +119,38 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     }
   }
 
+  // 3b2. Create CRM contacts for co-borrowers (COBORROW-01)
+  // Each co-borrower gets a contact linked to the same Drive folder as the main borrower.
+  // This enables sender-email matching for co-borrower documents.
+  if (clientFolderId && crmConfig.driveFolderIdFieldId) {
+    const coBorrowers = finmoApp.borrowers.filter(b => !b.isMainBorrower);
+    for (const coBorrower of coBorrowers) {
+      try {
+        await upsertContact({
+          email: coBorrower.email,
+          firstName: coBorrower.firstName,
+          lastName: coBorrower.lastName,
+          ...(coBorrower.phone ? { phone: coBorrower.phone } : {}),
+          customFields: [
+            { id: crmConfig.driveFolderIdFieldId, field_value: `https://drive.google.com/drive/folders/${clientFolderId}` },
+          ],
+        });
+      } catch (err) {
+        console.error('[worker] Co-borrower CRM contact upsert failed (non-fatal)', {
+          applicationId,
+          coBorrowerEmail: coBorrower.email,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    if (coBorrowers.length > 0) {
+      console.log('[worker] Co-borrower contacts upserted', {
+        applicationId,
+        count: coBorrowers.length,
+      });
+    }
+  }
+
   // 3c. Create deal subfolder per Finmo application (DRIVE-03)
   // Prefer finmoDealId from webhook payload (available immediately).
   // Fall back to CRM opportunity lookup (may fail if MBP hasn't synced yet).
