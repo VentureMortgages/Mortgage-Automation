@@ -397,7 +397,7 @@ Plans:
 **Goal:** Fix all 9 known bugs in the checklist engine and CRM contact handling, activate dormant auto-detectable rules, harden fragile detection patterns, and audit every Finmo UI field for complete rule coverage
 **Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-06, BUG-07, BUG-08, BUG-09, AUDIT-01
 **Depends on:** Phase 23
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [ ] 24-01-PLAN.md -- Fix checklist engine bugs 1-5 and 7 (per-property eval, empty assets DP, gift detection, pension/CPP/OAS, dormant rules, rental use types)
