@@ -17,6 +17,7 @@ export interface UpsertContactInput {
   lastName: string;
   phone?: string;
   source?: string;
+  tags?: string[];
   customFields?: CrmCustomFieldUpdate[];
 }
 
@@ -72,6 +73,7 @@ export async function upsertContact(input: UpsertContactInput): Promise<UpsertCo
     lastName: input.lastName,
     ...(input.phone ? { phone: input.phone } : {}),
     ...(input.source ? { source: input.source } : {}),
+    ...(input.tags ? { tags: input.tags } : {}),
     customFields: safeCustomFields,
   };
 
@@ -386,18 +388,21 @@ export function getContactDriveFolderId(
  *
  * Finmo pushes professional contacts (realtor, lawyer) to MBP but does
  * NOT set the contact type. This function finds the contact by email
- * and adds a tag matching the professional's role.
+ * and adds a capitalized tag matching the professional's role
+ * (e.g., "realtor" -> "Realtor", "lawyer" -> "Lawyer").
  *
  * Non-fatal: logs errors but never throws (Cat can tag manually).
  *
  * @param email - The professional's email address
  * @param fullName - The professional's full name (for upsert)
  * @param professionalType - The role from Finmo (e.g., "realtor", "lawyer")
+ * @param options - Optional phone number and company name for the professional
  */
 export async function assignContactType(
   email: string,
   fullName: string,
   professionalType: string,
+  options?: { phone?: string | null; company?: string | null },
 ): Promise<void> {
   try {
     // Parse name: "First Last" → firstName, lastName
@@ -405,8 +410,9 @@ export async function assignContactType(
     const firstName = parts[0] || fullName;
     const lastName = parts.slice(1).join(' ') || '';
 
-    // Normalize type for tag (lowercase, trimmed)
-    const tag = professionalType.toLowerCase().trim();
+    // Capitalize type for tag ("realtor" -> "Realtor", "LAWYER" -> "Lawyer")
+    const trimmed = professionalType.trim();
+    const tag = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 
     // Upsert contact with tag — GHL merges tags additively
     const body = {
@@ -415,6 +421,8 @@ export async function assignContactType(
       firstName,
       lastName,
       tags: [tag],
+      ...(options?.phone ? { phone: options.phone } : {}),
+      ...(options?.company ? { companyName: options.company } : {}),
     };
 
     await crmFetch('/contacts/upsert', {

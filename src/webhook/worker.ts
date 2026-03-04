@@ -88,16 +88,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     const clientFolderName = buildClientFolderName(finmoApp.borrowers);
     clientFolderId = await findOrCreateFolder(getDriveClient(), clientFolderName, driveRootFolderId);
 
-    // 3a. Pre-create standard subfolders (ORIG-01 safety net, non-fatal)
-    try {
-      await preCreateSubfolders(getDriveClient(), clientFolderId);
-      console.log('[worker] Subfolders pre-created', { applicationId });
-    } catch (err) {
-      console.error('[worker] Subfolder pre-creation failed (non-fatal)', {
-        applicationId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
+    // 3a. Subfolder pre-creation moved to deal subfolder level (step 3c below)
   }
 
   // 3b. Store client Drive folder ID on CRM contact (DRIVE-01)
@@ -107,6 +98,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
         email: mainBorrower.email,
         firstName: mainBorrower.firstName,
         lastName: mainBorrower.lastName,
+        tags: ['Client'],
         customFields: [
           { id: crmConfig.driveFolderIdFieldId, field_value: `https://drive.google.com/drive/folders/${clientFolderId}` },
         ],
@@ -131,6 +123,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
           firstName: coBorrower.firstName,
           lastName: coBorrower.lastName,
           ...(coBorrower.phone ? { phone: coBorrower.phone } : {}),
+          tags: ['Client'],
           customFields: [
             { id: crmConfig.driveFolderIdFieldId, field_value: `https://drive.google.com/drive/folders/${clientFolderId}` },
           ],
@@ -181,6 +174,21 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
           await updateOpportunityFields(opportunity.id, [
             { id: crmConfig.oppDealSubfolderIdFieldId, field_value: `https://drive.google.com/drive/folders/${dealSubfolderId}` },
           ]);
+        }
+
+        // Pre-create standard subfolders inside deal folder
+        try {
+          const borrowers = finmoApp.borrowers.map(b => ({
+            firstName: b.firstName,
+            lastName: b.lastName,
+          }));
+          await preCreateSubfolders(getDriveClient(), dealSubfolderId, borrowers);
+          console.log('[worker] Deal subfolders pre-created', { applicationId, dealRef });
+        } catch (err) {
+          console.error('[worker] Deal subfolder pre-creation failed (non-fatal)', {
+            applicationId,
+            error: err instanceof Error ? err.message : String(err),
+          });
         }
 
         console.log('[worker] Deal subfolder created', {
@@ -291,12 +299,15 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     errors: crmResult.errors.length,
   });
 
-  // 8a. Assign contact type to professionals (non-fatal, PIPE-04)
+  // 8a. Assign contact type to professionals (non-fatal, PIPE-04 + BUG-09)
   if (finmoApp.agents && finmoApp.agents.length > 0) {
     for (const agent of finmoApp.agents) {
       if (agent.email && agent.type) {
         try {
-          await assignContactType(agent.email, agent.fullName, agent.type);
+          await assignContactType(agent.email, agent.fullName, agent.type, {
+            phone: agent.phone,
+            company: agent.brokerage || agent.lawFirm || null,
+          });
         } catch (err) {
           console.error('[worker] Professional contact type assignment failed (non-fatal)', {
             applicationId,
@@ -535,7 +546,11 @@ export async function processCrmRetry(job: Job<CrmRetryJobData>): Promise<void> 
       const clientFolderId = await findOrCreateFolder(getDriveClient(), clientFolderName, driveRootFolderId!);
       const subfolderName = job.data.finmoDealId || `Deal-${applicationId.slice(0, 8)}`;
       actualDealSubfolderId = await findOrCreateFolder(getDriveClient(), subfolderName, clientFolderId);
-      await preCreateSubfolders(getDriveClient(), actualDealSubfolderId);
+      const borrowers = finmoApp.borrowers.map(b => ({
+        firstName: b.firstName,
+        lastName: b.lastName,
+      }));
+      await preCreateSubfolders(getDriveClient(), actualDealSubfolderId, borrowers);
       console.log('[worker] Deal subfolder created on retry', {
         applicationId,
         dealSubfolderId: actualDealSubfolderId,
