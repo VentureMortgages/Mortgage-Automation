@@ -123,7 +123,49 @@ Requirements for milestone v1.1 -- Production Hardening. Each maps to roadmap ph
 
 ## v1.2 Requirements
 
-Deferred to future milestone. Tracked but not in current roadmap.
+Requirements for milestone v1.2 — Production Go-Live. Deploy, verify, and hand off to Cat.
+
+### Deploy & Configure
+
+- [ ] **DEPLOY-01**: Latest code deployed to Railway from GitHub (T1 fix + battle-test endpoint)
+- [ ] **DEPLOY-02**: Railway env vars verified — APP_ENV=production, CAT_EMAIL set, all services connected
+- [ ] **DEPLOY-03**: Health endpoint returns OK, kill switch OFF, Gmail poller actively running
+
+### Battle Testing — Intake Pipeline
+
+- [ ] **BTEST-01**: Forward a doc to docs@ → classified with correct type, borrower name, year
+- [ ] **BTEST-02**: Matched to correct CRM contact by borrower name extracted from PDF
+- [ ] **BTEST-03**: Filed to correct client Drive folder/subfolder with Cat's naming convention
+- [ ] **BTEST-04**: CRM doc checklist updated with received document status
+- [ ] **BTEST-05**: T1 docs named "Name - T1 YYYY" (no institution/amount) — Cat's bug report verified fixed
+
+### Battle Testing — Edge Cases
+
+- [ ] **EDGE-01**: Unknown sender with extractable first+last name → auto-created contact + Drive folder
+- [ ] **EDGE-02**: Ambiguous or partial name (last name only) → routed to Needs Review with CRM task
+- [ ] **EDGE-03**: Multiple attachments in one email → each classified and filed independently
+- [ ] **EDGE-04**: Low-confidence classification → doc in Needs Review/ folder with CRM task for Cat
+- [ ] **EDGE-05**: Co-borrower doc → matched via borrower traversal, filed to correct client folder
+
+### Battle Testing — Reminders
+
+- [ ] **REMIND-05**: Manual reminder scan produces CRM tasks for stale opportunities
+- [ ] **REMIND-06**: Cat email notification fires for pending doc reminders
+
+### Data Preparation
+
+- [ ] **DATA-01**: Backfill script links existing CRM contacts to their Drive folders
+- [ ] **DATA-02**: [TEST] contacts and opportunities removed from MBP
+- [ ] **DATA-03**: Stale/broken Drive folder IDs identified and corrected in CRM
+
+### Cat Handoff
+
+- [ ] **HANDOFF-01**: SOP for Cat — how to forward docs, expected system behavior, Needs Review process, troubleshooting
+- [ ] **HANDOFF-02**: First-day testing checklist — step-by-step for Cat to verify system works with a real doc
+
+## Future Requirements
+
+Deferred — not blocking go-live.
 
 ### CRM Views
 
@@ -135,11 +177,6 @@ Deferred to future milestone. Tracked but not in current roadmap.
 
 - **NOTIF-01**: Email alert to Cat when all PRE docs received
 - **NOTIF-02**: Email alert for unexpected doc (not on checklist)
-
-### Onboarding
-
-- **SOP-01**: SOP document for Cat
-- **SOP-02**: Walkthrough session with Cat
 
 ### Document Validation (v2+)
 
@@ -184,35 +221,46 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OPP-01..08 | Phase 10 | Complete |
 | DRIVE-01..07 | Phase 11 | Complete |
 
-### v1.1 (Active)
+### v1.1 (Complete)
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PIPE-01 | Phase 12 | Complete |
-| PIPE-02 | Phase 12 | Complete |
-| PIPE-03 | Phase 12 | Complete |
-| PIPE-04 | Phase 12 | Complete |
-| SYNC-01 | Phase 13 | Complete |
-| SYNC-02 | Phase 13 | Complete |
-| SYNC-03 | Phase 13 | Complete |
-| FOLD-01 | Phase 14 | Complete |
-| FOLD-02 | Phase 14 | Complete |
-| FOLD-03 | Phase 14 | Complete |
-| FOLD-04 | Phase 14 | Complete |
-| FOLD-05 | Phase 14 | Complete |
-| ORIG-01 | Phase 15 | Complete |
-| ORIG-02 | Phase 15 | Complete |
-| ORIG-03 | Phase 15 | Complete |
-| REMIND-01 | Phase 16 | Complete |
-| REMIND-02 | Phase 16 | Complete |
-| REMIND-03 | Phase 16 | Complete |
-| REMIND-04 | Phase 16 | Complete |
+| PIPE-01..04 | Phase 12 | Complete |
+| SYNC-01..03 | Phase 13 | Complete |
+| FOLD-01..05 | Phase 14 | Complete |
+| ORIG-01..03 | Phase 15 | Complete |
+| REMIND-01..04 | Phase 16 | Complete |
+
+### v1.2 (Active)
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| DEPLOY-01 | — | Pending |
+| DEPLOY-02 | — | Pending |
+| DEPLOY-03 | — | Pending |
+| BTEST-01 | — | Pending |
+| BTEST-02 | — | Pending |
+| BTEST-03 | — | Pending |
+| BTEST-04 | — | Pending |
+| BTEST-05 | — | Pending |
+| EDGE-01 | — | Pending |
+| EDGE-02 | — | Pending |
+| EDGE-03 | — | Pending |
+| EDGE-04 | — | Pending |
+| EDGE-05 | — | Pending |
+| REMIND-05 | — | Pending |
+| REMIND-06 | — | Pending |
+| DATA-01 | — | Pending |
+| DATA-02 | — | Pending |
+| DATA-03 | — | Pending |
+| HANDOFF-01 | — | Pending |
+| HANDOFF-02 | — | Pending |
 
 **Coverage:**
-- v1.1 requirements: 19 total
-- Mapped to phases: 19
-- Unmapped: 0
+- v1.2 requirements: 20 total
+- Mapped to phases: 0
+- Unmapped: 20 ⚠️
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-25 after v1.1 roadmap creation (all 19 requirements mapped to phases 12-16)*
+*Last updated: 2026-03-04 after v1.2 requirements definition (20 go-live requirements)*
