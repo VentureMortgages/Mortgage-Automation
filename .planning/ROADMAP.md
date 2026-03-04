@@ -49,6 +49,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### v1.2 Production Go-Live (Phases 17-22)
 
 - [x] **Phase 17: Deploy & Configure** - Deploy v1.1 code to Railway, verify env vars, confirm services healthy (completed 2026-03-04)
+- [ ] **Phase 17.1: Close Production Gaps** - Co-borrower CRM contacts, Drive folder backfill spreadsheet, Finmo doc upload webhook (INSERTED)
 - [ ] **Phase 18: Battle Test -- Core Pipeline** - Verify doc intake classify/match/file/track with real Gmail messages
 - [ ] **Phase 19: Battle Test -- Edge Cases** - Verify unknown senders, ambiguous names, multi-attach, low-confidence, co-borrowers
 - [ ] **Phase 20: Data Preparation** - Backfill Drive folder links, clean up test data, fix stale CRM references
@@ -268,6 +269,20 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [ ] 17-01-PLAN.md -- Deploy v1.1 code, configure env vars, verify health
 
+### Phase 17.1: Close Production Gaps -- INSERTED
+**Goal**: Fix three production gaps before battle testing — co-borrower CRM contacts, Drive folder backfill for existing clients, and Finmo document upload webhook
+**Depends on**: Phase 17 (system deployed and healthy)
+**Requirements**: COBORROW-01, DATA-01, INTAKE-02
+**Success Criteria** (what must be TRUE):
+  1. Joint Finmo applications create CRM contacts for ALL borrowers (not just main), each linked to the same Drive folder
+  2. Google Sheet populated with best-guess CRM contact → Drive folder pairings for human review (no auto-update)
+  3. Finmo document upload webhook route is registered and enqueues uploads for processing
+**Plans**: 3
+Plans:
+- [ ] 17.1-01-PLAN.md -- Co-borrower CRM contact creation
+- [ ] 17.1-02-PLAN.md -- Drive folder backfill spreadsheet
+- [ ] 17.1-03-PLAN.md -- Wire up Finmo document upload webhook
+
 ### Phase 18: Battle Test -- Core Pipeline
 **Goal**: The full intake pipeline (forward doc to docs@, classify, match to client, file to Drive, update CRM) works end-to-end with real Gmail messages in production
 **Depends on**: Phase 17 (code must be deployed and healthy)
@@ -354,6 +369,7 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | 15. Timing & Sync Resilience | v1.1 | 2/2 | Complete | 2026-03-02 |
 | 16. Automated Reminders | v1.1 | 2/2 | Complete | 2026-03-03 |
 | 17. Deploy & Configure | 1/1 | Complete    | 2026-03-04 | - |
+| 17.1. Close Production Gaps | v1.2 | 0/3 | Not started | - |
 | 18. Battle Test -- Core Pipeline | v1.2 | 0/TBD | Not started | - |
 | 19. Battle Test -- Edge Cases | v1.2 | 0/TBD | Not started | - |
 | 20. Data Preparation | v1.2 | 0/TBD | Not started | - |

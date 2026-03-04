@@ -120,7 +120,7 @@ PDF, images (JPG/PNG), Word docs, ZIP files (auto-extracted). Each attachment in
 
 **Wrong classification?** Original is always in `Originals/`. Rename and move manually.
 
-**Client uploads docs to Finmo?** Currently not detected automatically. Cat downloads from Finmo and forwards to docs@ manually. (Can be enabled later.)
+**Client uploads docs to Finmo?** Being wired up now (Phase 17.1). Once live, Finmo doc uploads will be auto-detected and processed the same as email forwards. Until then, Cat downloads from Finmo and forwards to docs@ manually.
 
 **Docs arrive before MyBrokerPro updates?** Documents file to Drive immediately — they never wait for the CRM. The system retries CRM sync over 35 minutes (5/10/20 min intervals). When the opportunity appears, it catches up and picks up all docs already filed. Nothing is lost.
 
@@ -135,6 +135,39 @@ If anything goes wrong:
 2. On Railway, set `AUTOMATION_KILL_SWITCH=true`
 
 Emails stay safe in docs@ and will be processed when re-enabled.
+
+---
+
+## Known Gaps (Being Fixed — Phase 17.1)
+
+These are actively being built. Until shipped, here's what to expect and workarounds:
+
+### 1. Co-Borrower CRM Contacts
+**Gap:** Only the main borrower gets a CRM contact when a Finmo application comes in. Co-borrowers exist in the checklist and email, but not in MyBrokerPro as separate contacts.
+
+**Impact:** If a co-borrower emails their docs directly, the system can't match by sender email. It falls back to reading the name off the document — which usually works but is less reliable. Some co-borrower docs may land in Needs Review.
+
+**Workaround:** Forward co-borrower docs the same way — the system reads the name off the document and usually matches correctly via the Finmo application data.
+
+**Fix:** Phase 17.1 — system will create CRM contacts for all borrowers on joint applications, linked to the same Drive folder.
+
+### 2. Existing Clients Missing Drive Folder Links
+**Gap:** Clients who were in MyBrokerPro before go-live don't have their Drive folder linked in the CRM. New clients (via Finmo) get linked automatically.
+
+**Impact:** Docs for existing clients may file to the root Mortgage Clients folder instead of the client's subfolder. Cat would need to move these manually.
+
+**Workaround:** If a doc lands at the root level, move it to the correct client folder.
+
+**Fix:** Phase 17.1 — a backfill spreadsheet with best-guess matchings is being reviewed by Taylor. Once confirmed, all existing clients will be linked.
+
+### 3. Finmo Document Uploads
+**Gap:** When clients upload docs directly in Finmo (not via email), the system doesn't detect them automatically yet.
+
+**Impact:** Cat still needs to download docs from Finmo and forward to docs@.
+
+**Workaround:** Download from Finmo, forward to docs@venturemortgages.com.
+
+**Fix:** Phase 17.1 — Finmo document upload webhook being wired up. Once live, uploads go through the same classify/match/file pipeline automatically.
 
 ---
 

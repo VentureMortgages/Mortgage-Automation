@@ -52,6 +52,20 @@ Forward an email with 2+ document attachments.
 
 ---
 
+## Known Limitations (Being Fixed)
+
+Before testing, be aware of these temporary gaps:
+
+1. **Existing clients:** Clients who were already in MyBrokerPro before the system went live may not have their Drive folder linked yet. Their docs might file to the root Mortgage Clients folder instead of the client's subfolder. This is being fixed via a backfill — Taylor is reviewing the matching spreadsheet.
+
+2. **Co-borrower matching:** If a co-borrower emails docs directly, matching is less reliable (works via doc name reading, not sender email). Forwarding from admin@ works fine. Fix coming in Phase 17.1.
+
+3. **Finmo uploads:** Docs uploaded directly in Finmo aren't auto-detected yet. Download and forward to docs@ as usual. Fix coming in Phase 17.1.
+
+**Best test:** Use a **new client** (one that came through Finmo after go-live) for your first test — they'll have full folder linking and the smoothest experience.
+
+---
+
 ## Quick Reference
 
 | Action | How |
