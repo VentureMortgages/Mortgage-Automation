@@ -264,7 +264,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. Railway deployment is running the latest GitHub commit (including T1 naming fix + battle-test endpoint + reminders)
   2. Railway env vars are verified correct: APP_ENV=production, CAT_EMAIL set, REDIS_URL connected, GOOGLE_SERVICE_ACCOUNT_KEY present, kill switch OFF
   3. Health endpoint returns 200 OK, Gmail poller is actively running (visible in logs), and no startup errors in Railway logs
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 17-01-PLAN.md -- Deploy v1.1 code, configure env vars, verify health
 
 ### Phase 18: Battle Test -- Core Pipeline
 **Goal**: The full intake pipeline (forward doc to docs@, classify, match to client, file to Drive, update CRM) works end-to-end with real Gmail messages in production
@@ -276,7 +278,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The document is filed to the correct client folder and subfolder in Google Drive, renamed using Cat's naming convention
   4. The CRM opportunity's doc checklist custom field is updated to reflect the received document
   5. A T1 (personal tax return) document is named "Name - T1 YYYY" without institution or amount -- verifying Cat's bug report is fixed
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 17-01-PLAN.md -- Deploy v1.1 code, configure env vars, verify health
 
 ### Phase 19: Battle Test -- Edge Cases
 **Goal**: Every edge-case scenario the system will encounter in production is verified working -- unknown senders, ambiguous names, multiple attachments, low-confidence classifications, and co-borrower documents
@@ -288,7 +292,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. An email with multiple attachments has each attachment classified and filed independently (not just the first one)
   4. A document with low classification confidence lands in the Needs Review/ folder with a CRM task for Cat explaining why
   5. A co-borrower's document is matched via borrower traversal and filed to the correct primary client folder
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 17-01-PLAN.md -- Deploy v1.1 code, configure env vars, verify health
 
 ### Phase 20: Data Preparation
 **Goal**: CRM and Drive data is clean and ready for Cat to start using the system -- existing contacts linked to their Drive folders, test data removed, stale references fixed
@@ -298,7 +304,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. Backfill script has been run and existing CRM contacts are linked to their corresponding Drive folders (human-confirmed matches)
   2. All [TEST] contacts and opportunities have been removed from MBP (Cat sees only real clients)
   3. Any stale or broken Drive folder IDs in CRM have been identified and corrected (no dead links when system tries to file docs)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 17-01-PLAN.md -- Deploy v1.1 code, configure env vars, verify health
 
 ### Phase 21: Reminders Verification
 **Goal**: The reminder system fires correctly in production -- CRM tasks are created for stale opportunities and Cat receives email notifications about pending doc follow-ups
@@ -307,7 +315,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. Triggering /admin/trigger-reminder-scan produces CRM tasks for opportunities with docs outstanding 3+ days, listing specific missing documents with draft follow-up text
   2. Cat receives an email notification for each reminder with subject "Follow up: Need docs - [Client Name]" and the draft follow-up text she can copy/paste
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 17-01-PLAN.md -- Deploy v1.1 code, configure env vars, verify health
 
 ### Phase 22: Cat Handoff
 **Goal**: Cat has everything she needs to start using the system tomorrow morning -- a clear SOP explaining what the system does and how to interact with it, plus a step-by-step checklist for her first real test
@@ -316,7 +326,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. SOP document exists that Cat can reference: how to forward docs, what the system does automatically, how to handle Needs Review tasks, how to disable the system, and who to contact if something goes wrong
   2. First-day testing checklist exists with step-by-step instructions Cat can follow to verify the system works with a real document (forward a doc, wait, check Drive, check CRM)
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 17-01-PLAN.md -- Deploy v1.1 code, configure env vars, verify health
 
 ## Progress
 
@@ -341,7 +353,7 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | 14. Smart Document Matching | v1.1 | 3/3 | Complete | 2026-03-02 |
 | 15. Timing & Sync Resilience | v1.1 | 2/2 | Complete | 2026-03-02 |
 | 16. Automated Reminders | v1.1 | 2/2 | Complete | 2026-03-03 |
-| 17. Deploy & Configure | v1.2 | 0/TBD | Not started | - |
+| 17. Deploy & Configure | v1.2 | 0/1 | Not started | - |
 | 18. Battle Test -- Core Pipeline | v1.2 | 0/TBD | Not started | - |
 | 19. Battle Test -- Edge Cases | v1.2 | 0/TBD | Not started | - |
 | 20. Data Preparation | v1.2 | 0/TBD | Not started | - |
