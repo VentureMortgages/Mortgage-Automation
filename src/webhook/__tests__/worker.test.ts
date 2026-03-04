@@ -56,9 +56,13 @@ vi.mock('../../crm/opportunities.js', () => ({
   updateOpportunityFields: (...args: unknown[]) => mockUpdateOpp(...args),
 }));
 
+const mockUpsertContact = vi.hoisted(() => vi.fn(() => Promise.resolve({ contactId: 'crm-contact-456' })));
+const mockAssignContactType = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+
 vi.mock('../../crm/contacts.js', () => ({
-  upsertContact: vi.fn(() => Promise.resolve({ contactId: 'crm-contact-456' })),
+  upsertContact: (...args: unknown[]) => mockUpsertContact(...args),
   findContactByEmail: vi.fn(() => Promise.resolve('crm-contact-456')),
+  assignContactType: (...args: unknown[]) => mockAssignContactType(...args),
 }));
 
 vi.mock('../../crm/config.js', () => ({
@@ -594,6 +598,181 @@ describe('processJob', () => {
     ]);
   });
 
+  describe('BUG-08: borrower contact type tags', () => {
+    beforeEach(() => {
+      mockFetch.mockResolvedValue(createMockFinmoApp());
+      mockGenerate.mockReturnValue(createMockChecklist());
+      mockCrm.mockResolvedValue(createMockCrmResult());
+      mockEmail.mockResolvedValue(createMockEmailResult());
+      process.env.DRIVE_ROOT_FOLDER_ID = 'root-folder-id';
+    });
+
+    afterEach(() => {
+      delete process.env.DRIVE_ROOT_FOLDER_ID;
+    });
+
+    it('should upsert main borrower with tags=[Client]', async () => {
+      await processJob(createMockJob());
+
+      // Main borrower upsert is the first call to upsertContact (step 3b)
+      const mainBorrowerCall = mockUpsertContact.mock.calls.find(
+        (call: unknown[]) => (call[0] as { email: string }).email === 'jane@example.com',
+      );
+      expect(mainBorrowerCall).toBeDefined();
+      expect((mainBorrowerCall![0] as { tags?: string[] }).tags).toEqual(['Client']);
+    });
+
+    it('should upsert co-borrowers with tags=[Client]', async () => {
+      const finmoApp = createMockFinmoApp();
+      finmoApp.borrowers.push({
+        ...finmoApp.borrowers[0],
+        id: 'b-2',
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john@example.com',
+        isMainBorrower: false,
+        relationshipToMainBorrower: 'spouse',
+      });
+      mockFetch.mockResolvedValue(finmoApp);
+
+      await processJob(createMockJob());
+
+      // Co-borrower upsert should also include tags=['Client']
+      const coBorrowerCall = mockUpsertContact.mock.calls.find(
+        (call: unknown[]) => (call[0] as { email: string }).email === 'john@example.com',
+      );
+      expect(coBorrowerCall).toBeDefined();
+      expect((coBorrowerCall![0] as { tags?: string[] }).tags).toEqual(['Client']);
+    });
+  });
+
+  describe('BUG-09: professional contact sync', () => {
+    beforeEach(() => {
+      mockFetch.mockResolvedValue(createMockFinmoApp());
+      mockGenerate.mockReturnValue(createMockChecklist());
+      mockCrm.mockResolvedValue(createMockCrmResult());
+      mockEmail.mockResolvedValue(createMockEmailResult());
+      process.env.DRIVE_ROOT_FOLDER_ID = 'root-folder-id';
+    });
+
+    afterEach(() => {
+      delete process.env.DRIVE_ROOT_FOLDER_ID;
+    });
+
+    it('should call assignContactType for each agent with email and type', async () => {
+      const finmoApp = createMockFinmoApp();
+      finmoApp.agents = [
+        {
+          id: 'agent-1',
+          applicationId: 'app-123',
+          fullName: 'Sarah Realtor',
+          phone: '555-0300',
+          email: 'sarah@realty.com',
+          type: 'realtor',
+          fax: null,
+          brokerage: 'RE/MAX Elite',
+          lawFirm: null,
+        },
+        {
+          id: 'agent-2',
+          applicationId: 'app-123',
+          fullName: 'Bob Lawyer',
+          phone: '555-0400',
+          email: 'bob@lawfirm.com',
+          type: 'lawyer',
+          fax: null,
+          brokerage: null,
+          lawFirm: 'Smith & Associates',
+        },
+      ];
+      mockFetch.mockResolvedValue(finmoApp);
+
+      await processJob(createMockJob());
+
+      expect(mockAssignContactType).toHaveBeenCalledTimes(2);
+      expect(mockAssignContactType).toHaveBeenCalledWith(
+        'sarah@realty.com', 'Sarah Realtor', 'realtor',
+        { phone: '555-0300', company: 'RE/MAX Elite' },
+      );
+      expect(mockAssignContactType).toHaveBeenCalledWith(
+        'bob@lawfirm.com', 'Bob Lawyer', 'lawyer',
+        { phone: '555-0400', company: 'Smith & Associates' },
+      );
+    });
+
+    it('should skip agents without email', async () => {
+      const finmoApp = createMockFinmoApp();
+      finmoApp.agents = [
+        {
+          id: 'agent-1',
+          applicationId: 'app-123',
+          fullName: 'No Email Agent',
+          phone: '555-0300',
+          email: null,
+          type: 'realtor',
+          fax: null,
+          brokerage: null,
+          lawFirm: null,
+        },
+      ];
+      mockFetch.mockResolvedValue(finmoApp);
+
+      await processJob(createMockJob());
+
+      expect(mockAssignContactType).not.toHaveBeenCalled();
+    });
+
+    it('should pass brokerage as company for realtors', async () => {
+      const finmoApp = createMockFinmoApp();
+      finmoApp.agents = [
+        {
+          id: 'agent-1',
+          applicationId: 'app-123',
+          fullName: 'Sarah Realtor',
+          phone: null,
+          email: 'sarah@realty.com',
+          type: 'realtor',
+          fax: null,
+          brokerage: 'RE/MAX',
+          lawFirm: null,
+        },
+      ];
+      mockFetch.mockResolvedValue(finmoApp);
+
+      await processJob(createMockJob());
+
+      expect(mockAssignContactType).toHaveBeenCalledWith(
+        'sarah@realty.com', 'Sarah Realtor', 'realtor',
+        { phone: null, company: 'RE/MAX' },
+      );
+    });
+
+    it('should pass lawFirm as company for lawyers', async () => {
+      const finmoApp = createMockFinmoApp();
+      finmoApp.agents = [
+        {
+          id: 'agent-1',
+          applicationId: 'app-123',
+          fullName: 'Bob Lawyer',
+          phone: null,
+          email: 'bob@lawfirm.com',
+          type: 'lawyer',
+          fax: null,
+          brokerage: null,
+          lawFirm: 'Smith Law',
+        },
+      ];
+      mockFetch.mockResolvedValue(finmoApp);
+
+      await processJob(createMockJob());
+
+      expect(mockAssignContactType).toHaveBeenCalledWith(
+        'bob@lawfirm.com', 'Bob Lawyer', 'lawyer',
+        { phone: null, company: 'Smith Law' },
+      );
+    });
+  });
+
   describe('Drive scan step (step 4)', () => {
     const mockScan = vi.mocked(scanClientFolder);
     const mockFilter = vi.mocked(filterChecklistByExistingDocs);
@@ -787,19 +966,22 @@ describe('processJob', () => {
       delete process.env.DRIVE_ROOT_FOLDER_ID;
     });
 
-    it('should call preCreateSubfolders after client folder is created', async () => {
-      await processJob(createMockJob());
+    it('should call preCreateSubfolders on deal subfolder with borrower info', async () => {
+      const job = createMockJob({ data: { applicationId: 'app-123', receivedAt: '2026-01-16T00:00:00Z', finmoDealId: 'BRXM-F050746' } } as Partial<Job<JobData>>);
+      await processJob(job);
 
       expect(mockPreCreateSubfolders).toHaveBeenCalledWith(
         expect.anything(), // DriveClient mock
-        'folder-123', // clientFolderId from findOrCreateFolder mock
+        'folder-123', // dealSubfolderId from findOrCreateFolder mock
+        [{ firstName: 'Jane', lastName: 'Doe' }], // borrowers array
       );
     });
 
     it('should continue pipeline when preCreateSubfolders fails', async () => {
       mockPreCreateSubfolders.mockRejectedValue(new Error('Drive API explosion'));
 
-      const result = await processJob(createMockJob());
+      const job = createMockJob({ data: { applicationId: 'app-123', receivedAt: '2026-01-16T00:00:00Z', finmoDealId: 'BRXM-F050746' } } as Partial<Job<JobData>>);
+      const result = await processJob(job);
 
       // Pipeline still completes — email draft created, CRM synced
       expect(result.applicationId).toBe('app-123');
@@ -809,9 +991,8 @@ describe('processJob', () => {
       expect(mockEmail).toHaveBeenCalled();
     });
 
-    it('should skip preCreateSubfolders when DRIVE_ROOT_FOLDER_ID is not set', async () => {
-      delete process.env.DRIVE_ROOT_FOLDER_ID;
-
+    it('should skip preCreateSubfolders when no deal subfolder (no dealRef)', async () => {
+      // Default mock job has no finmoDealId, extractDealReference returns undefined
       await processJob(createMockJob());
 
       expect(mockPreCreateSubfolders).not.toHaveBeenCalled();
