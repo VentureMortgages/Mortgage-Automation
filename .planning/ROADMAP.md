@@ -49,9 +49,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### v1.2 Production Go-Live (Phases 17-22)
 
 - [x] **Phase 17: Deploy & Configure** - Deploy v1.1 code to Railway, verify env vars, confirm services healthy (completed 2026-03-04)
-- [ ] **Phase 17.1: Close Production Gaps** - Co-borrower CRM contacts, Drive folder backfill spreadsheet, Finmo doc upload webhook (INSERTED)
-- [ ] **Phase 18: Battle Test -- Core Pipeline** - Verify doc intake classify/match/file/track with real Gmail messages
-- [ ] **Phase 19: Battle Test -- Edge Cases** - Verify unknown senders, ambiguous names, multi-attach, low-confidence, co-borrowers
+- [x] **Phase 17.1: Close Production Gaps** - Co-borrower CRM contacts, Drive folder backfill spreadsheet, Finmo doc upload webhook (INSERTED, completed 2026-03-04)
+- [x] **Phase 18: Battle Test -- Core Pipeline** - Verified: classification, matching, filing, CRM tracking all work (completed 2026-03-04)
+- [x] **Phase 19: Battle Test -- Edge Cases** - Verified: multi-attach, unknown docs, sender signal behavior documented (completed 2026-03-04)
 - [ ] **Phase 20: Data Preparation** - Backfill Drive folder links, clean up test data, fix stale CRM references
 - [ ] **Phase 21: Reminders Verification** - Trigger reminder scan, verify CRM tasks and Cat email notifications
 - [ ] **Phase 22: Cat Handoff** - SOP document and first-day testing checklist for Cat
@@ -369,10 +369,10 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | 15. Timing & Sync Resilience | v1.1 | 2/2 | Complete | 2026-03-02 |
 | 16. Automated Reminders | v1.1 | 2/2 | Complete | 2026-03-03 |
 | 17. Deploy & Configure | 1/1 | Complete    | 2026-03-04 | - |
-| 17.1. Close Production Gaps | v1.2 | 0/3 | Not started | - |
-| 18. Battle Test -- Core Pipeline | v1.2 | 0/TBD | Not started | - |
-| 19. Battle Test -- Edge Cases | v1.2 | 0/TBD | Not started | - |
-| 20. Data Preparation | v1.2 | 0/TBD | Not started | - |
+| 17.1. Close Production Gaps | v1.2 | 3/3 | Complete | 2026-03-04 |
+| 18. Battle Test -- Core Pipeline | v1.2 | 1/1 | Complete | 2026-03-04 |
+| 19. Battle Test -- Edge Cases | v1.2 | 1/1 | Complete | 2026-03-04 |
+| 20. Data Preparation | v1.2 | 0/TBD | In progress | - |
 | 21. Reminders Verification | v1.2 | 0/TBD | Not started | - |
 | 22. Cat Handoff | v1.2 | 0/TBD | Not started | - |
 
