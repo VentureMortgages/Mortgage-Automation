@@ -31,6 +31,7 @@ import { matchDocument } from '../matching/agent.js';
 import { getContact, getContactDriveFolderId, resolveContactId } from '../crm/contacts.js';
 import { crmConfig } from '../crm/config.js';
 import { classificationConfig } from '../classification/config.js';
+import { extractFromZip, isZipMimeType } from '../intake/zip-extractor.js';
 import { DOC_TYPE_LABELS } from '../classification/types.js';
 import type { ClassificationResult } from '../classification/types.js';
 import { getDriveClient } from '../classification/drive-client.js';
@@ -151,19 +152,82 @@ export async function testIntakeHandler(req: Request, res: Response): Promise<vo
       errors.push(`Sender domain "${senderDomain}" is not venturemortgages.com — would be skipped in production`);
     }
 
-    // 3. Process each attachment through the pipeline
+    // 3. Expand attachments: download all, extract ZIPs into individual files
+    interface FileToProcess {
+      filename: string;
+      mimeType: string;
+      buffer: Buffer;
+      sizeBytes: number;
+      sourceAttachment: string;
+    }
+
+    const filesToProcess: FileToProcess[] = [];
     const documents: DocumentTrace[] = [];
     let classified = 0;
     let matched = 0;
     let wouldAutoFile = 0;
     let wouldNeedReview = 0;
 
-    for (let index = 0; index < attachments.length; index++) {
-      const att = attachments[index];
-      const docTrace: DocumentTrace = {
-        originalFilename: att.filename,
+    for (const att of attachments) {
+      if (att.size > intakeConfig.maxAttachmentBytes) {
+        errors.push(`Attachment too large: ${att.filename} (${att.size} bytes)`);
+        documents.push({
+          originalFilename: att.filename, mimeType: att.mimeType, sizeBytes: att.size,
+          classification: null, classificationError: `Too large: ${att.size} bytes`, generatedFilename: null,
+          subfolderTarget: null, personSubfolder: null, matching: null, matchingError: null,
+          filing: null, filingError: null, crmUpdate: null,
+        });
+        continue;
+      }
+
+      let buffer: Buffer;
+      try {
+        buffer = await downloadAttachment(gmailClient, messageId, att.attachmentId);
+      } catch (err) {
+        errors.push(`Download failed: ${att.filename}`);
+        continue;
+      }
+
+      if (isZipMimeType(att.mimeType)) {
+        try {
+          const extracted = extractFromZip(buffer, att.filename);
+          for (const file of extracted) {
+            filesToProcess.push({
+              filename: file.filename,
+              mimeType: file.mimeType,
+              buffer: file.buffer,
+              sizeBytes: file.buffer.length,
+              sourceAttachment: att.filename,
+            });
+          }
+        } catch (err) {
+          errors.push(`ZIP extraction failed: ${att.filename} — ${err instanceof Error ? err.message : String(err)}`);
+          documents.push({
+            originalFilename: att.filename, mimeType: att.mimeType, sizeBytes: att.size,
+            classification: null, classificationError: `ZIP extraction failed`, generatedFilename: null,
+            subfolderTarget: null, personSubfolder: null, matching: null, matchingError: null,
+            filing: null, filingError: null, crmUpdate: null,
+          });
+        }
+        continue;
+      }
+
+      filesToProcess.push({
+        filename: att.filename,
         mimeType: att.mimeType,
+        buffer,
         sizeBytes: att.size,
+        sourceAttachment: att.filename,
+      });
+    }
+
+    // 4. Process each file through classify → match → file
+    for (let index = 0; index < filesToProcess.length; index++) {
+      const file = filesToProcess[index];
+      const docTrace: DocumentTrace = {
+        originalFilename: file.filename,
+        mimeType: file.mimeType,
+        sizeBytes: file.sizeBytes,
         classification: null,
         classificationError: null,
         generatedFilename: null,
@@ -177,34 +241,25 @@ export async function testIntakeHandler(req: Request, res: Response): Promise<vo
       };
 
       // Check MIME type
-      const strategy = getConversionStrategy(att.mimeType);
+      const strategy = getConversionStrategy(file.mimeType);
       if (strategy === 'unsupported') {
-        docTrace.classificationError = `Unsupported MIME type: ${att.mimeType}`;
-        errors.push(docTrace.classificationError);
-        documents.push(docTrace);
-        continue;
-      }
-
-      // Check size
-      if (att.size > intakeConfig.maxAttachmentBytes) {
-        docTrace.classificationError = `Too large: ${att.size} bytes > ${intakeConfig.maxAttachmentBytes} max`;
+        docTrace.classificationError = `Unsupported MIME type: ${file.mimeType}`;
         errors.push(docTrace.classificationError);
         documents.push(docTrace);
         continue;
       }
 
       try {
-        // Download + convert to PDF
-        const buffer = await downloadAttachment(gmailClient, messageId, att.attachmentId);
-        const { pdfBuffer } = await convertToPdf(buffer, att.mimeType);
+        // Convert to PDF
+        const { pdfBuffer } = await convertToPdf(file.buffer, file.mimeType);
 
         // Classify
-        const classification = await classifyDocument(pdfBuffer, att.filename);
+        const classification = await classifyDocument(pdfBuffer, file.filename);
         docTrace.classification = classification;
         classified++;
 
         // Generate filename
-        const fallbackName = classification.borrowerFirstName ?? att.filename.replace(/\.[^.]+$/, '');
+        const fallbackName = classification.borrowerFirstName ?? file.filename.replace(/\.[^.]+$/, '');
         docTrace.generatedFilename = generateFilename(classification, fallbackName);
 
         // Route to subfolder
@@ -225,7 +280,7 @@ export async function testIntakeHandler(req: Request, res: Response): Promise<vo
             ccAddresses: messageMeta.cc,
             emailSubject: messageMeta.subject,
             applicationId: null,
-            originalFilename: att.filename,
+            originalFilename: file.filename,
           });
 
           // Resolve contact name for display
@@ -312,7 +367,7 @@ export async function testIntakeHandler(req: Request, res: Response): Promise<vo
                 );
 
                 // Store original
-                try { await storeOriginal(drive, clientFolderId, pdfBuffer, att.filename); } catch { /* non-fatal */ }
+                try { await storeOriginal(drive, clientFolderId, pdfBuffer, file.filename); } catch { /* non-fatal */ }
 
                 // Resolve target folder
                 const targetFolderId = await resolveTargetFolder(
@@ -392,7 +447,7 @@ export async function testIntakeHandler(req: Request, res: Response): Promise<vo
           }
         } catch (matchErr) {
           docTrace.matchingError = matchErr instanceof Error ? matchErr.message : String(matchErr);
-          errors.push(`Matching failed for ${att.filename}: ${docTrace.matchingError}`);
+          errors.push(`Matching failed for ${file.filename}: ${docTrace.matchingError}`);
         }
       } catch (err) {
         if (err instanceof ConversionError) {
@@ -400,7 +455,7 @@ export async function testIntakeHandler(req: Request, res: Response): Promise<vo
         } else {
           docTrace.classificationError = err instanceof Error ? err.message : String(err);
         }
-        errors.push(`Processing failed for ${att.filename}: ${docTrace.classificationError}`);
+        errors.push(`Processing failed for ${file.filename}: ${docTrace.classificationError}`);
       }
 
       documents.push(docTrace);

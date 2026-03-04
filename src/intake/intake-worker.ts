@@ -48,6 +48,7 @@ import { getGmailReadonlyClient } from '../email/gmail-client.js';
 import { getMessageDetails } from './gmail-reader.js';
 import { extractAttachments, downloadAttachment } from './attachment-extractor.js';
 import { convertToPdf, ConversionError } from './pdf-converter.js';
+import { extractFromZip, isZipMimeType } from './zip-extractor.js';
 import { downloadFinmoDocument, isDocRequestProcessed, markDocRequestProcessed } from './finmo-downloader.js';
 import { isBccCopy, handleSentDetection } from './sent-detector.js';
 import { getContactIdBySubject } from '../feedback/original-store.js';
@@ -172,19 +173,17 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
     return { documentsProcessed: 0, documentIds: [], errors: [] };
   }
 
-  // 4. Process each valid attachment and enqueue for classification (Phase 7)
-  const documents: IntakeDocument[] = [];
+  // 4. Expand attachments: ZIP files are extracted into individual files
+  interface FileToProcess {
+    filename: string;
+    mimeType: string;
+    buffer: Buffer;
+    sourceAttachment: string; // original attachment filename for logging
+  }
 
-  for (let index = 0; index < attachments.length; index++) {
-    const att = attachments[index];
+  const filesToProcess: FileToProcess[] = [];
 
-    // Skip unsupported MIME types
-    const strategy = getConversionStrategy(att.mimeType);
-    if (strategy === 'unsupported') {
-      errors.push(`Unsupported MIME type: ${att.mimeType} (${att.filename})`);
-      continue;
-    }
-
+  for (const att of attachments) {
     // Skip oversized attachments
     if (att.size > intakeConfig.maxAttachmentBytes) {
       errors.push(
@@ -193,19 +192,65 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
       continue;
     }
 
+    // Download attachment data
+    let buffer: Buffer;
     try {
-      // 5. Download attachment data
-      const buffer = await downloadAttachment(gmailClient, messageId, att.attachmentId);
+      buffer = await downloadAttachment(gmailClient, messageId, att.attachmentId);
+    } catch (err) {
+      errors.push(`Failed to download ${att.filename}: ${err instanceof Error ? err.message : String(err)}`);
+      continue;
+    }
 
-      // 6. Convert to PDF
-      const { pdfBuffer } = await convertToPdf(buffer, att.mimeType);
+    // ZIP: extract contents and add each file individually
+    if (isZipMimeType(att.mimeType)) {
+      try {
+        const extracted = extractFromZip(buffer, att.filename);
+        for (const file of extracted) {
+          filesToProcess.push({
+            filename: file.filename,
+            mimeType: file.mimeType,
+            buffer: file.buffer,
+            sourceAttachment: att.filename,
+          });
+        }
+      } catch (err) {
+        errors.push(`Failed to extract ZIP ${att.filename}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      continue;
+    }
 
-      // 7. Create IntakeDocument
+    // Non-ZIP: add directly
+    filesToProcess.push({
+      filename: att.filename,
+      mimeType: att.mimeType,
+      buffer,
+      sourceAttachment: att.filename,
+    });
+  }
+
+  // 5. Process each file through conversion → classification
+  const documents: IntakeDocument[] = [];
+
+  for (let index = 0; index < filesToProcess.length; index++) {
+    const file = filesToProcess[index];
+
+    // Skip unsupported MIME types
+    const strategy = getConversionStrategy(file.mimeType);
+    if (strategy === 'unsupported') {
+      errors.push(`Unsupported MIME type: ${file.mimeType} (${file.filename})`);
+      continue;
+    }
+
+    try {
+      // Convert to PDF
+      const { pdfBuffer } = await convertToPdf(file.buffer, file.mimeType);
+
+      // Create IntakeDocument
       const doc: IntakeDocument = {
         id: `gmail-${messageId}-${index}`,
         pdfBuffer,
-        originalFilename: att.filename,
-        originalMimeType: att.mimeType,
+        originalFilename: file.filename,
+        originalMimeType: file.mimeType,
         source: 'gmail',
         senderEmail: messageMeta.from,
         applicationId: null,
@@ -248,12 +293,13 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
         originalFilename: doc.originalFilename,
         originalMimeType: doc.originalMimeType,
         senderEmail: doc.senderEmail,
+        fromZip: file.sourceAttachment !== file.filename ? file.sourceAttachment : undefined,
       });
     } catch (err) {
       if (err instanceof ConversionError) {
-        errors.push(`${err.code}: ${att.filename} — ${err.message}`);
+        errors.push(`${err.code}: ${file.filename} — ${err.message}`);
       } else {
-        errors.push(`Failed to process ${att.filename}: ${err instanceof Error ? err.message : String(err)}`);
+        errors.push(`Failed to process ${file.filename}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   }
