@@ -206,6 +206,98 @@ export function getGmailReadonlyClient(impersonateAs: string): GmailClient {
   return client;
 }
 
+/**
+ * Returns an authenticated Gmail API client with modify scope.
+ * Used for moving processed messages (add/remove labels) in the docs@ inbox.
+ *
+ * @param impersonateAs - Email address of the mailbox to modify
+ */
+export function getGmailModifyClient(impersonateAs: string): GmailClient {
+  const scope = 'https://www.googleapis.com/auth/gmail.modify';
+  const key = getCacheKey(scope, impersonateAs);
+
+  const cached = clientCache.get(key);
+  if (cached) return cached;
+
+  const client = createGmailClientForScope([scope], impersonateAs);
+  clientCache.set(key, client);
+  return client;
+}
+
+// ---------------------------------------------------------------------------
+// Label Management — Move processed messages
+// ---------------------------------------------------------------------------
+
+/** Cache for label ID lookups */
+let processedLabelId: string | null = null;
+
+/**
+ * Ensures the "Processed" label exists in the mailbox and returns its ID.
+ * Creates the label if it doesn't exist. Result is cached.
+ */
+async function ensureProcessedLabel(impersonateAs: string): Promise<string> {
+  if (processedLabelId) return processedLabelId;
+
+  const gmail = getGmailModifyClient(impersonateAs);
+
+  // Check if label already exists
+  const labelsRes = await gmail.users.labels.list({ userId: 'me' });
+  const existing = labelsRes.data.labels?.find(
+    (l) => l.name === 'Processed',
+  );
+
+  if (existing?.id) {
+    processedLabelId = existing.id;
+    return processedLabelId;
+  }
+
+  // Create the label
+  const createRes = await gmail.users.labels.create({
+    userId: 'me',
+    requestBody: {
+      name: 'Processed',
+      labelListVisibility: 'labelShow',
+      messageListVisibility: 'show',
+    },
+  });
+
+  processedLabelId = createRes.data.id!;
+  console.log('[gmail-client] Created "Processed" label', { labelId: processedLabelId });
+  return processedLabelId;
+}
+
+/**
+ * Moves a message from INBOX to the "Processed" label.
+ * Adds the "Processed" label and removes the "INBOX" label.
+ *
+ * Non-fatal: logs errors but doesn't throw (message is already processed).
+ */
+export async function markMessageProcessed(
+  impersonateAs: string,
+  messageId: string,
+): Promise<void> {
+  try {
+    const labelId = await ensureProcessedLabel(impersonateAs);
+    const gmail = getGmailModifyClient(impersonateAs);
+
+    await gmail.users.messages.modify({
+      userId: 'me',
+      id: messageId,
+      requestBody: {
+        addLabelIds: [labelId],
+        removeLabelIds: ['INBOX'],
+      },
+    });
+
+    console.log('[gmail-client] Message moved to Processed', { messageId });
+  } catch (err) {
+    console.error('[gmail-client] Failed to move message to Processed (non-fatal)', {
+      messageId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Auth Error Detection
 // ---------------------------------------------------------------------------

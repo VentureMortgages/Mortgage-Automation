@@ -51,6 +51,7 @@ const mockGmailClient = vi.hoisted(() => {
 
 vi.mock('../../email/gmail-client.js', () => ({
   getGmailReadonlyClient: mockGmailClient.getGmailReadonlyClient,
+  markMessageProcessed: vi.fn(),
 }));
 
 const mockReader = vi.hoisted(() => ({

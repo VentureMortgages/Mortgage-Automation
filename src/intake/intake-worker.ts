@@ -44,7 +44,7 @@ import { randomUUID } from 'node:crypto';
 import { Worker, Job, Queue } from 'bullmq';
 import { createRedisConnection } from '../webhook/queue.js';
 import { intakeConfig, getConversionStrategy } from './config.js';
-import { getGmailReadonlyClient } from '../email/gmail-client.js';
+import { getGmailReadonlyClient, markMessageProcessed } from '../email/gmail-client.js';
 import { getMessageDetails } from './gmail-reader.js';
 import { extractAttachments, downloadAttachment } from './attachment-extractor.js';
 import { convertToPdf, ConversionError } from './pdf-converter.js';
@@ -307,6 +307,11 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
   console.log(
     `[intake] Processed gmail message ${messageId}: ${documents.length} docs, ${errors.length} errors`,
   );
+
+  // Move message from Inbox to "Processed" label (non-fatal)
+  if (documents.length > 0) {
+    await markMessageProcessed(intakeConfig.docsInbox, messageId);
+  }
 
   return {
     documentsProcessed: documents.length,
