@@ -3,11 +3,12 @@
 ## Milestones
 
 - Completed **v1.0 Core Pipeline** - Phases 1-11 (shipped 2026-02-22)
-- Active **v1.1 Production Hardening** - Phases 12-16 (in progress)
+- Completed **v1.1 Production Hardening** - Phases 12-16 (shipped 2026-03-03)
+- Active **v1.2 Production Go-Live** - Phases 17-22 (in progress)
 
 ## Overview
 
-This roadmap covers the full automation journey for Venture Mortgages' document collection workflow. v1.0 (Phases 1-11) built the core pipeline from Finmo webhook to Drive filing. v1.1 (Phases 12-16) hardens the live system: fixing CRM workflow gaps that create duplicate tasks and require manual stage moves, making folder matching and timing resilient to real-world edge cases, preserving original documents, and implementing a reminder system so Cat gets notified about outstanding docs.
+This roadmap covers the full automation journey for Venture Mortgages' document collection workflow. v1.0 (Phases 1-11) built the core pipeline from Finmo webhook to Drive filing. v1.1 (Phases 12-16) hardened the live system with CRM pipeline automation, smart document matching, original preservation, timing resilience, and automated reminders. v1.2 (Phases 17-22) deploys v1.1 code to production, battle-tests every scenario with real messages, cleans up CRM data, verifies reminders, and hands off to Cat with SOPs and a testing checklist.
 
 ## Phases
 
@@ -34,13 +35,25 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 </details>
 
-### v1.1 Production Hardening (Phases 12-16)
+<details>
+<summary>v1.1 Production Hardening (Phases 12-16) - SHIPPED 2026-03-03</summary>
 
-- [x] **Phase 12: CRM Pipeline Automation** - Deduplicate tasks, auto-move stages, auto-complete review tasks, assign realtor contact type (completed 2026-02-26)
-- [x] **Phase 13: Original Document Preservation** - Store originals before classification/renaming, safety net for misroutes and misclassifications (completed 2026-03-02)
-- [x] **Phase 14: Smart Document Matching** - Signal-based AI agent for matching incoming docs to client folders, with confidence scoring and human-in-the-loop for low confidence (completed 2026-03-02)
-- [x] **Phase 15: Timing & Sync Resilience** - Retry CRM sync, file docs before MBP exists, research Finmo external system API (completed 2026-03-02)
-- [x] **Phase 16: Automated Reminders** - CRM tasks + Cat email notifications for outstanding docs every 3 days (completed 2026-03-03)
+- [x] **Phase 12: CRM Pipeline Automation** - Deduplicate tasks, auto-move stages, auto-complete review tasks, assign realtor contact type
+- [x] **Phase 13: Original Document Preservation** - Store originals before classification/renaming, safety net for misroutes
+- [x] **Phase 14: Smart Document Matching** - Signal-based AI agent for matching incoming docs to client folders
+- [x] **Phase 15: Timing & Sync Resilience** - Retry CRM sync, file docs before MBP exists, subfolder catch-up
+- [x] **Phase 16: Automated Reminders** - CRM tasks + Cat email notifications for outstanding docs every 3 days
+
+</details>
+
+### v1.2 Production Go-Live (Phases 17-22)
+
+- [ ] **Phase 17: Deploy & Configure** - Deploy v1.1 code to Railway, verify env vars, confirm services healthy
+- [ ] **Phase 18: Battle Test -- Core Pipeline** - Verify doc intake classify/match/file/track with real Gmail messages
+- [ ] **Phase 19: Battle Test -- Edge Cases** - Verify unknown senders, ambiguous names, multi-attach, low-confidence, co-borrowers
+- [ ] **Phase 20: Data Preparation** - Backfill Drive folder links, clean up test data, fix stale CRM references
+- [ ] **Phase 21: Reminders Verification** - Trigger reminder scan, verify CRM tasks and Cat email notifications
+- [ ] **Phase 22: Cat Handoff** - SOP document and first-day testing checklist for Cat
 
 ## Phase Details
 
@@ -141,7 +154,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Cat can view dashboard in MyBrokerPro showing per-client status without manual updates
 **Plans:** 2/2 complete
 
-### Phase 8.1: Feedback Loop (RAG) — INSERTED
+### Phase 8.1: Feedback Loop (RAG) -- INSERTED
 **Goal**: Capture Cat's email edits and use RAG to auto-apply similar past edits to future applications
 **Depends on**: Phase 8
 **Success Criteria** (what must be TRUE):
@@ -183,6 +196,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 </details>
 
+<details>
+<summary>v1.1 Phase Details (Phases 12-16) - SHIPPED 2026-03-03</summary>
+
 ### Phase 12: CRM Pipeline Automation
 **Goal**: Cat's CRM workflow runs cleanly -- one review task per application, stages advance automatically, tasks complete on their own
 **Depends on**: Phase 11 (v1.0 complete, live system)
@@ -192,12 +208,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. When the checklist email draft is created, the opportunity moves from "In Progress" to "Collecting Documents" without Cat doing it manually
   3. When the opportunity reaches "Collecting Documents", the "Review checklist" task is automatically marked completed (Cat does not have to close it herself)
   4. When a Finmo application includes a realtor, the realtor's MBP contact is assigned the correct contact type (so Cat can filter realtors in CRM)
-**Plans**: 0/3
-
-Plans:
-- [ ] 12-01: Task dedup + auto-complete (PIPE-01, PIPE-03) — Wave 1
-- [ ] 12-02: Stage move on email send (PIPE-02, PIPE-03) — Wave 2 (depends on 12-01)
-- [ ] 12-03: Professional contact type assignment (PIPE-04) — Wave 1
+**Plans**: 3/3 complete
 
 ### Phase 13: Original Document Preservation
 **Goal**: Cat can always find the original file a client submitted, even if AI classification was wrong or the file was renamed -- safety net before smart matching
@@ -207,69 +218,110 @@ Plans:
   1. Every document received (via email or Finmo) appears in `ClientFolder/Originals/` with its original filename before any classification or renaming happens
   2. Low-confidence documents are preserved in Originals instead of being deleted from temp storage (Cat gets the CRM task AND can find the file)
   3. When a client re-uploads a document, the new original is stored alongside the previous version in Originals (no overwriting)
-**Plans**: 0/2
-
-Plans:
-- [x] 13-01: Subfolder pre-creation + originals storage utility (ORIG-03) -- Wave 1
-- [ ] 13-02: Wire originals into classification worker + Needs Review routing (ORIG-01, ORIG-02) -- Wave 2 (depends on 13-01)
+**Plans**: 2/2 complete
 
 ### Phase 14: Smart Document Matching
-**Goal**: Every incoming document is matched to the correct client folder using a signal-based AI agent -- handles third-party senders (lawyers, accountants, employers), name ambiguity, and joint/solo application overlap
+**Goal**: Every incoming document is matched to the correct client folder using a signal-based AI agent -- handles third-party senders, name ambiguity, and joint/solo application overlap
 **Depends on**: Phase 13 (originals stored first = safety net for misroutes)
-**Requirements**: MATCH-01, MATCH-02, MATCH-03, MATCH-04, MATCH-05, MATCH-06
+**Requirements**: FOLD-01, FOLD-02, FOLD-03, FOLD-04, FOLD-05
 **Success Criteria** (what must be TRUE):
   1. When a client replies to the doc request email, the system matches via thread context and auto-files with high confidence
-  2. When a third party (lawyer, accountant, employer) sends docs, the system extracts the client name from the document content (via Gemini) and matches to the correct contact/opportunity
-  3. When confidence is >= 0.8, the document is auto-filed and a CRM note logs the reasoning ("Matched via legal name on T4 to John Smith, confidence 0.92")
-  4. When confidence is < 0.8, a CRM task is created for Cat showing the agent's top candidates with reasoning -- Cat confirms or redirects
-  5. When a joint-application client also has a solo folder from a previous deal, docs route to the correct opportunity's folder (opportunity-level matching, not just contact-level)
-  6. Full matching decision log stored in Redis (signals, candidates, scores, outcome) with 90-day TTL for debugging
-**Signal priority** (highest to lowest):
-  - Tier 1 (deterministic): Email thread match to sent doc request; sender email + single active opportunity
-  - Tier 2 (high confidence): Name extracted from document content matches one active contact; sender email + agent picks opportunity by doc type
-  - Tier 3 (agent reasons): Sender display name fuzzy match; CC/To emails as hints; subject/body client name; document address matches property on file; employer name matches known employer
-  - Tier 4 (tiebreakers): Pipeline stage = "Collecting Documents"; recency of doc request; doc type matches outstanding checklist items; known professional associations
-**Plans**: 3 plans
-
-Plans:
-- [ ] 14-01: Types, config, thread store, decision log, Gmail metadata enrichment (MATCH-01, MATCH-06) -- Wave 1
-- [ ] 14-02: Signal collectors + Gemini matching agent with agentic loop + phone fallback + co-borrower routing (MATCH-01, MATCH-02, MATCH-05, FOLD-02, FOLD-03) -- Wave 2
-- [ ] 14-03: Wire into classification worker + auto-create + global Needs Review + backfill script (MATCH-02, MATCH-03, MATCH-04, FOLD-05) -- Wave 3
+  2. When a third party sends docs, the system extracts the client name from the document content and matches to the correct contact/opportunity
+  3. When confidence is >= 0.8, the document is auto-filed and a CRM note logs the reasoning
+  4. When confidence is < 0.8, a CRM task is created for Cat showing top candidates with reasoning
+  5. When a joint-application client also has a solo folder, docs route to the correct opportunity's folder
+  6. Full matching decision log stored in Redis with 90-day TTL
+**Plans**: 3/3 complete
 
 ### Phase 15: Timing & Sync Resilience
-**Goal**: System handles the real-world timing gap between Finmo webhook and MBP opportunity creation gracefully -- no lost docs, no failed syncs
+**Goal**: System handles the real-world timing gap between Finmo webhook and MBP opportunity creation gracefully
 **Depends on**: Phase 14 (matching agent routes docs even when CRM isn't ready)
 **Requirements**: SYNC-01, SYNC-02, SYNC-03
 **Success Criteria** (what must be TRUE):
-  1. When the Finmo webhook fires before MBP has created the opportunity, the system retries CRM sync at 5/10/20 minute intervals until the opportunity appears (no manual intervention needed)
-  2. Documents uploaded by a client before the MBP opportunity exists are filed to Google Drive immediately and their CRM tracking is retroactively applied once the opportunity becomes available
-  3. A decision is documented on whether Finmo's "update external system" API can trigger MBP sync on demand (research spike with findings recorded)
-**Plans**: 2 plans
-
-Plans:
-- [ ] 15-01: Failure notifications + CRM retry enhancements (SYNC-01, SYNC-02) -- Wave 1
-- [ ] 15-02: Finmo API research spike (SYNC-03) -- Wave 1
+  1. When Finmo webhook fires before MBP opportunity exists, system retries CRM sync at increasing intervals until opportunity appears
+  2. Documents uploaded before MBP opportunity exists are filed to Drive immediately and CRM tracking is retroactively applied
+  3. Decision documented on whether Finmo "update external system" API can trigger MBP sync on demand
+**Plans**: 2/2 complete
 
 ### Phase 16: Automated Reminders
-**Goal**: Cat is notified when docs are overdue and has a ready-made follow-up message to send, without manually tracking who is late
+**Goal**: Cat is notified when docs are overdue and has a ready-made follow-up message to send
 **Depends on**: Phase 15 (needs complete filing pipeline)
 **Requirements**: REMIND-01, REMIND-02, REMIND-03, REMIND-04
 **Success Criteria** (what must be TRUE):
-  1. When docs have been outstanding for 3+ days, a CRM task appears for Cat listing the missing documents with a draft follow-up email she can copy and paste
-  2. Cat receives an email with subject "Follow up: Need docs - [Client Name]" containing client details and the draft follow-up text
-  3. If docs are still missing after another 3 days, the existing reminder task is updated (not duplicated) with a refreshed missing-docs list
-  4. When all required docs are received, any pending reminder tasks are automatically closed and no further reminder emails are sent
-**Plans**: 2 plans
+  1. When docs outstanding for 3+ days, CRM task appears for Cat listing missing docs with draft follow-up email
+  2. Cat receives email with subject "Follow up: Need docs - [Client Name]" containing draft follow-up text
+  3. If docs still missing after 3 more days, existing reminder task is updated (not duplicated)
+  4. When all required docs received, pending reminder tasks auto-close and no further emails sent
+**Plans**: 2/2 complete
 
-Plans:
-- [ ] 16-01-PLAN.md -- Core reminder engine: types, business day math, scanner, follow-up text generator (REMIND-01, REMIND-03)
-- [ ] 16-02-PLAN.md -- CRM task CRUD, Cat email notification, auto-close hook, BullMQ scheduler, system wiring (REMIND-01, REMIND-02, REMIND-03, REMIND-04)
+</details>
+
+### Phase 17: Deploy & Configure
+**Goal**: Latest v1.1 code is running in production on Railway with all environment variables correct, all services connected, and health checks passing
+**Depends on**: Phase 16 (v1.1 complete)
+**Requirements**: DEPLOY-01, DEPLOY-02, DEPLOY-03
+**Success Criteria** (what must be TRUE):
+  1. Railway deployment is running the latest GitHub commit (including T1 naming fix + battle-test endpoint + reminders)
+  2. Railway env vars are verified correct: APP_ENV=production, CAT_EMAIL set, REDIS_URL connected, GOOGLE_SERVICE_ACCOUNT_KEY present, kill switch OFF
+  3. Health endpoint returns 200 OK, Gmail poller is actively running (visible in logs), and no startup errors in Railway logs
+**Plans**: TBD
+
+### Phase 18: Battle Test -- Core Pipeline
+**Goal**: The full intake pipeline (forward doc to docs@, classify, match to client, file to Drive, update CRM) works end-to-end with real Gmail messages in production
+**Depends on**: Phase 17 (code must be deployed and healthy)
+**Requirements**: BTEST-01, BTEST-02, BTEST-03, BTEST-04, BTEST-05
+**Success Criteria** (what must be TRUE):
+  1. A real document forwarded to docs@ is classified with the correct document type, borrower name, and year
+  2. The classified document is matched to the correct CRM contact by name extracted from the PDF
+  3. The document is filed to the correct client folder and subfolder in Google Drive, renamed using Cat's naming convention
+  4. The CRM opportunity's doc checklist custom field is updated to reflect the received document
+  5. A T1 (personal tax return) document is named "Name - T1 YYYY" without institution or amount -- verifying Cat's bug report is fixed
+**Plans**: TBD
+
+### Phase 19: Battle Test -- Edge Cases
+**Goal**: Every edge-case scenario the system will encounter in production is verified working -- unknown senders, ambiguous names, multiple attachments, low-confidence classifications, and co-borrower documents
+**Depends on**: Phase 18 (core pipeline must work before testing edges)
+**Requirements**: EDGE-01, EDGE-02, EDGE-03, EDGE-04, EDGE-05
+**Success Criteria** (what must be TRUE):
+  1. An email from an unknown sender with an extractable first+last name results in a new CRM contact and Drive folder being auto-created
+  2. An email with only a partial name (last name only or ambiguous) is routed to Needs Review with a CRM task for Cat showing candidates
+  3. An email with multiple attachments has each attachment classified and filed independently (not just the first one)
+  4. A document with low classification confidence lands in the Needs Review/ folder with a CRM task for Cat explaining why
+  5. A co-borrower's document is matched via borrower traversal and filed to the correct primary client folder
+**Plans**: TBD
+
+### Phase 20: Data Preparation
+**Goal**: CRM and Drive data is clean and ready for Cat to start using the system -- existing contacts linked to their Drive folders, test data removed, stale references fixed
+**Depends on**: Phase 19 (system verified working before touching production data)
+**Requirements**: DATA-01, DATA-02, DATA-03
+**Success Criteria** (what must be TRUE):
+  1. Backfill script has been run and existing CRM contacts are linked to their corresponding Drive folders (human-confirmed matches)
+  2. All [TEST] contacts and opportunities have been removed from MBP (Cat sees only real clients)
+  3. Any stale or broken Drive folder IDs in CRM have been identified and corrected (no dead links when system tries to file docs)
+**Plans**: TBD
+
+### Phase 21: Reminders Verification
+**Goal**: The reminder system fires correctly in production -- CRM tasks are created for stale opportunities and Cat receives email notifications about pending doc follow-ups
+**Depends on**: Phase 20 (needs clean data so reminders target real clients, not test data)
+**Requirements**: REMIND-05, REMIND-06
+**Success Criteria** (what must be TRUE):
+  1. Triggering /admin/trigger-reminder-scan produces CRM tasks for opportunities with docs outstanding 3+ days, listing specific missing documents with draft follow-up text
+  2. Cat receives an email notification for each reminder with subject "Follow up: Need docs - [Client Name]" and the draft follow-up text she can copy/paste
+**Plans**: TBD
+
+### Phase 22: Cat Handoff
+**Goal**: Cat has everything she needs to start using the system tomorrow morning -- a clear SOP explaining what the system does and how to interact with it, plus a step-by-step checklist for her first real test
+**Depends on**: Phase 21 (all testing and data prep complete)
+**Requirements**: HANDOFF-01, HANDOFF-02
+**Success Criteria** (what must be TRUE):
+  1. SOP document exists that Cat can reference: how to forward docs, what the system does automatically, how to handle Needs Review tasks, how to disable the system, and who to contact if something goes wrong
+  2. First-day testing checklist exists with step-by-step instructions Cat can follow to verify the system works with a real document (forward a doc, wait, check Drive, check CRM)
+**Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
-(Reordered 2026-02-27: originals first as safety net, then smart matching, then timing, then reminders)
+Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -288,7 +340,13 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 | 13. Original Doc Preservation | v1.1 | 2/2 | Complete | 2026-03-02 |
 | 14. Smart Document Matching | v1.1 | 3/3 | Complete | 2026-03-02 |
 | 15. Timing & Sync Resilience | v1.1 | 2/2 | Complete | 2026-03-02 |
-| 16. Automated Reminders | 2/2 | Complete    | 2026-03-03 | - |
+| 16. Automated Reminders | v1.1 | 2/2 | Complete | 2026-03-03 |
+| 17. Deploy & Configure | v1.2 | 0/TBD | Not started | - |
+| 18. Battle Test -- Core Pipeline | v1.2 | 0/TBD | Not started | - |
+| 19. Battle Test -- Edge Cases | v1.2 | 0/TBD | Not started | - |
+| 20. Data Preparation | v1.2 | 0/TBD | Not started | - |
+| 21. Reminders Verification | v1.2 | 0/TBD | Not started | - |
+| 22. Cat Handoff | v1.2 | 0/TBD | Not started | - |
 
 ### Action Items (Non-Code)
 | Item | Owner | Status |
@@ -298,4 +356,4 @@ Phases execute in numeric order: 12 -> 13 -> 14 -> 15 -> 16
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-03-02 (Phase 16 plans created: 2 plans in 2 waves)*
+*Last updated: 2026-03-04 (v1.2 Production Go-Live roadmap -- Phases 17-22)*

@@ -123,31 +123,31 @@ Requirements for milestone v1.1 -- Production Hardening. Each maps to roadmap ph
 
 ## v1.2 Requirements
 
-Requirements for milestone v1.2 — Production Go-Live. Deploy, verify, and hand off to Cat.
+Requirements for milestone v1.2 -- Production Go-Live. Deploy, verify, and hand off to Cat.
 
 ### Deploy & Configure
 
 - [ ] **DEPLOY-01**: Latest code deployed to Railway from GitHub (T1 fix + battle-test endpoint)
-- [ ] **DEPLOY-02**: Railway env vars verified — APP_ENV=production, CAT_EMAIL set, all services connected
+- [ ] **DEPLOY-02**: Railway env vars verified -- APP_ENV=production, CAT_EMAIL set, all services connected
 - [ ] **DEPLOY-03**: Health endpoint returns OK, kill switch OFF, Gmail poller actively running
 
-### Battle Testing — Intake Pipeline
+### Battle Testing -- Intake Pipeline
 
-- [ ] **BTEST-01**: Forward a doc to docs@ → classified with correct type, borrower name, year
+- [ ] **BTEST-01**: Forward a doc to docs@ -> classified with correct type, borrower name, year
 - [ ] **BTEST-02**: Matched to correct CRM contact by borrower name extracted from PDF
 - [ ] **BTEST-03**: Filed to correct client Drive folder/subfolder with Cat's naming convention
 - [ ] **BTEST-04**: CRM doc checklist updated with received document status
-- [ ] **BTEST-05**: T1 docs named "Name - T1 YYYY" (no institution/amount) — Cat's bug report verified fixed
+- [ ] **BTEST-05**: T1 docs named "Name - T1 YYYY" (no institution/amount) -- Cat's bug report verified fixed
 
-### Battle Testing — Edge Cases
+### Battle Testing -- Edge Cases
 
-- [ ] **EDGE-01**: Unknown sender with extractable first+last name → auto-created contact + Drive folder
-- [ ] **EDGE-02**: Ambiguous or partial name (last name only) → routed to Needs Review with CRM task
-- [ ] **EDGE-03**: Multiple attachments in one email → each classified and filed independently
-- [ ] **EDGE-04**: Low-confidence classification → doc in Needs Review/ folder with CRM task for Cat
-- [ ] **EDGE-05**: Co-borrower doc → matched via borrower traversal, filed to correct client folder
+- [ ] **EDGE-01**: Unknown sender with extractable first+last name -> auto-created contact + Drive folder
+- [ ] **EDGE-02**: Ambiguous or partial name (last name only) -> routed to Needs Review with CRM task
+- [ ] **EDGE-03**: Multiple attachments in one email -> each classified and filed independently
+- [ ] **EDGE-04**: Low-confidence classification -> doc in Needs Review/ folder with CRM task for Cat
+- [ ] **EDGE-05**: Co-borrower doc -> matched via borrower traversal, filed to correct client folder
 
-### Battle Testing — Reminders
+### Battle Testing -- Reminders
 
 - [ ] **REMIND-05**: Manual reminder scan produces CRM tasks for stale opportunities
 - [ ] **REMIND-06**: Cat email notification fires for pending doc reminders
@@ -160,12 +160,12 @@ Requirements for milestone v1.2 — Production Go-Live. Deploy, verify, and hand
 
 ### Cat Handoff
 
-- [ ] **HANDOFF-01**: SOP for Cat — how to forward docs, expected system behavior, Needs Review process, troubleshooting
-- [ ] **HANDOFF-02**: First-day testing checklist — step-by-step for Cat to verify system works with a real doc
+- [ ] **HANDOFF-01**: SOP for Cat -- how to forward docs, expected system behavior, Needs Review process, troubleshooting
+- [ ] **HANDOFF-02**: First-day testing checklist -- step-by-step for Cat to verify system works with a real doc
 
 ## Future Requirements
 
-Deferred — not blocking go-live.
+Deferred -- not blocking go-live.
 
 ### CRM Views
 
@@ -235,32 +235,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPLOY-01 | — | Pending |
-| DEPLOY-02 | — | Pending |
-| DEPLOY-03 | — | Pending |
-| BTEST-01 | — | Pending |
-| BTEST-02 | — | Pending |
-| BTEST-03 | — | Pending |
-| BTEST-04 | — | Pending |
-| BTEST-05 | — | Pending |
-| EDGE-01 | — | Pending |
-| EDGE-02 | — | Pending |
-| EDGE-03 | — | Pending |
-| EDGE-04 | — | Pending |
-| EDGE-05 | — | Pending |
-| REMIND-05 | — | Pending |
-| REMIND-06 | — | Pending |
-| DATA-01 | — | Pending |
-| DATA-02 | — | Pending |
-| DATA-03 | — | Pending |
-| HANDOFF-01 | — | Pending |
-| HANDOFF-02 | — | Pending |
+| DEPLOY-01 | Phase 17 | Pending |
+| DEPLOY-02 | Phase 17 | Pending |
+| DEPLOY-03 | Phase 17 | Pending |
+| BTEST-01 | Phase 18 | Pending |
+| BTEST-02 | Phase 18 | Pending |
+| BTEST-03 | Phase 18 | Pending |
+| BTEST-04 | Phase 18 | Pending |
+| BTEST-05 | Phase 18 | Pending |
+| EDGE-01 | Phase 19 | Pending |
+| EDGE-02 | Phase 19 | Pending |
+| EDGE-03 | Phase 19 | Pending |
+| EDGE-04 | Phase 19 | Pending |
+| EDGE-05 | Phase 19 | Pending |
+| DATA-01 | Phase 20 | Pending |
+| DATA-02 | Phase 20 | Pending |
+| DATA-03 | Phase 20 | Pending |
+| REMIND-05 | Phase 21 | Pending |
+| REMIND-06 | Phase 21 | Pending |
+| HANDOFF-01 | Phase 22 | Pending |
+| HANDOFF-02 | Phase 22 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20 ⚠️
+- Mapped to phases: 20/20
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-03-04 after v1.2 requirements definition (20 go-live requirements)*
+*Last updated: 2026-03-04 after v1.2 roadmap creation (20 requirements mapped to Phases 17-22)*
