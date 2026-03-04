@@ -375,6 +375,7 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | 20. Data Preparation | v1.2 | 0/TBD | In progress | - |
 | 21. Reminders Verification | v1.2 | 0/TBD | Not started | - |
 | 22. Cat Handoff | v1.2 | 0/TBD | Not started | - |
+| 24. Checklist Bug Fixes + Audit | v1.2 | 3/3 | Complete | 2026-03-04 |
 
 ### Action Items (Non-Code)
 | Item | Owner | Status |
@@ -397,13 +398,13 @@ Plans:
 **Goal:** Fix all 9 known bugs in the checklist engine and CRM contact handling, activate dormant auto-detectable rules, harden fragile detection patterns, and audit every Finmo UI field for complete rule coverage
 **Requirements**: BUG-01, BUG-02, BUG-03, BUG-04, BUG-05, BUG-06, BUG-07, BUG-08, BUG-09, AUDIT-01
 **Depends on:** Phase 23
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 24-01-PLAN.md -- Fix checklist engine bugs 1-5 and 7 (per-property eval, empty assets DP, gift detection, pension/CPP/OAS, dormant rules, rental use types)
-- [ ] 24-02-PLAN.md -- Fix CRM bugs 8-9 (borrower contact type, professional sync)
-- [ ] 24-03-PLAN.md -- Comprehensive field audit and BUG 6 documentation
+- [x] 24-01-PLAN.md -- Fix checklist engine bugs 1-5 and 7 (per-property eval, empty assets DP, gift detection, pension/CPP/OAS, dormant rules, rental use types)
+- [x] 24-02-PLAN.md -- Fix CRM bugs 8-9 (borrower contact type, professional sync)
+- [x] 24-03-PLAN.md -- Comprehensive field audit and BUG 6 documentation
 
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-03-04 (Phase 24 planned -- 3 plans in 2 waves)*
+*Last updated: 2026-03-04 (Phase 24 complete -- all 9 bugs fixed, comprehensive audit)*
