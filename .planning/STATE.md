@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Go-Live
 status: executing
-stopped_at: Completed 17.1-02-PLAN.md
-last_updated: "2026-03-04T21:27:56.439Z"
+stopped_at: Completed 17.1-03-PLAN.md
+last_updated: "2026-03-04T21:29:18.034Z"
 last_activity: 2026-03-04 -- Phase 24 complete (all 3 plans, 9 bugs fixed, comprehensive audit, 944 tests)
 progress:
   total_phases: 25
-  completed_phases: 16
+  completed_phases: 17
   total_plans: 51
-  completed_plans: 50
+  completed_plans: 51
   percent: 94
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
-**Current focus:** Phase 24 complete -- returning to v1.2 Production Go-Live (Phase 20 next)
+**Current focus:** Phase 17.1 complete -- all production gaps closed. Phase 20 next (Data Preparation).
 
 ## Current Position
 
-Phase: 24 of 25 (Fix Checklist Engine Bugs and Comprehensive Rule Coverage) -- COMPLETE
-Plan: 24-03 complete (3/3)
+Phase: 17.1 of 25 (Close Production Gaps) -- COMPLETE (all 3 plans)
+Plan: 17.1-03 complete (3/3)
 Status: Executing
-Last activity: 2026-03-04 -- Phase 24 complete (all 3 plans, 9 bugs fixed, comprehensive audit, 944 tests)
+Last activity: 2026-03-04 -- Phase 17.1-03 complete (Finmo doc webhook verified as already shipped)
 
-Progress: [█████████░] 94% (v1.0 + v1.1 complete, v1.2 in progress)
+Progress: [██████████] 100% (v1.0 + v1.1 complete, v1.2 production gaps closed)
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Recent decisions affecting current work:
 - 30 dormant rules documented as requiring Cat manual activation (not auto-detectable from Finmo)
 - [Phase 17.1]: Co-borrower upsert failures are non-fatal (logged, don't fail the job)
 - [Phase 17.1]: Spreadsheet-first approach for Drive folder backfill -- no CRM writes, Taylor reviews matches manually
+- [Phase 17.1]: Lazy queue access pattern for Finmo doc webhook to avoid eager Redis in tests
 
 ### Pending Todos
 
@@ -79,8 +80,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T21:27:56.436Z
-Stopped at: Completed 17.1-02-PLAN.md
+Last session: 2026-03-04T21:29:18.031Z
+Stopped at: Completed 17.1-03-PLAN.md
 Resume file: None
 Next: Phase 20 (Data Preparation -- backfill Drive folder links, clean test data)
 
