@@ -282,9 +282,16 @@ export async function listAllContacts(): Promise<ContactSummary[]> {
   const contacts: ContactSummary[] = [];
   let startAfterId: string | undefined;
   const limit = 100;
+  let page = 0;
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
+    // Rate limit: GHL allows ~100 req/min. Add delay between pages.
+    if (page > 0) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+    page++;
+
     const params = new URLSearchParams({
       locationId: crmConfig.locationId,
       limit: String(limit),
