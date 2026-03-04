@@ -48,7 +48,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### v1.2 Production Go-Live (Phases 17-22)
 
-- [ ] **Phase 17: Deploy & Configure** - Deploy v1.1 code to Railway, verify env vars, confirm services healthy
+- [x] **Phase 17: Deploy & Configure** - Deploy v1.1 code to Railway, verify env vars, confirm services healthy (completed 2026-03-04)
 - [ ] **Phase 18: Battle Test -- Core Pipeline** - Verify doc intake classify/match/file/track with real Gmail messages
 - [ ] **Phase 19: Battle Test -- Edge Cases** - Verify unknown senders, ambiguous names, multi-attach, low-confidence, co-borrowers
 - [ ] **Phase 20: Data Preparation** - Backfill Drive folder links, clean up test data, fix stale CRM references
@@ -353,7 +353,7 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | 14. Smart Document Matching | v1.1 | 3/3 | Complete | 2026-03-02 |
 | 15. Timing & Sync Resilience | v1.1 | 2/2 | Complete | 2026-03-02 |
 | 16. Automated Reminders | v1.1 | 2/2 | Complete | 2026-03-03 |
-| 17. Deploy & Configure | v1.2 | 0/1 | Not started | - |
+| 17. Deploy & Configure | 1/1 | Complete   | 2026-03-04 | - |
 | 18. Battle Test -- Core Pipeline | v1.2 | 0/TBD | Not started | - |
 | 19. Battle Test -- Edge Cases | v1.2 | 0/TBD | Not started | - |
 | 20. Data Preparation | v1.2 | 0/TBD | Not started | - |
