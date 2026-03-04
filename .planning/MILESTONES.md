@@ -23,4 +23,27 @@
 **Last phase number:** 11
 
 ---
+
+## v1.1 — Production Hardening (Phases 12–16)
+
+**Completed:** 2026-03-03
+**Phases:** 12, 13, 14, 15, 16 (13 plans executed)
+**Tests:** 895
+
+**What shipped:**
+- CRM pipeline automation (auto-move stages, deduplicate tasks, auto-complete review tasks)
+- Original document preservation (Originals/ subfolder)
+- Robust client folder matching (email, phone, co-borrower traversal)
+- Timing resilience (retry mechanism for MBP sync lag, subfolder catch-up)
+- Automated reminders (CRM tasks + Cat email notifications, BullMQ cron schedule)
+- Realtor contact type assignment from Finmo application data
+- T1 naming fix (strip institution/amount from personal tax returns)
+- Battle-test endpoint (/admin/test-intake + /admin/recent-messages)
+
+**Production:** Code committed (c841ed7), awaiting deploy
+
+**Last phase number:** 16
+
+---
 *Created: 2026-02-25*
+*Updated: 2026-03-04*

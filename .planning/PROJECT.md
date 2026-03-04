@@ -10,18 +10,17 @@ The system is **live in production** as of 2026-02-25 — drafts in admin@'s Gma
 
 When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on — with minimal human effort and zero missed items.
 
-## Current Milestone: v1.1 Production Hardening
+## Current Milestone: v1.2 Production Go-Live
 
-**Goal:** Harden the live pipeline — fix CRM workflow gaps, improve folder matching robustness, handle timing edge cases, and implement revised reminder system.
+**Goal:** Deploy, configure, battle-test, and verify the full pipeline end-to-end so Cat can start forwarding docs to docs@ tomorrow morning.
 
 **Target features:**
-- CRM pipeline automation (auto-move stages, deduplicate tasks, auto-complete review tasks)
-- Robust client folder matching (email/phone, multi-borrower support)
-- Timing resilience (docs before MBP sync, Finmo external system API)
-- Revised reminder system (CRM tasks + Cat email notifications every 3 days)
-- Original document preservation
-- CRM views for Cat's workflow
-- Cat onboarding SOP
+- Deploy latest code to Railway + verify environment configuration
+- Battle-test intake pipeline with real Gmail messages (classify → match → file → CRM)
+- Verify every scenario: known client, unknown, co-borrower, ambiguous, multi-doc, T1 naming
+- Data prep: backfill Drive folder links, clean up test data in MBP
+- Verify reminder system fires correctly
+- Cat handoff: SOP + testing instructions
 
 ## Requirements
 
@@ -39,20 +38,24 @@ When a Finmo application comes in, the right documents get requested, tracked, f
 - ✓ Opportunity-level doc tracking with cross-deal reuse — v1.0
 - ✓ Drive folder IDs stored on CRM, deal-specific subfolders — v1.0
 - ✓ Feedback loop: Cat's email edits auto-applied to future similar apps — v1.0
+- ✓ CRM pipeline stage automation (auto-move, auto-complete tasks) — v1.1
+- ✓ Deduplicate review tasks across Leads/Live Deals pipelines — v1.1
+- ✓ Robust client folder matching (email, phone, CRM contact ID) — v1.1
+- ✓ Multi-borrower folder naming and matching — v1.1
+- ✓ Handle docs uploaded before MBP opportunity sync — v1.1
+- ✓ Original document preservation (Originals/ subfolder) — v1.1
+- ✓ Automated reminders via CRM tasks + Cat email notifications — v1.1
+- ✓ Realtor contact type assignment from Finmo app — v1.1
+- ✓ Doc subfolder pre-creation timing — v1.1
 
 ### Active
 
-- [ ] CRM pipeline stage automation (auto-move, auto-complete tasks)
-- [ ] Deduplicate review tasks across Leads/Live Deals pipelines
-- [ ] Robust client folder matching (email, phone, CRM contact ID — not just name)
-- [ ] Multi-borrower folder naming and matching
-- [ ] Handle docs uploaded before MBP opportunity sync completes
-- [ ] Original document preservation (Originals/ subfolder)
-- [ ] Automated reminders via CRM tasks + Cat email notifications
-- [ ] CRM smart list views for Cat's workflow
-- [ ] Realtor contact type assignment from Finmo app
-- [ ] Doc subfolder pre-creation timing
-- [ ] Cat onboarding SOP
+- [ ] Deploy latest code + verify Railway environment configuration
+- [ ] Battle-test doc intake pipeline with real messages end-to-end
+- [ ] Verify all scenario paths (known client, unknown, co-borrower, ambiguous, multi-doc)
+- [ ] Data prep: backfill Drive folder links, clean up test contacts/opps
+- [ ] Verify reminder system fires in production
+- [ ] Cat handoff: SOP + testing instructions
 
 ### Out of Scope
 
@@ -125,4 +128,4 @@ When a Finmo application comes in, the right documents get requested, tracked, f
 | Multi-borrower folders: "Last/Last, First/First" | Matches Cat's existing Drive convention | — Pending |
 
 ---
-*Last updated: 2026-02-25 after milestone v1.1 initialization*
+*Last updated: 2026-03-04 after milestone v1.2 initialization*
