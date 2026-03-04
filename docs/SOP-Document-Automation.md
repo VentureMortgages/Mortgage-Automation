@@ -58,7 +58,7 @@ When a new Finmo application comes in:
 ## How to Handle "Needs Review" Tasks
 
 If the system can't confidently match a document to a client, it:
-- Files the doc to the global **Needs Review/** folder in Drive
+- Files the doc to the **Needs Review/** folder in Drive
 - Creates a CRM task: **"Match Review: [filename]"**
 - The task body shows the best guess, confidence %, and a link to the file
 
@@ -82,6 +82,52 @@ When all docs arrive, reminder tasks auto-close.
 
 ---
 
+## Edge Cases & Common Questions
+
+### "I forwarded the same email twice by accident"
+No problem. If the same doc type already exists in the client's Drive folder, the system **overwrites** it with the newer version. The original is still in `Originals/`. No duplicates are created.
+
+### "A client folder already has some docs filed manually"
+The system checks if a file with the same doc type label already exists before uploading. If it finds one (e.g., "T4 2024" already in `Income/`), it **updates** that file instead of creating a duplicate. If the existing file was manually named differently, the system creates a new file alongside it — you may want to delete the old manual copy.
+
+### "An employer/bank/third party sent docs directly to docs@"
+The system **only processes emails from @venturemortgages.com senders**. External emails sent directly to docs@ are ignored. The third party needs to send to you (admin@) or Taylor, and then you forward to docs@.
+
+### "A document has multiple people's names on it"
+The system extracts the borrower name from the document content. If there's ambiguity (e.g., a joint bank statement with two names), the system uses the matching agent to figure out who it belongs to. For joint applications, docs route to the **primary borrower's folder**.
+
+### "A co-borrower sends their own documents"
+The system detects co-borrowers through the Finmo application data. If Jane is a co-borrower on John's application, Jane's documents are routed to **John's folder** (the primary borrower). Each person's docs go into a person-specific subfolder within Income/ (e.g., `Income/Jane/`).
+
+### "The system classified a document as the wrong type"
+The original is always preserved in `Originals/` with its original filename. You can:
+1. Go to the client's `Originals/` folder to find the original file
+2. Rename and move it to the correct subfolder manually
+3. Delete the incorrectly filed version
+
+### "An email has multiple attachments"
+Each attachment is classified and filed **independently**. A single email with a T4, a bank statement, and a pay stub will produce three separate files in the correct subfolders.
+
+### "An email has a ZIP file attached"
+ZIP files are automatically extracted. Each file inside the ZIP is processed individually — classified, matched, and filed as if it were a separate attachment.
+
+### "A document is too large"
+The system has a 25 MB limit per attachment (matching Gmail's limit). Oversized files are skipped, but other attachments in the same email still process normally.
+
+### "A Word document (.docx) was attached"
+Word documents are currently skipped with a note. Convert the Word doc to PDF manually before forwarding, or ask the client to resend as PDF.
+
+### "The document is a photo/image (not PDF)"
+Images (JPG, PNG) are automatically converted to PDF before classification. No action needed — just forward the email as usual.
+
+### "I cloned/copied a client folder in Drive"
+The system files to the folder linked in the CRM contact's custom field, not by folder name. Cloning a folder in Drive doesn't affect the system — it will continue filing to the original folder. If you want the system to use a different folder, the CRM contact's Drive folder ID field needs to be updated.
+
+### "What if the system is down or Railway has issues?"
+Emails stay in docs@ inbox until the system processes them. Nothing is lost. When the system comes back up, it picks up where it left off using Gmail's history tracking.
+
+---
+
 ## How to Disable the System
 
 If anything goes wrong and you need to stop all automation:
@@ -102,11 +148,12 @@ The system will NOT lose any emails — they stay in docs@ inbox and will be pro
 
 | Problem | What to check |
 |---|---|
-| Document not showing up in Drive | Wait 2-3 minutes (system polls every 120 seconds). Check the Processed label in docs@ — if the email moved there, it was processed. |
-| Document filed to wrong client | Check `Originals/` folder for the original file. Move it manually. The system learns from name extraction, so edge cases with common names may need manual routing. |
-| Document classified as wrong type | The original is always in `Originals/`. Rename and move the file manually. |
+| Document not showing up in Drive | Wait 2-3 minutes (system polls every 120s). Check the Processed label in docs@ — if the email moved there, it was processed. |
+| Document filed to wrong client | Check `Originals/` folder for the original. Move it manually. Edge cases with common names may need manual routing. |
+| Document classified as wrong type | Original is always in `Originals/`. Rename and move manually. |
 | No email draft appeared | Check if the Finmo application triggered. Look for the CRM task "Review doc request". |
 | System seems stuck | Check docs@ inbox — are emails piling up without moving to Processed? Contact Luca. |
+| CRM task but no file in Drive | Check the global `Needs Review/` folder — low-confidence docs land there. |
 
 ---
 
