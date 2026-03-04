@@ -18,7 +18,7 @@ The system checks docs@ every 2 minutes. Once processed, the email moves from In
 
 ### 1. New Application (Finmo)
 When a Finmo application comes in:
-- Client contact created/updated in MyBrokerPro
+- Client contact created/updated in MyBrokerPro (main borrower + co-borrowers)
 - Personalized doc checklist generated based on employment type
 - Email draft created in admin@'s Gmail
 - CRM task created: **"Review doc request — [Client Name]"**
@@ -61,6 +61,32 @@ When all pre-approval documents are received:
 
 ---
 
+## Co-Borrowers (Joint Applications)
+
+### Checklist & Email
+Each borrower gets their own doc list. If John & Jane are both employed, the email lists T4/pay stub/LOE under "John" and again under "Jane" — separate sections with first-name headers.
+
+### Drive Filing
+Person-specific subfolders. The system reads the name off the actual document and files accordingly:
+```
+Brown, Trina/Trevor/
+  Trina/
+    Trina - T4 2024.pdf
+    Trina - Pay Stub.pdf
+  Trevor/
+    Trevor - T4 2024.pdf
+    Trevor - Pay Stub.pdf
+  Subject Property/
+```
+
+### Matching
+If a doc arrives from co-borrower Jane's email, the system looks up the Finmo application, sees Jane is a co-borrower on John's deal, and routes to John's (primary borrower's) folder — then files into the `Jane/` subfolder based on the name on the document.
+
+### CRM Tracking
+Per-opportunity. Missing docs field tracks per-borrower: "T4 (John), Pay Stub (John), T4 (Jane), Pay Stub (Jane)". When Jane's T4 arrives, her row updates across all open deals.
+
+---
+
 ## Supported Formats
 
 PDF, images (JPG/PNG), Word docs, ZIP files (auto-extracted). Each attachment in a multi-attachment email is processed independently.
@@ -86,11 +112,17 @@ PDF, images (JPG/PNG), Word docs, ZIP files (auto-extracted). Each attachment in
 
 **Folder already has that doc type?** The system updates the existing file instead of creating a second copy.
 
-**Employer/bank sent docs directly to docs@?** Ignored — the system only processes emails from @venturemortgages.com. Have them send to you, then forward to docs@.
+**Client folder is in Pre-Approved or Funded subfolder?** Doesn't matter. The system uses the folder ID stored in the CRM, not the folder name or location. Moving a folder around in Drive doesn't break anything.
 
-**Co-borrower docs?** Routed to the primary borrower's folder automatically.
+**Two folders with the same client name?** The system always files to whichever folder the CRM contact is linked to. It doesn't search by name.
+
+**Employer/bank sent docs directly to docs@?** Ignored — the system only processes emails from @venturemortgages.com. Have them send to Cat, then forward to docs@.
 
 **Wrong classification?** Original is always in `Originals/`. Rename and move manually.
+
+**Client uploads docs to Finmo?** Currently not detected automatically. Cat downloads from Finmo and forwards to docs@ manually. (Can be enabled later.)
+
+**Docs arrive before MyBrokerPro updates?** Documents file to Drive immediately — they never wait for the CRM. The system retries CRM sync over 35 minutes (5/10/20 min intervals). When the opportunity appears, it catches up and picks up all docs already filed. Nothing is lost.
 
 **System is down?** Emails stay in docs@ inbox. Nothing is lost. The system catches up when it's back.
 
@@ -99,7 +131,7 @@ PDF, images (JPG/PNG), Word docs, ZIP files (auto-extracted). Each attachment in
 ## Kill Switch
 
 If anything goes wrong:
-1. Tell Luca, or
+1. Tell Lucas, or
 2. On Railway, set `AUTOMATION_KILL_SWITCH=true`
 
 Emails stay safe in docs@ and will be processed when re-enabled.
@@ -108,5 +140,5 @@ Emails stay safe in docs@ and will be processed when re-enabled.
 
 ## Contact
 
-**System issues:** Luca
+**System issues:** Lucas
 **Application questions:** Taylor
