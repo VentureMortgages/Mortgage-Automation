@@ -291,6 +291,7 @@ export async function listAllContacts(): Promise<ContactSummary[]> {
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
     page++;
+    console.log(`[contacts] Fetching page ${page}...`);
 
     const params = new URLSearchParams({
       locationId: crmConfig.locationId,
