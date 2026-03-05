@@ -100,27 +100,10 @@ function isInvestment(ctx: RuleContext): boolean {
 // Purchase
 // ---------------------------------------------------------------------------
 
+// Per Taylor: no property-subject checklist items for purchase —
+// offer/APS and MLS listing are already in hand from the deal itself.
 function purchaseRules(): ChecklistRule[] {
-  return [
-    {
-      id: 's15_purchase_offer',
-      section: '15_property_purchase',
-      document: 'Accepted Offer / APS (signed)',
-      displayName: 'Accepted Offer / Agreement of Purchase and Sale (signed)',
-      stage: 'PRE',
-      scope: 'shared',
-      condition: isPurchase,
-    },
-    {
-      id: 's15_purchase_mls',
-      section: '15_property_purchase',
-      document: 'MLS listing',
-      displayName: 'MLS listing',
-      stage: 'FULL',
-      scope: 'shared',
-      condition: isPurchase,
-    },
-  ];
+  return [];
 }
 
 // ---------------------------------------------------------------------------
