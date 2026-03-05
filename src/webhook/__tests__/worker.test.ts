@@ -60,9 +60,9 @@ const mockUpsertContact = vi.hoisted(() => vi.fn(() => Promise.resolve({ contact
 const mockAssignContactType = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 vi.mock('../../crm/contacts.js', () => ({
-  upsertContact: (...args: unknown[]) => mockUpsertContact(...args),
+  upsertContact: mockUpsertContact,
   findContactByEmail: vi.fn(() => Promise.resolve('crm-contact-456')),
-  assignContactType: (...args: unknown[]) => mockAssignContactType(...args),
+  assignContactType: mockAssignContactType,
 }));
 
 vi.mock('../../crm/config.js', () => ({
@@ -616,10 +616,10 @@ describe('processJob', () => {
 
       // Main borrower upsert is the first call to upsertContact (step 3b)
       const mainBorrowerCall = mockUpsertContact.mock.calls.find(
-        (call: unknown[]) => (call[0] as { email: string }).email === 'jane@example.com',
+        (call: any[]) => call[0]?.email === 'jane@example.com',
       );
       expect(mainBorrowerCall).toBeDefined();
-      expect((mainBorrowerCall![0] as { tags?: string[] }).tags).toEqual(['Client']);
+      expect((mainBorrowerCall as any)[0].tags).toEqual(['Client']);
     });
 
     it('should upsert co-borrowers with tags=[Client]', async () => {
@@ -639,10 +639,10 @@ describe('processJob', () => {
 
       // Co-borrower upsert should also include tags=['Client']
       const coBorrowerCall = mockUpsertContact.mock.calls.find(
-        (call: unknown[]) => (call[0] as { email: string }).email === 'john@example.com',
+        (call: any[]) => call[0]?.email === 'john@example.com',
       );
       expect(coBorrowerCall).toBeDefined();
-      expect((coBorrowerCall![0] as { tags?: string[] }).tags).toEqual(['Client']);
+      expect((coBorrowerCall as any)[0].tags).toEqual(['Client']);
     });
   });
 
@@ -672,6 +672,8 @@ describe('processJob', () => {
           fax: null,
           brokerage: 'RE/MAX Elite',
           lawFirm: null,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
         },
         {
           id: 'agent-2',
@@ -683,6 +685,8 @@ describe('processJob', () => {
           fax: null,
           brokerage: null,
           lawFirm: 'Smith & Associates',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
         },
       ];
       mockFetch.mockResolvedValue(finmoApp);
@@ -713,6 +717,8 @@ describe('processJob', () => {
           fax: null,
           brokerage: null,
           lawFirm: null,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
         },
       ];
       mockFetch.mockResolvedValue(finmoApp);
@@ -735,6 +741,8 @@ describe('processJob', () => {
           fax: null,
           brokerage: 'RE/MAX',
           lawFirm: null,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
         },
       ];
       mockFetch.mockResolvedValue(finmoApp);
@@ -760,6 +768,8 @@ describe('processJob', () => {
           fax: null,
           brokerage: null,
           lawFirm: 'Smith Law',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
         },
       ];
       mockFetch.mockResolvedValue(finmoApp);
