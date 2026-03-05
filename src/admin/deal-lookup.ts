@@ -108,14 +108,17 @@ export function detectInputType(input: string): {
 } {
   const trimmed = input.trim();
 
-  // UUID pattern
-  const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  // UUID pattern (global to find all UUIDs)
+  const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/ig;
 
   // Check for Finmo URL containing a UUID
+  // URL format: https://app.finmo.ca/teams/{teamId}/deals/{applicationId}
+  // The application ID is the LAST UUID in the URL (first is teamId)
   if (trimmed.includes('finmo.ca') || trimmed.includes('finmo.') || trimmed.startsWith('http')) {
-    const uuidMatch = trimmed.match(UUID_RE);
-    if (uuidMatch) {
-      return { type: 'url', applicationId: uuidMatch[0] };
+    const allUuids = trimmed.match(UUID_RE);
+    if (allUuids && allUuids.length > 0) {
+      // Use the last UUID — in /teams/{teamId}/deals/{appId}, appId is last
+      return { type: 'url', applicationId: allUuids[allUuids.length - 1] };
     }
   }
 

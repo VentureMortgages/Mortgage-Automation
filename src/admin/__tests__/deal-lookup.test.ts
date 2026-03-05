@@ -48,6 +48,12 @@ describe('detectInputType', () => {
     expect(result.applicationId).toBe('12345678-1234-1234-1234-123456789abc');
   });
 
+  it('extracts last UUID from Finmo deal URL (teams/teamId/deals/appId)', () => {
+    const result = detectInputType('https://app.finmo.ca/teams/4a9c7b8d-d026-4a0e-b444-968708e62159/deals/b5a92d8b-5f13-4a1a-a8e6-87564c7ee377');
+    expect(result.type).toBe('url');
+    expect(result.applicationId).toBe('b5a92d8b-5f13-4a1a-a8e6-87564c7ee377');
+  });
+
   it('recognizes raw UUID', () => {
     const result = detectInputType('12345678-1234-1234-1234-123456789abc');
     expect(result.type).toBe('uuid');
