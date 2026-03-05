@@ -63,6 +63,17 @@ const HTML = `<!DOCTYPE html>
     .result-box.success { display: block; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
     .result-box.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     .result-box a { color: inherit; font-weight: 600; }
+
+    /* Confirmation dialog */
+    .confirm-box { margin-top: 1rem; padding: 1rem; border-radius: 8px; background: #fffbeb; border: 1px solid #fde68a; font-size: 0.875rem; color: #92400e; display: none; }
+    .confirm-box.visible { display: block; }
+    .confirm-box strong { display: block; margin-bottom: 0.375rem; }
+    .confirm-actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
+    .confirm-actions button { flex: 1; padding: 0.5rem; border-radius: 6px; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+    .btn-reprocess { background: #f59e0b; color: #fff; border: none; }
+    .btn-reprocess:hover { background: #d97706; }
+    .btn-cancel { background: #fff; color: #666; border: 1px solid #d1d5db; }
+    .btn-cancel:hover { background: #f3f4f6; }
   </style>
 </head>
 <body>
@@ -94,6 +105,15 @@ const HTML = `<!DOCTYPE html>
       </ul>
     </div>
 
+    <div id="confirm" class="confirm-box">
+      <strong>This deal was already processed</strong>
+      <span id="confirm-detail"></span>
+      <p style="margin-top:0.375rem">Reprocessing will create duplicate email drafts and budget sheets.</p>
+      <div class="confirm-actions">
+        <button class="btn-reprocess" id="btn-reprocess">Reprocess Anyway</button>
+        <button class="btn-cancel" id="btn-cancel">Cancel</button>
+      </div>
+    </div>
     <div id="result" class="result-box"></div>
   </div>
 
@@ -230,12 +250,17 @@ const HTML = `<!DOCTYPE html>
       }
     }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    const confirmBox = document.getElementById('confirm');
+    const confirmDetail = document.getElementById('confirm-detail');
+    const btnReprocess = document.getElementById('btn-reprocess');
+    const btnCancel = document.getElementById('btn-cancel');
+
+    async function submitDeal(force) {
       const raw = inputEl.value.trim();
       if (!raw) return;
 
       resetUI();
+      confirmBox.classList.remove('visible');
       btn.disabled = true;
       btn.textContent = 'Submitting...';
       progressSection.classList.add('visible');
@@ -244,9 +269,20 @@ const HTML = `<!DOCTYPE html>
         const res = await fetch('/admin/process-deal', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ input: raw }),
+          body: JSON.stringify({ input: raw, force: !!force }),
         });
         const data = await res.json();
+
+        // Already processed — show confirmation
+        if (res.status === 409 && data.alreadyProcessed) {
+          progressSection.classList.remove('visible');
+          btn.disabled = false;
+          btn.textContent = 'Process';
+          const when = data.completedAt ? ' on ' + new Date(data.completedAt).toLocaleString() : '';
+          confirmDetail.textContent = 'Completed' + when + '.';
+          confirmBox.classList.add('visible');
+          return;
+        }
 
         if (!res.ok) {
           showError(data.error || 'Request failed: ' + res.statusText);
@@ -254,15 +290,16 @@ const HTML = `<!DOCTYPE html>
         }
 
         btn.textContent = 'Processing...';
-
-        // Start polling for progress
         pollTimer = setInterval(() => pollJobStatus(data.jobId), 2000);
-        // Also poll immediately
         pollJobStatus(data.jobId);
       } catch (err) {
         showError('Network error: ' + err.message);
       }
-    });
+    }
+
+    form.addEventListener('submit', (e) => { e.preventDefault(); submitDeal(false); });
+    btnReprocess.addEventListener('click', () => submitDeal(true));
+    btnCancel.addEventListener('click', () => { confirmBox.classList.remove('visible'); });
   </script>
 </body>
 </html>`;

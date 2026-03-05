@@ -209,7 +209,7 @@ export function createApp() {
 
   // Admin: process a deal by URL, UUID, or BRXM deal ID (Phase 23)
   app.post('/admin/process-deal', async (req: Request, res: Response) => {
-    const { input } = req.body as { input?: string };
+    const { input, force } = req.body as { input?: string; force?: boolean };
     if (!input?.trim()) {
       res.status(400).json({ error: 'Missing input' });
       return;
@@ -236,10 +236,27 @@ export function createApp() {
       return;
     }
 
-    // Clear dedup and enqueue (same as reprocess-application)
+    // Check for existing completed job (duplicate prevention)
     const queue = getWebhookQueue();
     const jobId = `finmo-app-${applicationId}`;
     const existing = await queue.getJob(jobId);
+
+    if (existing && !force) {
+      const state = await existing.getState();
+      if (state === 'completed') {
+        const completedAt = existing.finishedOn ? new Date(existing.finishedOn).toISOString() : null;
+        res.status(409).json({
+          alreadyProcessed: true,
+          completedAt,
+          applicationId,
+          jobId,
+          message: 'This deal was already processed. Reprocessing will create duplicate email drafts and budget sheets.',
+        });
+        return;
+      }
+    }
+
+    // Clear dedup and enqueue
     if (existing) {
       await existing.remove();
     }
@@ -247,7 +264,7 @@ export function createApp() {
     const jobData: JobData = { applicationId, receivedAt: new Date().toISOString() };
     await queue.add('process-application', jobData, { jobId });
 
-    console.log('[admin] Process deal submitted', { input: detected.type, applicationId, jobId });
+    console.log('[admin] Process deal submitted', { input: detected.type, applicationId, jobId, force: !!force });
     res.json({ success: true, jobId, applicationId, inputType: detected.type });
   });
 
