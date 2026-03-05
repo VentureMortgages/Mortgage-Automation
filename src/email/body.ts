@@ -41,7 +41,7 @@ const ON_FILE_TRANSITION =
   'We just need the following additional documents:';
 
 const CLOSING_TEMPLATE =
-  'You can send these documents directly to <a href="mailto:{docInboxEmail}">{docInboxEmail}</a> and if you have any questions let me know!';
+  'You can send these documents directly to me. If it\'s easier to connect us directly with your accountant to collect these tax documents, feel free.';
 
 
 // ---------------------------------------------------------------------------
