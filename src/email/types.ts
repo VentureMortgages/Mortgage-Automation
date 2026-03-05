@@ -28,6 +28,8 @@ export interface EmailContext {
   docInboxEmail: string;
   /** Documents already on file from a previous application (optional) */
   alreadyOnFile?: AlreadyOnFileDoc[];
+  /** Total liquid assets (cash_savings + rrsp + tfsa) — triggers HNW flag if >= $250k */
+  totalLiquidAssets?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -74,6 +76,8 @@ export interface CreateEmailDraftInput {
   alreadyOnFile?: AlreadyOnFileDoc[];
   /** Application context for feedback capture (goal, income types, etc.) */
   applicationContext?: ApplicationContext;
+  /** Total liquid assets (cash_savings + rrsp + tfsa) — triggers HNW flag if >= $250k */
+  totalLiquidAssets?: number;
 }
 
 /** Result of creating a Gmail draft */

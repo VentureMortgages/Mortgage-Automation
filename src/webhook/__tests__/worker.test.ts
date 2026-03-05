@@ -449,6 +449,7 @@ describe('processJob', () => {
         hasGiftDP: false,
         hasRentalIncome: false,
       },
+      totalLiquidAssets: 0,
     });
   });
 

@@ -234,9 +234,9 @@ describe('generateEmailBody', () => {
     expect(body).toContain('<strong>Recent pay stub</strong>');
   });
 
-  test('ends with closing referencing doc inbox email as mailto link', () => {
+  test('ends with closing and thanks', () => {
     const body = generateEmailBody(checklist, twoBorrowerContext);
-    expect(body).toContain('mailto:docs@venturemortgages.com');
+    expect(body).toContain('send these documents directly to me');
     expect(body).toContain('Thanks!');
   });
 
@@ -353,5 +353,47 @@ describe('generateEmailBody', () => {
     expect(body).toContain('<strong>Letter of Employment</strong>');
     // Should NOT include the parenthetical in the on-file list
     expect(body).not.toContain('on file.*dated within 30 days');
+  });
+
+  // ---------------------------------------------------------------------------
+  // High Net Worth (HNW) flag
+  // ---------------------------------------------------------------------------
+
+  test('shows HNW banner when totalLiquidAssets >= $250,000', () => {
+    const ctx: EmailContext = {
+      ...twoBorrowerContext,
+      totalLiquidAssets: 300_000,
+    };
+    const body = generateEmailBody(checklist, ctx);
+    expect(body).toContain('HIGH NET WORTH');
+    expect(body).toContain('$300,000');
+    // Banner appears before the greeting
+    const bannerIdx = body.indexOf('HIGH NET WORTH');
+    const greetingIdx = body.indexOf('Hey Megan');
+    expect(bannerIdx).toBeLessThan(greetingIdx);
+  });
+
+  test('shows HNW banner at exactly $250,000', () => {
+    const ctx: EmailContext = {
+      ...twoBorrowerContext,
+      totalLiquidAssets: 250_000,
+    };
+    const body = generateEmailBody(checklist, ctx);
+    expect(body).toContain('HIGH NET WORTH');
+    expect(body).toContain('$250,000');
+  });
+
+  test('no HNW banner below $250,000', () => {
+    const ctx: EmailContext = {
+      ...twoBorrowerContext,
+      totalLiquidAssets: 249_999,
+    };
+    const body = generateEmailBody(checklist, ctx);
+    expect(body).not.toContain('HIGH NET WORTH');
+  });
+
+  test('no HNW banner when totalLiquidAssets is undefined', () => {
+    const body = generateEmailBody(checklist, twoBorrowerContext);
+    expect(body).not.toContain('HIGH NET WORTH');
   });
 });

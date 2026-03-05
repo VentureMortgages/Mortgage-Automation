@@ -44,6 +44,7 @@ export async function createEmailDraft(
     borrowerFirstNames: input.borrowerFirstNames,
     docInboxEmail: emailConfig.docInbox,
     alreadyOnFile: input.alreadyOnFile,
+    totalLiquidAssets: input.totalLiquidAssets,
   });
 
   const body = rawBody;

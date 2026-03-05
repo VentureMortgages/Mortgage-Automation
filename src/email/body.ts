@@ -62,6 +62,16 @@ export function generateEmailBody(
   const parts: string[] = [];
   const onFile = context.alreadyOnFile ?? [];
 
+  // 0. High Net Worth flag (internal — Cat removes before sending)
+  const HNW_THRESHOLD = 250_000;
+  if (context.totalLiquidAssets != null && context.totalLiquidAssets >= HNW_THRESHOLD) {
+    const formatted = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(context.totalLiquidAssets);
+    parts.push(
+      `<div style="background:#FFF3CD;border:1px solid #FFD700;border-radius:4px;padding:8px 12px;margin-bottom:12px;font-weight:bold;">` +
+      `&#9888; HIGH NET WORTH — Liquid assets: ${esc(formatted)} (remove this note before sending)</div>`
+    );
+  }
+
   // 1. Greeting
   parts.push(`<p>Hey ${esc(context.borrowerFirstNames.join(' and '))}!</p>`);
 

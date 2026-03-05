@@ -348,7 +348,13 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     }
   }
 
-  // 9. Create email draft (uses filtered checklist + on-file section)
+  // 9. Calculate total liquid assets for HNW flag
+  const LIQUID_ASSET_TYPES = new Set(['cash_savings', 'rrsp', 'tfsa']);
+  const totalLiquidAssets = finmoApp.assets
+    .filter(a => LIQUID_ASSET_TYPES.has(a.type))
+    .reduce((sum, a) => sum + (a.value ?? 0), 0);
+
+  // 10. Create email draft (uses filtered checklist + on-file section)
   const emailResult = await createEmailDraft({
     checklist: emailChecklist,
     recipientEmail: mainBorrower.email,
@@ -356,6 +362,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     contactId: crmResult.contactId,
     alreadyOnFile: alreadyOnFile.length > 0 ? alreadyOnFile : undefined,
     applicationContext,
+    totalLiquidAssets,
   });
 
   console.log('[worker] Email draft created', {
@@ -364,7 +371,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     subject: emailResult.subject,
   });
 
-  // 10. Create budget sheet (non-fatal — errors logged but don't fail the job)
+  // 11. Create budget sheet (non-fatal — errors logged but don't fail the job)
   let budgetSheetId: string | null = null;
   try {
     if (budgetConfig.enabled) {
