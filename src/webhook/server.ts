@@ -25,6 +25,7 @@ import { getIntakeQueue } from '../intake/gmail-monitor.js';
 import { testIntakeHandler, recentMessagesHandler, cleanupInboxHandler } from '../admin/test-intake.js';
 import { backfillSpreadsheetHandler } from '../admin/backfill-spreadsheet.js';
 import { finmoDocumentHandler } from '../intake/index.js';
+import { processDealFormHandler } from '../admin/process-deal-form.js';
 import type { WebhookPayload, JobData } from './types.js';
 
 /**
@@ -201,6 +202,9 @@ export function createApp() {
 
   // Admin: generate Drive folder backfill spreadsheet (Phase 17.1)
   app.post('/admin/backfill-spreadsheet', backfillSpreadsheetHandler);
+
+  // Admin: UI form for Cat to process cloned Finmo deals
+  app.get('/admin/process-deal', processDealFormHandler);
 
   // Global error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
