@@ -61,7 +61,12 @@ export async function autoCreateFromDoc(input: {
 
   try {
     // 2. Create CRM contact
-    const email = senderEmail ?? 'unknown@placeholder.venturemortgages.com';
+    // Never use internal @venturemortgages.com emails (Cat/Taylor forwarding) as contact email.
+    // GHL upsertContact would match/overwrite the team member's contact record.
+    const isInternalSender = senderEmail?.toLowerCase().endsWith('@venturemortgages.com');
+    const email = (senderEmail && !isInternalSender)
+      ? senderEmail
+      : `${firstName.toLowerCase()}.${lastName.toLowerCase()}@placeholder.venturemortgages.com`;
     const contactResult = await upsertContact({
       email,
       firstName,

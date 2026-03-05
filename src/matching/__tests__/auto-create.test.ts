@@ -262,7 +262,50 @@ describe('autoCreateFromDoc', () => {
 
     expect(mockContacts.upsertContact).toHaveBeenCalledWith(
       expect.objectContaining({
-        email: 'unknown@placeholder.venturemortgages.com',
+        email: 'terry.smith@placeholder.venturemortgages.com',
+      }),
+    );
+  });
+
+  it('uses placeholder email when sender is internal @venturemortgages.com', async () => {
+    await autoCreateFromDoc({
+      classificationResult: mockClassificationResult(),
+      senderEmail: 'admin@venturemortgages.com',
+      originalFilename: 'T4_2024.pdf',
+    });
+
+    // Should NOT use admin@ — would overwrite Cat's contact record
+    expect(mockContacts.upsertContact).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'terry.smith@placeholder.venturemortgages.com',
+      }),
+    );
+  });
+
+  it('uses placeholder email when sender is docs@venturemortgages.com', async () => {
+    await autoCreateFromDoc({
+      classificationResult: mockClassificationResult(),
+      senderEmail: 'docs@venturemortgages.com',
+      originalFilename: 'T4_2024.pdf',
+    });
+
+    expect(mockContacts.upsertContact).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'terry.smith@placeholder.venturemortgages.com',
+      }),
+    );
+  });
+
+  it('uses external sender email when not @venturemortgages.com', async () => {
+    await autoCreateFromDoc({
+      classificationResult: mockClassificationResult(),
+      senderEmail: 'client@gmail.com',
+      originalFilename: 'T4_2024.pdf',
+    });
+
+    expect(mockContacts.upsertContact).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'client@gmail.com',
       }),
     );
   });
