@@ -67,9 +67,11 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
 
   // 1. Fetch full application from Finmo API
   const finmoApp = await fetchFinmoApplication(applicationId);
+  await job.updateProgress({ step: 'finmo_fetched', label: 'Fetching application from Finmo...', pct: 10, detail: `${finmoApp.borrowers.length} borrower(s)` });
 
   // 2. Generate checklist
   const checklist = generateChecklist(finmoApp);
+  await job.updateProgress({ step: 'checklist_generated', label: 'Document checklist generated', pct: 20, detail: `${checklist.stats.totalItems} items` });
   console.log('[worker] Checklist generated', {
     applicationId,
     totalItems: checklist.stats.totalItems,
@@ -206,6 +208,8 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     }
   }
 
+  await job.updateProgress({ step: 'drive_folder_ready', label: 'Drive folder created', pct: 35, detail: clientFolderId ? 'Folder ready' : 'No root folder' });
+
   // 4. Scan Drive folder for existing docs (non-fatal)
   let filterResult: FilterResult | null = null;
   if (clientFolderId) {
@@ -238,6 +242,8 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
       });
     }
   }
+
+  await job.updateProgress({ step: 'drive_scanned', label: 'Scanning for existing documents...', pct: 50, detail: filterResult ? `${filterResult.alreadyOnFile.length} on file` : 'No existing docs' });
 
   // 5. Build application context for feedback capture
   const applicationContext: ApplicationContext = {
@@ -291,6 +297,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     preReceivedDocs: preReceivedDocs.length > 0 ? preReceivedDocs : undefined,
   });
 
+  await job.updateProgress({ step: 'crm_synced', label: 'CRM synced', pct: 75, detail: `Contact: ${crmResult.contactId}` });
   console.log('[worker] CRM synced', {
     applicationId,
     contactId: crmResult.contactId,
@@ -365,6 +372,7 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
     totalLiquidAssets,
   });
 
+  await job.updateProgress({ step: 'email_drafted', label: 'Email draft created', pct: 90, detail: emailResult.subject });
   console.log('[worker] Email draft created', {
     applicationId,
     draftId: emailResult.draftId,
@@ -389,6 +397,8 @@ export async function processJob(job: Job<JobData>): Promise<ProcessingResult> {
       error: err instanceof Error ? err.message : String(err),
     });
   }
+
+  await job.updateProgress({ step: 'complete', label: 'Complete!', pct: 100 });
 
   return {
     applicationId,

@@ -51,6 +51,7 @@ import { convertToPdf, ConversionError } from './pdf-converter.js';
 import { extractFromZip, isZipMimeType } from './zip-extractor.js';
 import { downloadFinmoDocument, isDocRequestProcessed, markDocRequestProcessed } from './finmo-downloader.js';
 import { isBccCopy, handleSentDetection } from './sent-detector.js';
+import { extractForwardingNotes } from './body-extractor.js';
 import { getContactIdBySubject } from '../feedback/original-store.js';
 import { pollForNewMessages, getInitialHistoryId } from './gmail-reader.js';
 import { INTAKE_QUEUE_NAME, getIntakeQueue, getStoredHistoryId, storeHistoryId } from './gmail-monitor.js';
@@ -163,6 +164,17 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
     id: messageId,
     format: 'full',
   });
+
+  // 2b. Extract forwarding notes from email body (Phase 23)
+  const forwardingNotes = extractForwardingNotes(fullMessage.data.payload ?? undefined);
+  if (forwardingNotes) {
+    console.log('[intake] Forwarding notes detected:', {
+      messageId,
+      hasClientName: !!forwardingNotes.clientName,
+      hasClientEmail: !!forwardingNotes.clientEmail,
+      hasDocTypeHint: !!forwardingNotes.docTypeHint,
+    });
+  }
 
   // 3. Extract attachments from MIME parts
   const parts = fullMessage.data.payload?.parts ?? [];
@@ -278,6 +290,10 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
         threadId: messageMeta.threadId ?? undefined,
         emailSubject: messageMeta.subject,
         ccAddresses: messageMeta.cc,
+        // Phase 23: Cat's forwarding notes
+        ...(forwardingNotes?.clientName && { forwardingNoteClientName: forwardingNotes.clientName }),
+        ...(forwardingNotes?.clientEmail && { forwardingNoteClientEmail: forwardingNotes.clientEmail }),
+        ...(forwardingNotes?.docTypeHint && { forwardingNoteDocTypeHint: forwardingNotes.docTypeHint }),
       };
 
       await getClassificationQueue().add(

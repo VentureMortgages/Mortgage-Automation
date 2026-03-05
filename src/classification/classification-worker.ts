@@ -83,7 +83,11 @@ export async function processClassificationJob(
     const pdfBuffer = await readFile(tempFilePath);
 
     // b. Classify the document
-    const classification = await classifyDocument(pdfBuffer, originalFilename);
+    // Phase 23: If Cat provided a doc type hint in her forwarding note, append it to the filename hint
+    const filenameHint = job.data.forwardingNoteDocTypeHint
+      ? `${originalFilename} [Forwarding note hint: ${job.data.forwardingNoteDocTypeHint}]`
+      : originalFilename;
+    const classification = await classifyDocument(pdfBuffer, filenameHint);
     console.log('[classification] Classified document:', {
       documentType: classification.documentType,
       confidence: classification.confidence,
@@ -99,6 +103,9 @@ export async function processClassificationJob(
       emailSubject: job.data.emailSubject,
       applicationId,
       originalFilename,
+      // Phase 23: Cat's forwarding notes
+      forwardingNoteClientName: job.data.forwardingNoteClientName,
+      forwardingNoteClientEmail: job.data.forwardingNoteClientEmail,
     });
 
     let contactId = matchDecision.chosenContactId;

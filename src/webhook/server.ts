@@ -26,6 +26,7 @@ import { testIntakeHandler, recentMessagesHandler, cleanupInboxHandler } from '.
 import { backfillSpreadsheetHandler } from '../admin/backfill-spreadsheet.js';
 import { finmoDocumentHandler } from '../intake/index.js';
 import { processDealFormHandler } from '../admin/process-deal-form.js';
+import { detectInputType, lookupApplicationIdByDealRef } from '../admin/deal-lookup.js';
 import type { WebhookPayload, JobData } from './types.js';
 
 /**
@@ -205,6 +206,69 @@ export function createApp() {
 
   // Admin: UI form for Cat to process cloned Finmo deals
   app.get('/admin/process-deal', processDealFormHandler);
+
+  // Admin: process a deal by URL, UUID, or BRXM deal ID (Phase 23)
+  app.post('/admin/process-deal', async (req: Request, res: Response) => {
+    const { input } = req.body as { input?: string };
+    if (!input?.trim()) {
+      res.status(400).json({ error: 'Missing input' });
+      return;
+    }
+
+    const detected = detectInputType(input);
+    let applicationId: string | undefined;
+
+    if (detected.type === 'url' || detected.type === 'uuid') {
+      applicationId = detected.applicationId;
+    } else if (detected.type === 'brxm' && detected.dealRef) {
+      applicationId = (await lookupApplicationIdByDealRef(detected.dealRef)) ?? undefined;
+      if (!applicationId) {
+        res.status(404).json({ error: `Could not resolve deal ID: ${detected.dealRef}. No matching CRM opportunity found.` });
+        return;
+      }
+    } else {
+      res.status(400).json({ error: 'Could not detect a valid application ID, Finmo URL, or BRXM deal ID.' });
+      return;
+    }
+
+    if (!applicationId) {
+      res.status(400).json({ error: 'Could not extract application ID from input.' });
+      return;
+    }
+
+    // Clear dedup and enqueue (same as reprocess-application)
+    const queue = getWebhookQueue();
+    const jobId = `finmo-app-${applicationId}`;
+    const existing = await queue.getJob(jobId);
+    if (existing) {
+      await existing.remove();
+    }
+
+    const jobData: JobData = { applicationId, receivedAt: new Date().toISOString() };
+    await queue.add('process-application', jobData, { jobId });
+
+    console.log('[admin] Process deal submitted', { input: detected.type, applicationId, jobId });
+    res.json({ success: true, jobId, applicationId, inputType: detected.type });
+  });
+
+  // Admin: poll job status with progress (Phase 23)
+  app.get('/admin/job-status/:jobId', async (req: Request, res: Response) => {
+    const jobId = req.params.jobId as string;
+    const queue = getWebhookQueue();
+    const job = await queue.getJob(jobId);
+
+    if (!job) {
+      res.status(404).json({ error: 'Job not found' });
+      return;
+    }
+
+    const state = await job.getState();
+    const progress = job.progress;
+    const result = job.returnvalue;
+    const failedReason = job.failedReason;
+
+    res.json({ state, progress, result: result ?? null, error: failedReason ?? null });
+  });
 
   // Global error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

@@ -23,7 +23,7 @@
 
 import { GoogleGenerativeAI, type Content, type Part } from '@google/generative-ai';
 import { matchingConfig } from './config.js';
-import { collectThreadSignal, collectSenderSignal, collectDocNameSignal, collectEmailMetadataSignals } from './signal-collectors.js';
+import { collectThreadSignal, collectSenderSignal, collectDocNameSignal, collectForwardingNoteSignal, collectEmailMetadataSignals } from './signal-collectors.js';
 import { executeToolCall, MATCHING_TOOLS } from './agent-tools.js';
 import { logMatchDecision } from './decision-log.js';
 import { resolveContactId } from '../crm/contacts.js';
@@ -43,6 +43,10 @@ export interface MatchInput {
   emailSubject?: string;
   applicationId: string | null;
   originalFilename: string;
+  /** Cat's forwarding note: client name (Phase 23) */
+  forwardingNoteClientName?: string;
+  /** Cat's forwarding note: client email (Phase 23) */
+  forwardingNoteClientEmail?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +63,10 @@ function buildSystemPrompt(
 
   const { classificationResult: cr } = input;
 
+  const forwardingNoteSection = input.forwardingNoteClientName || input.forwardingNoteClientEmail
+    ? `\n- Forwarding note from assistant: ${input.forwardingNoteClientName ?? ''} ${input.forwardingNoteClientEmail ?? ''} (EXPLICIT human instruction — highest priority)`
+    : '';
+
   return `You are a document matching agent for a mortgage broker's automation system.
 Your job is to determine which CRM contact an incoming document belongs to.
 
@@ -68,7 +76,7 @@ Your job is to determine which CRM contact an incoming document belongs to.
 - Institution: ${cr.institution ?? 'unknown'}
 - Original filename: ${input.originalFilename}
 - Sender email: ${input.senderEmail ?? 'unknown'}
-- Email subject: ${input.emailSubject ?? 'none'}
+- Email subject: ${input.emailSubject ?? 'none'}${forwardingNoteSection}
 
 ## Pre-collected Signals
 ${signalSummary}
@@ -147,6 +155,13 @@ export async function matchDocument(input: MatchInput): Promise<MatchDecision> {
 
   const threadSignal = await collectThreadSignal(input.threadId);
   if (threadSignal) signals.push(threadSignal);
+
+  // Phase 23: Forwarding note signal (highest priority — explicit human instruction)
+  const forwardingNoteSignal = await collectForwardingNoteSignal(
+    input.forwardingNoteClientName,
+    input.forwardingNoteClientEmail,
+  );
+  if (forwardingNoteSignal) signals.push(forwardingNoteSignal);
 
   const senderSignal = await collectSenderSignal(input.senderEmail);
   if (senderSignal) signals.push(senderSignal);

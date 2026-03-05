@@ -116,6 +116,64 @@ export async function collectDocNameSignal(
 }
 
 // ---------------------------------------------------------------------------
+// Forwarding Note Signal (Tier 1) — Phase 23
+// ---------------------------------------------------------------------------
+
+/**
+ * Collect a forwarding note signal from Cat's annotation above forwarded content.
+ *
+ * When Cat forwards an email and types "John Smith" or "john@example.com"
+ * above the forwarded content, this is an explicit human instruction —
+ * the strongest possible signal.
+ *
+ * - clientEmail → findContactByEmail → confidence 0.95
+ * - clientName → findContactByName → confidence 0.92
+ *
+ * @param clientName - Name from Cat's note (e.g., "John Smith")
+ * @param clientEmail - Email from Cat's note (e.g., "john@example.com")
+ * @returns MatchSignal or null
+ */
+export async function collectForwardingNoteSignal(
+  clientName?: string,
+  clientEmail?: string,
+): Promise<MatchSignal | null> {
+  // Email lookup takes priority (more precise)
+  if (clientEmail) {
+    const contactId = await findContactByEmail(clientEmail);
+    if (contactId) {
+      return {
+        type: 'email_body',
+        value: clientEmail,
+        contactId,
+        confidence: 0.95,
+        tier: 1,
+      };
+    }
+  }
+
+  // Name lookup fallback
+  if (clientName) {
+    const parts = clientName.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      const firstName = parts[0];
+      const lastName = parts.slice(1).join(' ');
+      const contactId = await findContactByName(firstName, lastName);
+      if (contactId) {
+        return {
+          type: 'email_body',
+          value: clientName,
+          contactId,
+          confidence: 0.92,
+          tier: 1,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Email Metadata Signals (Tier 3)
 // ---------------------------------------------------------------------------
 

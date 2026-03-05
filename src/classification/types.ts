@@ -226,6 +226,12 @@ export interface ClassificationJobData {
   ccAddresses?: string[];
   /** Gmail message subject (matching signal) */
   emailSubject?: string;
+  /** Cat's forwarding note: client name (Phase 23) */
+  forwardingNoteClientName?: string;
+  /** Cat's forwarding note: client email (Phase 23) */
+  forwardingNoteClientEmail?: string;
+  /** Cat's forwarding note: doc type hint (Phase 23) */
+  forwardingNoteDocTypeHint?: string;
 }
 
 /** Outcome of a classification + filing job */

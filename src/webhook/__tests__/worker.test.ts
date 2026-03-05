@@ -329,6 +329,7 @@ function createMockJob(overrides?: Partial<Job<JobData>>): Job<JobData> {
     data: { applicationId: 'app-123', receivedAt: '2026-01-16T00:00:00Z' },
     attemptsMade: 0,
     opts: { attempts: 5 },
+    updateProgress: vi.fn(),
     ...overrides,
   } as Job<JobData>;
 }
