@@ -118,20 +118,6 @@ vi.mock('../../crm/types/index.js', () => ({
   PIPELINE_IDS: { LIVE_DEALS: 'pipeline-live-deals' },
 }));
 
-const mockDocExpiry = vi.hoisted(() => ({
-  PROPERTY_SPECIFIC_TYPES: new Set([
-    'purchase_agreement',
-    'mls_listing',
-    'property_tax_bill',
-    'home_insurance',
-    'gift_letter',
-    'lease_agreement',
-    'mortgage_statement',
-  ]),
-}));
-
-vi.mock('../../drive/doc-expiry.js', () => mockDocExpiry);
-
 const mockTasks = vi.hoisted(() => ({
   createReviewTask: vi.fn(),
 }));
@@ -242,8 +228,8 @@ describe('classification-worker', () => {
     mockFs.unlink.mockResolvedValue(undefined);
     mockClassifier.classifyDocument.mockResolvedValue(mockClassificationResult());
     mockNaming.generateFilename.mockReturnValue('Terry - T4 CIBC 2024 $16k.pdf');
-    mockRouter.routeToSubfolder.mockReturnValue('person');
-    mockRouter.getPersonSubfolderName.mockReturnValue('Terry');
+    mockRouter.routeToSubfolder.mockReturnValue('person_tax');
+    mockRouter.getPersonSubfolderName.mockReturnValue('Smith, Terry');
     mockDriveClient.getDriveClient.mockReturnValue({});
     mockFiler.resolveTargetFolder.mockResolvedValue('target-folder-456');
     mockFiler.findExistingFile.mockResolvedValue(null);
@@ -788,27 +774,21 @@ describe('classification-worker', () => {
         );
       });
 
-      it('stores original at client folder level even for property-specific docs', async () => {
+      it('stores original at deal subfolder level when available', async () => {
         // Contact has folder, opportunity has deal subfolder
         mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
         const mockOpp = { id: 'opp-1', customFields: [] };
         mockOpportunities.findOpportunityByFinmoId.mockResolvedValue(mockOpp);
         mockOpportunities.getOpportunityFieldValue.mockReturnValue('deal-subfolder-888');
 
-        // Property-specific doc type
-        mockClassifier.classifyDocument.mockResolvedValue(
-          mockClassificationResult({ documentType: 'purchase_agreement' }),
-        );
-        mockRouter.routeToSubfolder.mockReturnValue('subject_property');
-
         const job = mockJob({ applicationId: 'finmo-app-uuid-1' });
         const result = await processClassificationJob(job);
 
         expect(result.filed).toBe(true);
-        // storeOriginal should use clientFolderId, NOT deal subfolder
+        // storeOriginal should use deal subfolder (baseFolderId), not client folder
         expect(mockOriginals.storeOriginal).toHaveBeenCalledWith(
           expect.anything(),
-          'crm-client-folder-999', // client folder, not deal-subfolder-888
+          'deal-subfolder-888', // deal subfolder, not crm-client-folder-999
           expect.any(Buffer),
           expect.any(String),
         );
@@ -998,24 +978,18 @@ describe('classification-worker', () => {
         );
       });
 
-      it('should route property-specific doc to deal subfolder (DRIVE-05)', async () => {
+      it('should route ALL docs to deal subfolder when available', async () => {
         // Contact has folder, opportunity has deal subfolder
         mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
         const mockOpp = { id: 'opp-1', customFields: [] };
         mockOpportunities.findOpportunityByFinmoId.mockResolvedValue(mockOpp);
         mockOpportunities.getOpportunityFieldValue.mockReturnValue('deal-subfolder-888');
 
-        // Property-specific doc type
-        mockClassifier.classifyDocument.mockResolvedValue(
-          mockClassificationResult({ documentType: 'purchase_agreement' }),
-        );
-        mockRouter.routeToSubfolder.mockReturnValue('subject_property');
-
         const job = mockJob({ applicationId: 'finmo-app-uuid-1' });
         const result = await processClassificationJob(job);
 
         expect(result.filed).toBe(true);
-        // resolveTargetFolder should receive the DEAL subfolder ID
+        // ALL docs now go to deal subfolder (not just property-specific)
         expect(mockFiler.resolveTargetFolder).toHaveBeenCalledWith(
           expect.anything(),
           'deal-subfolder-888', // deal subfolder, not client folder
@@ -1024,18 +998,12 @@ describe('classification-worker', () => {
         );
       });
 
-      it('should fall back to client folder for property-specific doc without deal subfolder', async () => {
+      it('should fall back to client folder when no deal subfolder exists', async () => {
         // Contact has folder, but opportunity has no deal subfolder
         mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
         const mockOpp = { id: 'opp-1', customFields: [] };
         mockOpportunities.findOpportunityByFinmoId.mockResolvedValue(mockOpp);
         mockOpportunities.getOpportunityFieldValue.mockReturnValue(undefined); // no subfolder
-
-        // Property-specific doc type
-        mockClassifier.classifyDocument.mockResolvedValue(
-          mockClassificationResult({ documentType: 'purchase_agreement' }),
-        );
-        mockRouter.routeToSubfolder.mockReturnValue('subject_property');
 
         const job = mockJob({ applicationId: 'finmo-app-uuid-1' });
         const result = await processClassificationJob(job);
@@ -1045,33 +1013,6 @@ describe('classification-worker', () => {
         expect(mockFiler.resolveTargetFolder).toHaveBeenCalledWith(
           expect.anything(),
           'crm-client-folder-999', // client folder fallback
-          expect.any(String),
-          expect.any(String),
-        );
-      });
-
-      it('should always route reusable doc to client folder even when deal subfolder exists', async () => {
-        // Contact has folder AND opportunity has deal subfolder
-        mockContacts.getContactDriveFolderId.mockReturnValue('crm-client-folder-999');
-        // Even though opportunity has a deal subfolder...
-        const mockOpp = { id: 'opp-1', customFields: [] };
-        mockOpportunities.findOpportunityByFinmoId.mockResolvedValue(mockOpp);
-        mockOpportunities.getOpportunityFieldValue.mockReturnValue('deal-subfolder-888');
-
-        // Reusable doc type (pay_stub is NOT in PROPERTY_SPECIFIC_TYPES)
-        mockClassifier.classifyDocument.mockResolvedValue(
-          mockClassificationResult({ documentType: 'pay_stub' }),
-        );
-        mockRouter.routeToSubfolder.mockReturnValue('person');
-
-        const job = mockJob({ applicationId: 'finmo-app-uuid-1' });
-        const result = await processClassificationJob(job);
-
-        expect(result.filed).toBe(true);
-        // Reusable docs always go to client folder, not deal subfolder
-        expect(mockFiler.resolveTargetFolder).toHaveBeenCalledWith(
-          expect.anything(),
-          'crm-client-folder-999', // client folder, not deal subfolder
           expect.any(String),
           expect.any(String),
         );

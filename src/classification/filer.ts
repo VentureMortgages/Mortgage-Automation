@@ -234,44 +234,60 @@ export async function updateFileContent(
 
 /** Maps SubfolderTarget values to Drive folder names */
 const SUBFOLDER_NAMES: Partial<Record<SubfolderTarget, string>> = {
-  subject_property: 'Subject Property',
-  non_subject_property: 'Non-Subject Property',
+  subject_property: 'Property',
+  non_subject_property: 'Property',
   down_payment: 'Down Payment',
   signed_docs: 'Signed Docs',
+};
+
+/** Maps person sub-target to inner borrower subfolder name */
+const PERSON_INNER_FOLDERS: Record<string, string> = {
+  person_id: 'ID',
+  person_income: 'Income',
+  person_tax: 'Tax',
 };
 
 /**
  * Resolves a SubfolderTarget to a concrete Drive folder ID.
  *
- * - 'root': returns clientFolderId directly (no subfolder)
- * - 'person': finds/creates a subfolder named after the person (e.g., "Terry")
- * - Others: finds/creates the standard subfolder (e.g., "Subject Property")
+ * All paths resolve relative to baseFolderId (typically the deal folder).
+ *
+ * - 'root': returns baseFolderId directly (no subfolder)
+ * - 'person': finds/creates a borrower subfolder (e.g., "Smith, John")
+ * - 'person_id/person_income/person_tax': borrower subfolder + inner folder (ID/Income/Tax)
+ * - Others: finds/creates the standard subfolder (e.g., "Property", "Down Payment")
  *
  * @param drive - Google Drive API client
- * @param clientFolderId - The client's root Drive folder ID
+ * @param baseFolderId - The base Drive folder ID (deal folder or client folder)
  * @param subfolderTarget - Target subfolder type from SUBFOLDER_ROUTING
- * @param personName - Person's first name (used when target is 'person')
+ * @param personName - Borrower name in "LastName, FirstName" format (used for person* targets)
  * @returns The resolved Drive folder ID
  */
 export async function resolveTargetFolder(
   drive: DriveClient,
-  clientFolderId: string,
+  baseFolderId: string,
   subfolderTarget: SubfolderTarget,
   personName: string,
 ): Promise<string> {
   if (subfolderTarget === 'root') {
-    return clientFolderId;
+    return baseFolderId;
   }
 
+  // Person targets: resolve borrower folder, then optional inner folder
   if (subfolderTarget === 'person') {
-    return findOrCreateFolder(drive, personName, clientFolderId);
+    return findOrCreateFolder(drive, personName, baseFolderId);
+  }
+
+  const innerFolder = PERSON_INNER_FOLDERS[subfolderTarget];
+  if (innerFolder) {
+    const borrowerFolderId = await findOrCreateFolder(drive, personName, baseFolderId);
+    return findOrCreateFolder(drive, innerFolder, borrowerFolderId);
   }
 
   const folderName = SUBFOLDER_NAMES[subfolderTarget];
   if (!folderName) {
-    // Should not happen if SubfolderTarget union is exhaustive
     throw new Error(`Unknown subfolder target: ${subfolderTarget}`);
   }
 
-  return findOrCreateFolder(drive, folderName, clientFolderId);
+  return findOrCreateFolder(drive, folderName, baseFolderId);
 }

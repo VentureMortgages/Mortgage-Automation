@@ -2,14 +2,15 @@
  * Tests for Subfolder Router
  *
  * Tests cover:
- * - Income docs route to 'person'
+ * - ID docs route to 'person_id'
+ * - Income docs route to 'person_income'
+ * - Tax docs route to 'person_tax'
+ * - Business/situation docs route to 'person' (borrower root)
  * - Property docs route to 'subject_property'
  * - Down payment docs route to 'down_payment'
  * - Void cheque routes to 'root'
  * - 'other' routes to 'root'
- * - Residency docs route to 'person'
- * - getPersonSubfolderName builds correct name (first name only)
- * - getPersonSubfolderName with null name uses fallback
+ * - getPersonSubfolderName builds "LastName, FirstName" format
  */
 
 import { describe, it, expect } from 'vitest';
@@ -27,10 +28,44 @@ describe('Subfolder Router', () => {
   // -------------------------------------------------------------------------
 
   describe('routeToSubfolder', () => {
-    it('income docs route to person subfolder', () => {
-      const incomeTypes: DocumentType[] = ['t4', 'pay_stub', 'loe', 'noa', 't1', 'pension_letter'];
+    it('ID docs route to person_id', () => {
+      const idTypes: DocumentType[] = ['photo_id', 'second_id', 'pr_card', 'passport', 'work_permit'];
+
+      for (const docType of idTypes) {
+        expect(routeToSubfolder(docType), `${docType} should route to person_id`).toBe('person_id');
+      }
+    });
+
+    it('income docs route to person_income', () => {
+      const incomeTypes: DocumentType[] = ['pay_stub', 'loe', 'employment_contract', 'commission_statement', 'pension_letter'];
 
       for (const docType of incomeTypes) {
+        expect(routeToSubfolder(docType), `${docType} should route to person_income`).toBe('person_income');
+      }
+    });
+
+    it('tax docs route to person_tax', () => {
+      const taxTypes: DocumentType[] = ['t4', 't4a', 't1', 't5', 'noa', 't4rif', 't2', 'cra_statement_of_account'];
+
+      for (const docType of taxTypes) {
+        expect(routeToSubfolder(docType), `${docType} should route to person_tax`).toBe('person_tax');
+      }
+    });
+
+    it('business docs route to person (borrower root)', () => {
+      const bizTypes: DocumentType[] = ['articles_of_incorporation', 'financial_statement'];
+
+      for (const docType of bizTypes) {
+        expect(routeToSubfolder(docType), `${docType} should route to person`).toBe('person');
+      }
+    });
+
+    it('situation docs route to person (borrower root)', () => {
+      const situationTypes: DocumentType[] = [
+        'separation_agreement', 'divorce_decree', 'discharge_certificate',
+      ];
+
+      for (const docType of situationTypes) {
         expect(routeToSubfolder(docType), `${docType} should route to person`).toBe('person');
       }
     });
@@ -61,40 +96,6 @@ describe('Subfolder Router', () => {
       expect(routeToSubfolder('other')).toBe('root');
     });
 
-    it('residency docs route to person', () => {
-      const residencyTypes: DocumentType[] = ['pr_card', 'passport', 'work_permit'];
-
-      for (const docType of residencyTypes) {
-        expect(routeToSubfolder(docType), `${docType} should route to person`).toBe('person');
-      }
-    });
-
-    it('business docs route to person', () => {
-      const bizTypes: DocumentType[] = ['t2', 'articles_of_incorporation', 'financial_statement'];
-
-      for (const docType of bizTypes) {
-        expect(routeToSubfolder(docType), `${docType} should route to person`).toBe('person');
-      }
-    });
-
-    it('situation docs route to person', () => {
-      const situationTypes: DocumentType[] = [
-        'separation_agreement', 'divorce_decree', 'discharge_certificate',
-      ];
-
-      for (const docType of situationTypes) {
-        expect(routeToSubfolder(docType), `${docType} should route to person`).toBe('person');
-      }
-    });
-
-    it('tax docs route to person', () => {
-      const taxTypes: DocumentType[] = ['t4a', 't5', 't4rif', 'cra_statement_of_account'];
-
-      for (const docType of taxTypes) {
-        expect(routeToSubfolder(docType), `${docType} should route to person`).toBe('person');
-      }
-    });
-
     it('non-subject property docs route correctly', () => {
       expect(routeToSubfolder('lease_agreement')).toBe('non_subject_property');
       expect(routeToSubfolder('mortgage_statement')).toBe('non_subject_property');
@@ -111,24 +112,28 @@ describe('Subfolder Router', () => {
   // -------------------------------------------------------------------------
 
   describe('getPersonSubfolderName', () => {
-    it('builds correct name from firstName (first name only per Drive conventions)', () => {
-      expect(getPersonSubfolderName('Terry', 'Albrecht', 'Borrower 1')).toBe('Terry');
+    it('builds "LastName, FirstName" format', () => {
+      expect(getPersonSubfolderName('Terry', 'Albrecht', 'Borrower')).toBe('Albrecht, Terry');
     });
 
-    it('uses firstName even when lastName is null', () => {
-      expect(getPersonSubfolderName('Kathy', null, 'Borrower 1')).toBe('Kathy');
+    it('uses firstName only when lastName is null', () => {
+      expect(getPersonSubfolderName('Kathy', null, 'Borrower')).toBe('Kathy');
     });
 
-    it('uses fallback when firstName is null', () => {
-      expect(getPersonSubfolderName(null, null, 'Borrower 1')).toBe('Borrower 1');
+    it('uses lastName only when firstName is null', () => {
+      expect(getPersonSubfolderName(null, 'Smith', 'Borrower')).toBe('Smith');
     });
 
-    it('uses fallback when firstName is empty string', () => {
-      expect(getPersonSubfolderName('', 'Smith', 'Borrower 1')).toBe('Borrower 1');
+    it('uses fallback when both names are null', () => {
+      expect(getPersonSubfolderName(null, null, 'Borrower')).toBe('Borrower');
     });
 
-    it('trims whitespace from firstName', () => {
-      expect(getPersonSubfolderName('  Susan  ', 'Hunter', 'Fallback')).toBe('Susan');
+    it('uses lastName when firstName is empty string', () => {
+      expect(getPersonSubfolderName('', 'Smith', 'Borrower')).toBe('Smith');
+    });
+
+    it('trims whitespace from both names', () => {
+      expect(getPersonSubfolderName('  Susan  ', '  Hunter  ', 'Fallback')).toBe('Hunter, Susan');
     });
   });
 });

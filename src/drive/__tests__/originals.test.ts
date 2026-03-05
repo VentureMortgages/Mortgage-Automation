@@ -1,7 +1,8 @@
 /**
  * Tests for Original Document Preservation Module
  *
- * Tests CLIENT_SUBFOLDERS constant, preCreateSubfolders function,
+ * Tests DEAL_SUBFOLDERS, BORROWER_SUBFOLDERS constants,
+ * preCreateSubfolders function (deal-level + per-borrower),
  * and storeOriginal function including error handling.
  */
 
@@ -19,7 +20,7 @@ vi.mock('../../classification/filer.js', () => ({
   uploadFile: mockUploadFile,
 }));
 
-import { CLIENT_SUBFOLDERS, preCreateSubfolders, storeOriginal } from '../originals.js';
+import { DEAL_SUBFOLDERS, BORROWER_SUBFOLDERS, CLIENT_SUBFOLDERS, preCreateSubfolders, storeOriginal } from '../originals.js';
 import type { DriveClient } from '../../classification/drive-client.js';
 
 // ============================================================================
@@ -27,31 +28,45 @@ import type { DriveClient } from '../../classification/drive-client.js';
 // ============================================================================
 
 const mockDrive = {} as DriveClient;
-const CLIENT_FOLDER_ID = 'client-folder-123';
+const DEAL_FOLDER_ID = 'deal-folder-123';
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 // ============================================================================
-// CLIENT_SUBFOLDERS
+// DEAL_SUBFOLDERS
 // ============================================================================
 
-describe('CLIENT_SUBFOLDERS', () => {
-  it('should contain exactly 7 entries', () => {
-    expect(CLIENT_SUBFOLDERS).toHaveLength(7);
+describe('DEAL_SUBFOLDERS', () => {
+  it('should contain exactly 5 entries', () => {
+    expect(DEAL_SUBFOLDERS).toHaveLength(5);
   });
 
-  it('should contain the expected folder names', () => {
-    expect(CLIENT_SUBFOLDERS).toEqual([
-      'Income',
-      'Property',
+  it('should contain the expected folder names with numbered prefixes', () => {
+    expect(DEAL_SUBFOLDERS).toEqual([
+      '1. Originals',
+      '2. Needs Review',
       'Down Payment',
-      'ID',
-      'Originals',
-      'Needs Review',
+      'Property',
       'Signed Docs',
     ]);
+  });
+});
+
+describe('BORROWER_SUBFOLDERS', () => {
+  it('should contain exactly 3 entries', () => {
+    expect(BORROWER_SUBFOLDERS).toHaveLength(3);
+  });
+
+  it('should contain ID, Income, Tax', () => {
+    expect(BORROWER_SUBFOLDERS).toEqual(['ID', 'Income', 'Tax']);
+  });
+});
+
+describe('CLIENT_SUBFOLDERS (deprecated alias)', () => {
+  it('should equal DEAL_SUBFOLDERS', () => {
+    expect(CLIENT_SUBFOLDERS).toBe(DEAL_SUBFOLDERS);
   });
 });
 
@@ -60,35 +75,64 @@ describe('CLIENT_SUBFOLDERS', () => {
 // ============================================================================
 
 describe('preCreateSubfolders', () => {
-  it('should create all CLIENT_SUBFOLDERS folders', async () => {
+  it('should create all DEAL_SUBFOLDERS when no borrowers provided', async () => {
     mockFindOrCreateFolder.mockImplementation(
       (_drive: DriveClient, name: string) => Promise.resolve(`${name}-folder-id`),
     );
 
-    await preCreateSubfolders(mockDrive, CLIENT_FOLDER_ID);
+    await preCreateSubfolders(mockDrive, DEAL_FOLDER_ID);
 
-    expect(mockFindOrCreateFolder).toHaveBeenCalledTimes(CLIENT_SUBFOLDERS.length);
-    for (const name of CLIENT_SUBFOLDERS) {
-      expect(mockFindOrCreateFolder).toHaveBeenCalledWith(mockDrive, name, CLIENT_FOLDER_ID);
+    expect(mockFindOrCreateFolder).toHaveBeenCalledTimes(DEAL_SUBFOLDERS.length);
+    for (const name of DEAL_SUBFOLDERS) {
+      expect(mockFindOrCreateFolder).toHaveBeenCalledWith(mockDrive, name, DEAL_FOLDER_ID);
     }
   });
 
-  it('should return a Record mapping folder names to IDs', async () => {
+  it('should return a Record mapping folder names to IDs (deal-level only)', async () => {
     mockFindOrCreateFolder.mockImplementation(
       (_drive: DriveClient, name: string) => Promise.resolve(`${name}-folder-id`),
     );
 
-    const result = await preCreateSubfolders(mockDrive, CLIENT_FOLDER_ID);
+    const result = await preCreateSubfolders(mockDrive, DEAL_FOLDER_ID);
 
     expect(result).toEqual({
-      'Income': 'Income-folder-id',
-      'Property': 'Property-folder-id',
+      '1. Originals': '1. Originals-folder-id',
+      '2. Needs Review': '2. Needs Review-folder-id',
       'Down Payment': 'Down Payment-folder-id',
-      'ID': 'ID-folder-id',
-      'Originals': 'Originals-folder-id',
-      'Needs Review': 'Needs Review-folder-id',
+      'Property': 'Property-folder-id',
       'Signed Docs': 'Signed Docs-folder-id',
     });
+  });
+
+  it('should create borrower folders + inner subfolders when borrowers provided', async () => {
+    mockFindOrCreateFolder.mockImplementation(
+      (_drive: DriveClient, name: string) => Promise.resolve(`${name}-folder-id`),
+    );
+
+    const borrowers = [
+      { firstName: 'John', lastName: 'Smith' },
+      { firstName: 'Jane', lastName: 'Doe' },
+    ];
+
+    const result = await preCreateSubfolders(mockDrive, DEAL_FOLDER_ID, borrowers);
+
+    // Deal subfolders (5) + 2 borrower folders + 2*3 inner subfolders = 13
+    expect(mockFindOrCreateFolder).toHaveBeenCalledTimes(5 + 2 + 6);
+
+    // Borrower folders created inside deal folder
+    expect(mockFindOrCreateFolder).toHaveBeenCalledWith(mockDrive, 'Smith, John', DEAL_FOLDER_ID);
+    expect(mockFindOrCreateFolder).toHaveBeenCalledWith(mockDrive, 'Doe, Jane', DEAL_FOLDER_ID);
+
+    // Inner subfolders created inside borrower folders
+    expect(mockFindOrCreateFolder).toHaveBeenCalledWith(mockDrive, 'ID', 'Smith, John-folder-id');
+    expect(mockFindOrCreateFolder).toHaveBeenCalledWith(mockDrive, 'Income', 'Smith, John-folder-id');
+    expect(mockFindOrCreateFolder).toHaveBeenCalledWith(mockDrive, 'Tax', 'Smith, John-folder-id');
+
+    // Result includes borrower paths
+    expect(result['Smith, John']).toBe('Smith, John-folder-id');
+    expect(result['Smith, John/ID']).toBe('ID-folder-id');
+    expect(result['Smith, John/Income']).toBe('Income-folder-id');
+    expect(result['Smith, John/Tax']).toBe('Tax-folder-id');
   });
 
   it('should continue when one folder creation fails (partial success)', async () => {
@@ -101,21 +145,39 @@ describe('preCreateSubfolders', () => {
       },
     );
 
-    const result = await preCreateSubfolders(mockDrive, CLIENT_FOLDER_ID);
+    const result = await preCreateSubfolders(mockDrive, DEAL_FOLDER_ID);
 
-    // Should have 6 entries (all except Property)
-    expect(Object.keys(result)).toHaveLength(6);
+    // Should have 4 entries (all except Property)
+    expect(Object.keys(result)).toHaveLength(4);
     expect(result['Property']).toBeUndefined();
-    expect(result['Income']).toBe('Income-folder-id');
-    expect(result['Originals']).toBe('Originals-folder-id');
+    expect(result['1. Originals']).toBe('1. Originals-folder-id');
   });
 
   it('should return empty record when all fail (does not throw)', async () => {
     mockFindOrCreateFolder.mockRejectedValue(new Error('Drive API down'));
 
-    const result = await preCreateSubfolders(mockDrive, CLIENT_FOLDER_ID);
+    const result = await preCreateSubfolders(mockDrive, DEAL_FOLDER_ID);
 
     expect(result).toEqual({});
+  });
+
+  it('should skip borrower inner subfolders when borrower folder creation fails', async () => {
+    mockFindOrCreateFolder.mockImplementation(
+      (_drive: DriveClient, name: string) => {
+        if (name === 'Smith, John') {
+          return Promise.reject(new Error('Folder creation failed'));
+        }
+        return Promise.resolve(`${name}-folder-id`);
+      },
+    );
+
+    const borrowers = [{ firstName: 'John', lastName: 'Smith' }];
+    const result = await preCreateSubfolders(mockDrive, DEAL_FOLDER_ID, borrowers);
+
+    // Deal subfolders created, but no borrower subfolders
+    expect(result['Smith, John']).toBeUndefined();
+    expect(result['Smith, John/ID']).toBeUndefined();
+    expect(result['1. Originals']).toBe('1. Originals-folder-id');
   });
 });
 
@@ -124,17 +186,16 @@ describe('preCreateSubfolders', () => {
 // ============================================================================
 
 describe('storeOriginal', () => {
-  it('should resolve Originals/ folder then upload with timestamp prefix', async () => {
+  it('should resolve 1. Originals/ folder then upload with timestamp prefix', async () => {
     mockFindOrCreateFolder.mockResolvedValue('originals-folder-id');
     mockUploadFile.mockResolvedValue('uploaded-file-id');
 
-    // Mock date to a known value
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-02T12:00:00Z'));
 
-    await storeOriginal(mockDrive, CLIENT_FOLDER_ID, Buffer.from('pdf'), 'paystub.pdf');
+    await storeOriginal(mockDrive, DEAL_FOLDER_ID, Buffer.from('pdf'), 'paystub.pdf');
 
-    expect(mockFindOrCreateFolder).toHaveBeenCalledWith(mockDrive, 'Originals', CLIENT_FOLDER_ID);
+    expect(mockFindOrCreateFolder).toHaveBeenCalledWith(mockDrive, '1. Originals', DEAL_FOLDER_ID);
     expect(mockUploadFile).toHaveBeenCalledWith(
       mockDrive,
       Buffer.from('pdf'),
@@ -152,7 +213,7 @@ describe('storeOriginal', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-12-25T08:30:00Z'));
 
-    await storeOriginal(mockDrive, CLIENT_FOLDER_ID, Buffer.from('pdf'), 'T4_2025.pdf');
+    await storeOriginal(mockDrive, DEAL_FOLDER_ID, Buffer.from('pdf'), 'T4_2025.pdf');
 
     expect(mockUploadFile).toHaveBeenCalledWith(
       expect.anything(),
@@ -168,15 +229,15 @@ describe('storeOriginal', () => {
     mockFindOrCreateFolder.mockResolvedValue('originals-folder-id');
     mockUploadFile.mockResolvedValue('uploaded-file-id');
 
-    const result = await storeOriginal(mockDrive, CLIENT_FOLDER_ID, Buffer.from('pdf'), 'doc.pdf');
+    const result = await storeOriginal(mockDrive, DEAL_FOLDER_ID, Buffer.from('pdf'), 'doc.pdf');
 
     expect(result).toBe('uploaded-file-id');
   });
 
-  it('should return null when Originals/ folder resolution fails (does not throw)', async () => {
+  it('should return null when 1. Originals/ folder resolution fails (does not throw)', async () => {
     mockFindOrCreateFolder.mockRejectedValue(new Error('Folder creation failed'));
 
-    const result = await storeOriginal(mockDrive, CLIENT_FOLDER_ID, Buffer.from('pdf'), 'doc.pdf');
+    const result = await storeOriginal(mockDrive, DEAL_FOLDER_ID, Buffer.from('pdf'), 'doc.pdf');
 
     expect(result).toBeNull();
     expect(mockUploadFile).not.toHaveBeenCalled();
@@ -186,7 +247,7 @@ describe('storeOriginal', () => {
     mockFindOrCreateFolder.mockResolvedValue('originals-folder-id');
     mockUploadFile.mockRejectedValue(new Error('Upload quota exceeded'));
 
-    const result = await storeOriginal(mockDrive, CLIENT_FOLDER_ID, Buffer.from('pdf'), 'doc.pdf');
+    const result = await storeOriginal(mockDrive, DEAL_FOLDER_ID, Buffer.from('pdf'), 'doc.pdf');
 
     expect(result).toBeNull();
   });

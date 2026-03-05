@@ -40,22 +40,30 @@ export function routeToSubfolder(documentType: DocumentType): SubfolderTarget {
 /**
  * Build the person subfolder name.
  *
- * Per DRIVE_STRUCTURE.md, person subfolders use first name only:
- *   "Terry/", "Kathy/", "Susan/"
+ * Uses "LastName, FirstName" format (e.g., "Smith, John") matching
+ * Taylor's Drive folder naming convention.
  *
  * @param firstName - Borrower's first name (may be null)
- * @param lastName - Borrower's last name (unused per Drive convention, kept for interface consistency)
- * @param fallback - Fallback name when firstName is null/empty (e.g., "Borrower 1")
- * @returns The person subfolder name
+ * @param lastName - Borrower's last name (may be null)
+ * @param fallback - Fallback name when names are null/empty (e.g., "Borrower")
+ * @returns The person subfolder name in "LastName, FirstName" format
  */
 export function getPersonSubfolderName(
   firstName: string | null,
   lastName: string | null,
   fallback: string,
 ): string {
-  const trimmed = firstName?.trim();
-  if (trimmed && trimmed.length > 0) {
-    return trimmed;
+  const first = firstName?.trim();
+  const last = lastName?.trim();
+
+  if (last && first) {
+    return `${last}, ${first}`;
+  }
+  if (last) {
+    return last;
+  }
+  if (first) {
+    return first;
   }
   return fallback;
 }

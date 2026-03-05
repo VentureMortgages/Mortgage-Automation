@@ -310,65 +310,112 @@ describe('Filer', () => {
   // -------------------------------------------------------------------------
 
   describe('resolveTargetFolder', () => {
-    it("'root' returns clientFolderId directly", async () => {
-      const result = await resolveTargetFolder(drive, 'client-folder-id', 'root', 'Terry');
+    it("'root' returns baseFolderId directly", async () => {
+      const result = await resolveTargetFolder(drive, 'deal-folder-id', 'root', 'Smith, Terry');
 
-      expect(result).toBe('client-folder-id');
-      // No API calls should be made
+      expect(result).toBe('deal-folder-id');
       expect(files.list).not.toHaveBeenCalled();
       expect(files.create).not.toHaveBeenCalled();
     });
 
-    it("'person' finds/creates person subfolder", async () => {
-      // findFolder returns existing person folder
+    it("'person' finds/creates borrower subfolder", async () => {
       files.list.mockResolvedValueOnce({
-        data: { files: [{ id: 'terry-folder', name: 'Terry' }] },
+        data: { files: [{ id: 'borrower-folder', name: 'Smith, Terry' }] },
       });
 
-      const result = await resolveTargetFolder(drive, 'client-folder-id', 'person', 'Terry');
+      const result = await resolveTargetFolder(drive, 'deal-folder-id', 'person', 'Smith, Terry');
 
-      expect(result).toBe('terry-folder');
+      expect(result).toBe('borrower-folder');
       const query = files.list.mock.calls[0][0].q;
-      expect(query).toContain("name = 'Terry'");
-      expect(query).toContain("'client-folder-id' in parents");
+      expect(query).toContain("name = 'Smith, Terry'");
+      expect(query).toContain("'deal-folder-id' in parents");
     });
 
-    it("'subject_property' finds/creates Subject Property subfolder", async () => {
+    it("'person_id' creates borrower folder then ID subfolder", async () => {
+      // First call: find/create borrower folder
+      files.list.mockResolvedValueOnce({
+        data: { files: [{ id: 'borrower-folder', name: 'Smith, Terry' }] },
+      });
+      // Second call: find/create ID subfolder inside borrower folder
       files.list.mockResolvedValueOnce({
         data: { files: [] },
       });
       files.create.mockResolvedValueOnce({
-        data: { id: 'sp-folder' },
+        data: { id: 'id-folder' },
       });
 
-      const result = await resolveTargetFolder(
-        drive,
-        'client-folder-id',
-        'subject_property',
-        'Terry',
-      );
+      const result = await resolveTargetFolder(drive, 'deal-folder-id', 'person_id', 'Smith, Terry');
 
-      expect(result).toBe('sp-folder');
+      expect(result).toBe('id-folder');
       expect(files.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          requestBody: expect.objectContaining({ name: 'Subject Property' }),
+          requestBody: expect.objectContaining({ name: 'ID', parents: ['borrower-folder'] }),
         }),
       );
     });
 
-    it("'non_subject_property' finds/creates Non-Subject Property subfolder", async () => {
+    it("'person_income' creates borrower folder then Income subfolder", async () => {
       files.list.mockResolvedValueOnce({
-        data: { files: [{ id: 'nsp-folder', name: 'Non-Subject Property' }] },
+        data: { files: [{ id: 'borrower-folder', name: 'Smith, Terry' }] },
+      });
+      files.list.mockResolvedValueOnce({
+        data: { files: [{ id: 'income-folder', name: 'Income' }] },
+      });
+
+      const result = await resolveTargetFolder(drive, 'deal-folder-id', 'person_income', 'Smith, Terry');
+
+      expect(result).toBe('income-folder');
+    });
+
+    it("'person_tax' creates borrower folder then Tax subfolder", async () => {
+      files.list.mockResolvedValueOnce({
+        data: { files: [{ id: 'borrower-folder', name: 'Smith, Terry' }] },
+      });
+      files.list.mockResolvedValueOnce({
+        data: { files: [{ id: 'tax-folder', name: 'Tax' }] },
+      });
+
+      const result = await resolveTargetFolder(drive, 'deal-folder-id', 'person_tax', 'Smith, Terry');
+
+      expect(result).toBe('tax-folder');
+    });
+
+    it("'subject_property' finds/creates Property subfolder", async () => {
+      files.list.mockResolvedValueOnce({
+        data: { files: [] },
+      });
+      files.create.mockResolvedValueOnce({
+        data: { id: 'prop-folder' },
       });
 
       const result = await resolveTargetFolder(
         drive,
-        'client-folder-id',
-        'non_subject_property',
-        'Terry',
+        'deal-folder-id',
+        'subject_property',
+        'Smith, Terry',
       );
 
-      expect(result).toBe('nsp-folder');
+      expect(result).toBe('prop-folder');
+      expect(files.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestBody: expect.objectContaining({ name: 'Property' }),
+        }),
+      );
+    });
+
+    it("'non_subject_property' maps to Property subfolder (same as subject)", async () => {
+      files.list.mockResolvedValueOnce({
+        data: { files: [{ id: 'prop-folder', name: 'Property' }] },
+      });
+
+      const result = await resolveTargetFolder(
+        drive,
+        'deal-folder-id',
+        'non_subject_property',
+        'Smith, Terry',
+      );
+
+      expect(result).toBe('prop-folder');
     });
 
     it("'down_payment' finds/creates Down Payment subfolder", async () => {
@@ -378,9 +425,9 @@ describe('Filer', () => {
 
       const result = await resolveTargetFolder(
         drive,
-        'client-folder-id',
+        'deal-folder-id',
         'down_payment',
-        'Terry',
+        'Smith, Terry',
       );
 
       expect(result).toBe('dp-folder');
@@ -396,9 +443,9 @@ describe('Filer', () => {
 
       const result = await resolveTargetFolder(
         drive,
-        'client-folder-id',
+        'deal-folder-id',
         'signed_docs',
-        'Terry',
+        'Smith, Terry',
       );
 
       expect(result).toBe('sd-folder');

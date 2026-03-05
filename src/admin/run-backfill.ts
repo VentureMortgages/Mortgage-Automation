@@ -63,7 +63,7 @@ async function crmFetch(path: string, init: RequestInit): Promise<Response> {
     throw new CrmRateLimitError('Rate limited');
   }
   if (!response.ok) {
-    throw new CrmApiError(response.status, `CRM API ${response.status}: ${response.statusText}`);
+    throw new CrmApiError(`CRM API ${response.status}: ${response.statusText}`, response.status, '');
   }
   return response;
 }

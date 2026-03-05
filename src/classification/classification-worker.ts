@@ -48,7 +48,6 @@ import type { CrmContact } from '../crm/types/index.js';
 import { createReviewTask } from '../crm/tasks.js';
 import { createCrmNote } from '../crm/notes.js';
 import { updateDocTracking } from '../crm/tracking-sync.js';
-import { PROPERTY_SPECIFIC_TYPES } from '../drive/doc-expiry.js';
 import { matchDocument } from '../matching/agent.js';
 import { autoCreateFromDoc } from '../matching/auto-create.js';
 import { DOC_TYPE_LABELS } from './types.js';
@@ -351,10 +350,8 @@ export async function processClassificationJob(
       };
     }
 
-    // For property-specific docs, resolve deal subfolder from opportunity (DRIVE-05)
-    const isPropertySpecific = PROPERTY_SPECIFIC_TYPES.has(classification.documentType);
-
-    if (isPropertySpecific && contactId && applicationId) {
+    // Resolve deal subfolder from opportunity for ALL doc types
+    if (contactId && applicationId) {
       try {
         const opp = await findOpportunityByFinmoId(
           contactId,
@@ -372,7 +369,7 @@ export async function processClassificationJob(
           }
         }
       } catch (err) {
-        // Non-fatal: fall back to client folder for property-specific docs
+        // Non-fatal: fall back to client folder
         console.error('[classification] Failed to resolve deal subfolder (non-fatal):', {
           error: err instanceof Error ? err.message : String(err),
         });
@@ -392,17 +389,14 @@ export async function processClassificationJob(
       'Borrower',
     );
 
-    // i. Resolve target folder in Drive (DRIVE-04/DRIVE-05)
+    // i. Resolve target folder in Drive — all docs go into deal folder when available
     const drive = getDriveClient();
-    const baseFolderId = (isPropertySpecific && dealSubfolderId)
-      ? dealSubfolderId   // Property-specific docs -> deal subfolder
-      : clientFolderId;   // Reusable docs -> client folder
+    const baseFolderId = dealSubfolderId ?? clientFolderId;
 
-    // ORIG-01: Store original in Originals/ before classification/renaming (silent safety net)
-    // Always stored at client folder level, not deal subfolder — per CONTEXT.md
-    // Belt-and-suspenders try/catch: storeOriginal never throws, but if it somehow does, filing must continue
+    // ORIG-01: Store original in 1. Originals/ before classification/renaming (silent safety net)
+    // Stored at deal folder level (or client folder as fallback)
     try {
-      await storeOriginal(drive, clientFolderId, pdfBuffer, originalFilename);
+      await storeOriginal(drive, baseFolderId, pdfBuffer, originalFilename);
     } catch {
       // storeOriginal handles its own errors — this is a safety net for the safety net
     }

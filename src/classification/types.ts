@@ -76,9 +76,12 @@ export type ClassificationResult = z.infer<typeof ClassificationResultSchema>;
 // Subfolder Routing
 // ---------------------------------------------------------------------------
 
-/** Target subfolder within a client's Drive folder */
+/** Target subfolder within a deal's Drive folder */
 export type SubfolderTarget =
   | 'person'
+  | 'person_id'
+  | 'person_income'
+  | 'person_tax'
   | 'subject_property'
   | 'non_subject_property'
   | 'signed_docs'
@@ -87,44 +90,42 @@ export type SubfolderTarget =
 
 /** Maps every document type to the subfolder it should be filed in */
 export const SUBFOLDER_ROUTING: Record<DocumentType, SubfolderTarget> = {
-  // Person subfolder (income, ID, tax docs)
-  photo_id: 'person',
-  second_id: 'person',
-  pay_stub: 'person',
-  loe: 'person',
-  t4: 'person',
-  t4a: 'person',
-  noa: 'person',
-  t1: 'person',
-  t5: 'person',
-  t4rif: 'person',
-  pension_letter: 'person',
-  employment_contract: 'person',
-  commission_statement: 'person',
-  cra_statement_of_account: 'person',
+  // Person → ID subfolder
+  photo_id: 'person_id',
+  second_id: 'person_id',
+  pr_card: 'person_id',
+  passport: 'person_id',
+  work_permit: 'person_id',
 
-  // Business docs (person subfolder)
-  t2: 'person',
+  // Person → Income subfolder
+  pay_stub: 'person_income',
+  loe: 'person_income',
+  employment_contract: 'person_income',
+  commission_statement: 'person_income',
+  pension_letter: 'person_income',
+
+  // Person → Tax subfolder
+  t4: 'person_tax',
+  t4a: 'person_tax',
+  t1: 'person_tax',
+  t5: 'person_tax',
+  noa: 'person_tax',
+  t4rif: 'person_tax',
+  t2: 'person_tax',
+  cra_statement_of_account: 'person_tax',
+
+  // Person → borrower folder root (business, situations)
   articles_of_incorporation: 'person',
   financial_statement: 'person',
-
-  // Situations (person subfolder)
   separation_agreement: 'person',
   divorce_decree: 'person',
   discharge_certificate: 'person',
 
-  // Residency (person subfolder)
-  pr_card: 'person',
-  passport: 'person',
-  work_permit: 'person',
-
-  // Subject property subfolder
+  // Property subfolder (inside deal folder)
   purchase_agreement: 'subject_property',
   mls_listing: 'subject_property',
   property_tax_bill: 'subject_property',
   home_insurance: 'subject_property',
-
-  // Non-subject property
   lease_agreement: 'non_subject_property',
   mortgage_statement: 'non_subject_property',
 
@@ -135,7 +136,7 @@ export const SUBFOLDER_ROUTING: Record<DocumentType, SubfolderTarget> = {
   fhsa_statement: 'down_payment',
   gift_letter: 'down_payment',
 
-  // Shared / root level
+  // Shared / deal folder root level
   void_cheque: 'root',
   other: 'root',
 };

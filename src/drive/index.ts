@@ -23,4 +23,5 @@ export { filterChecklistByExistingDocs } from './checklist-filter.js';
 export type { AlreadyOnFileDoc, FilterResult } from './checklist-filter.js';
 
 // Original document preservation
-export { storeOriginal, preCreateSubfolders, CLIENT_SUBFOLDERS } from './originals.js';
+export { storeOriginal, preCreateSubfolders, DEAL_SUBFOLDERS, BORROWER_SUBFOLDERS, CLIENT_SUBFOLDERS } from './originals.js';
+export type { BorrowerInfo } from './originals.js';
