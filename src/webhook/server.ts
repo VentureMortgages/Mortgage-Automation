@@ -155,6 +155,34 @@ export function createApp() {
     res.json({ success: true, jobId });
   });
 
+  // Admin: reprocess a Finmo application (clears dedup + re-enqueues)
+  app.post('/admin/reprocess-application', async (req: Request, res: Response) => {
+    const { applicationId } = req.body as { applicationId?: string };
+    if (!applicationId) {
+      res.status(400).json({ error: 'Missing applicationId' });
+      return;
+    }
+
+    const queue = getWebhookQueue();
+    const jobId = `finmo-app-${applicationId}`;
+
+    // Remove existing completed/failed job if present (clears dedup)
+    const existing = await queue.getJob(jobId);
+    if (existing) {
+      await existing.remove();
+      console.log('[admin] Removed existing job', { jobId });
+    }
+
+    const jobData: JobData = {
+      applicationId,
+      receivedAt: new Date().toISOString(),
+    };
+
+    await queue.add('process-application', jobData, { jobId });
+    console.log('[admin] Reprocessing application', { applicationId, jobId });
+    res.json({ success: true, jobId });
+  });
+
   // Admin: manually trigger a reminder scan (bypasses BullMQ cron)
   app.post('/admin/trigger-reminder-scan', async (_req: Request, res: Response) => {
     console.log('[admin] Manual reminder scan triggered');
