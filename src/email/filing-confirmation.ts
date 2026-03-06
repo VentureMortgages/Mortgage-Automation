@@ -183,37 +183,57 @@ export async function maybeSendConfirmation(gmailMessageId: string): Promise<voi
 
 /**
  * Builds a plain-text confirmation email body listing each document's
- * filing outcome.
- *
- * Uses simple ASCII indicators:
- * - OK: filed successfully
- * - !!: needs manual review
- * - XX: error (no classification)
+ * filing outcome. Written in a human, professional tone (as if from an assistant).
  *
  * @param results - Array of filing results for all docs in the message
  * @returns Plain text body
  */
 export function buildConfirmationBody(results: FilingResult[]): string {
-  const lines: string[] = [
-    'Filing confirmation:',
-    '',
-  ];
+  const filed = results.filter(r => r.filed);
+  const needsReview = results.filter(r => r.manualReview);
+  const errors = results.filter(r => !r.filed && !r.manualReview);
 
-  for (const r of results) {
-    if (r.filed) {
-      const name = r.borrowerName ?? 'Unknown';
-      lines.push(`  OK  ${name} - ${r.docTypeLabel} -> ${r.folderPath ?? 'Filed'}`);
-    } else if (r.manualReview) {
-      const name = r.borrowerName ?? 'Unknown';
-      const reason = r.reason ? ` (${r.reason})` : '';
-      lines.push(`  !!  ${name} - ${r.docTypeLabel} -> Needs Review${reason}`);
-    } else {
-      lines.push(`  XX  ${r.originalFilename} -> Error`);
-    }
+  const lines: string[] = [];
+
+  // Opening line
+  const total = results.length;
+  const docWord = total === 1 ? 'document' : 'documents';
+
+  if (filed.length === total) {
+    lines.push(`Got it — filed ${total} ${docWord}.`);
+  } else if (filed.length > 0) {
+    lines.push(`Got ${total} ${docWord}. Here's what happened:`);
+  } else {
+    lines.push(`Received ${total} ${docWord}, but couldn't file automatically:`);
   }
 
   lines.push('');
-  lines.push('-- Venture Mortgages Doc System');
+
+  // Filed docs
+  for (const r of filed) {
+    const name = r.borrowerName ?? 'Unknown client';
+    lines.push(`  Filed: ${name} — ${r.docTypeLabel}`);
+  }
+
+  // Needs review
+  for (const r of needsReview) {
+    const name = r.borrowerName ?? 'Unknown client';
+    const reason = r.reason ? ` — ${r.reason}` : '';
+    lines.push(`  Needs review: ${name} — ${r.docTypeLabel}${reason}`);
+  }
+
+  // Errors
+  for (const r of errors) {
+    lines.push(`  Could not process: ${r.originalFilename}`);
+  }
+
+  // Footer note if anything needs attention
+  if (needsReview.length > 0 || errors.length > 0) {
+    lines.push('');
+    const reviewCount = needsReview.length + errors.length;
+    const itemWord = reviewCount === 1 ? 'item' : 'items';
+    lines.push(`${reviewCount} ${itemWord} moved to Needs Review for you to check.`);
+  }
 
   return lines.join('\n');
 }

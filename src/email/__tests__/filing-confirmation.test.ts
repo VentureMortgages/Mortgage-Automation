@@ -148,43 +148,48 @@ describe('buildConfirmationBody', () => {
     const results = [filedResult, filedResult, filedResult, reviewResult];
     const body = buildConfirmationBody(results);
 
-    expect(body).toContain('OK');
     expect(body).toContain('John Smith');
     expect(body).toContain('Pay Stub');
-    expect(body).toContain('!!');
+    expect(body).toContain('Filed');
     expect(body).toContain('Jane Doe');
-    expect(body).toContain('Needs Review');
+    expect(body).toContain('Needs review');
     expect(body).toContain('Low confidence');
-    expect(body).toContain('Venture Mortgages Doc System');
+    expect(body).toContain('1 item moved to Needs Review');
   });
 
-  test('all filed docs shows success for each', () => {
+  test('all filed docs shows success summary', () => {
     const results = [filedResult, { ...filedResult, intakeDocumentId: 'gmail-msg-001-1' }];
     const body = buildConfirmationBody(results);
 
-    // Should have OK indicators
-    const okCount = (body.match(/OK/g) ?? []).length;
-    expect(okCount).toBeGreaterThanOrEqual(2);
-    // Should NOT have !! or XX
-    expect(body).not.toContain('!!');
-    expect(body).not.toContain('XX');
+    expect(body).toContain('Got it');
+    expect(body).toContain('filed 2 documents');
+    expect(body).not.toContain('Needs review');
+    expect(body).not.toContain('Could not process');
   });
 
   test('all needs-review docs shows warnings for each', () => {
     const results = [reviewResult, { ...reviewResult, intakeDocumentId: 'gmail-msg-001-2' }];
     const body = buildConfirmationBody(results);
 
-    const warnCount = (body.match(/!!/g) ?? []).length;
-    expect(warnCount).toBeGreaterThanOrEqual(2);
-    expect(body).not.toContain('  OK');
+    expect(body).toContain('Needs review');
+    expect(body).toContain('2 items moved to Needs Review');
+    expect(body).not.toContain('Filed:');
   });
 
-  test('error docs show XX indicator', () => {
+  test('error docs show could not process message', () => {
     const results = [errorResult];
     const body = buildConfirmationBody(results);
 
-    expect(body).toContain('XX');
+    expect(body).toContain('Could not process');
     expect(body).toContain('corrupt_file.pdf');
+  });
+
+  test('single filed doc uses singular "document"', () => {
+    const results = [filedResult];
+    const body = buildConfirmationBody(results);
+
+    expect(body).toContain('filed 1 document.');
+    expect(body).not.toContain('documents');
   });
 });
 
