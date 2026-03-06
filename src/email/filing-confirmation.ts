@@ -33,6 +33,7 @@ export interface FilingResult {
   docTypeLabel: string;
   filed: boolean;
   folderPath: string | null;
+  driveFileId: string | null;
   manualReview: boolean;
   reason: string | null;
 }
@@ -142,7 +143,7 @@ export async function maybeSendConfirmation(gmailMessageId: string): Promise<voi
       to: context.senderEmail,
       subject: `Re: ${context.emailSubject}`,
       body,
-      contentType: 'text/plain',
+      contentType: 'text/html',
       ...(context.gmailMessageRfc822Id ? {
         inReplyTo: context.gmailMessageRfc822Id,
         references: context.gmailMessageRfc822Id,
@@ -200,42 +201,47 @@ export function buildConfirmationBody(results: FilingResult[]): string {
   const docWord = total === 1 ? 'document' : 'documents';
 
   if (filed.length === total) {
-    lines.push(`Got it — filed ${total} ${docWord}.`);
+    lines.push(`Got it &mdash; filed ${total} ${docWord}.`);
   } else if (filed.length > 0) {
-    lines.push(`Got ${total} ${docWord}. Here's what happened:`);
+    lines.push(`Got ${total} ${docWord}. Here&rsquo;s what happened:`);
   } else {
-    lines.push(`Received ${total} ${docWord}, but couldn't file automatically:`);
+    lines.push(`Received ${total} ${docWord}, but couldn&rsquo;t file automatically:`);
   }
 
-  lines.push('');
+  lines.push('<br>');
 
   // Filed docs
   for (const r of filed) {
     const name = r.borrowerName ?? 'Unknown client';
-    lines.push(`  Filed: ${name} — ${r.docTypeLabel}`);
+    if (r.driveFileId) {
+      const url = `https://drive.google.com/file/d/${r.driveFileId}/view`;
+      lines.push(`&nbsp;&nbsp;Filed: ${name} &mdash; <a href="${url}">${r.docTypeLabel}</a>`);
+    } else {
+      lines.push(`&nbsp;&nbsp;Filed: ${name} &mdash; ${r.docTypeLabel}`);
+    }
   }
 
   // Needs review
   for (const r of needsReview) {
     const name = r.borrowerName ?? 'Unknown client';
-    const reason = r.reason ? ` — ${r.reason}` : '';
-    lines.push(`  Needs review: ${name} — ${r.docTypeLabel}${reason}`);
+    const reason = r.reason ? ` &mdash; ${r.reason}` : '';
+    lines.push(`&nbsp;&nbsp;Needs review: ${name} &mdash; ${r.docTypeLabel}${reason}`);
   }
 
   // Errors
   for (const r of errors) {
-    lines.push(`  Could not process: ${r.originalFilename}`);
+    lines.push(`&nbsp;&nbsp;Could not process: ${r.originalFilename}`);
   }
 
   // Footer note if anything needs attention
   if (needsReview.length > 0 || errors.length > 0) {
-    lines.push('');
+    lines.push('<br>');
     const reviewCount = needsReview.length + errors.length;
     const itemWord = reviewCount === 1 ? 'item' : 'items';
     lines.push(`${reviewCount} ${itemWord} moved to Needs Review for you to check.`);
   }
 
-  return lines.join('\n');
+  return lines.join('<br>');
 }
 
 // ---------------------------------------------------------------------------

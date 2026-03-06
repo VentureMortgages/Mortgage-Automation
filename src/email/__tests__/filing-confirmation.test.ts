@@ -115,6 +115,7 @@ const filedResult: FilingResult = {
   docTypeLabel: 'Pay Stub',
   filed: true,
   folderPath: 'Filed (Pay Stub)',
+  driveFileId: 'file-abc-123',
   manualReview: false,
   reason: null,
 };
@@ -126,6 +127,7 @@ const reviewResult: FilingResult = {
   docTypeLabel: 'Document',
   filed: false,
   folderPath: null,
+  driveFileId: null,
   manualReview: true,
   reason: 'Low confidence',
 };
@@ -137,6 +139,7 @@ const errorResult: FilingResult = {
   docTypeLabel: 'Unknown',
   filed: false,
   folderPath: null,
+  driveFileId: null,
   manualReview: false,
   reason: null,
 };
@@ -201,6 +204,31 @@ describe('buildConfirmationBody', () => {
 
     expect(body).toContain('filed 1 document.');
     expect(body).not.toContain('documents');
+  });
+
+  test('filed docs include Drive hyperlink on doc type when driveFileId is present', () => {
+    const results = [filedResult];
+    const body = buildConfirmationBody(results);
+
+    expect(body).toContain('<a href="https://drive.google.com/file/d/file-abc-123/view">Pay Stub</a>');
+  });
+
+  test('filed docs without driveFileId omit Drive link', () => {
+    const results = [{ ...filedResult, driveFileId: null }];
+    const body = buildConfirmationBody(results);
+
+    expect(body).toContain('Filed:');
+    expect(body).toContain('John Smith');
+    expect(body).not.toContain('drive.google.com');
+    expect(body).not.toContain('<a href');
+  });
+
+  test('body is HTML with br tags', () => {
+    const results = [filedResult];
+    const body = buildConfirmationBody(results);
+
+    expect(body).toContain('<br>');
+    expect(body).toContain('&mdash;');
   });
 });
 

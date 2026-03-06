@@ -248,6 +248,72 @@ describe('findContactByName', () => {
     expect(body.query).toBe('Terry Smith');
     expect(body.pageLimit).toBe(5);
   });
+
+  test('matches hyphenated surname when search term is one segment', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [{ id: 'contact-hyph', firstName: 'Carolyn', lastName: 'Wong-Ranasinghe' }],
+      }),
+    });
+
+    const result = await findContactByName('Carolyn', 'Wong');
+    expect(result).toBe('contact-hyph');
+  });
+
+  test('matches hyphenated surname with second segment', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [{ id: 'contact-hyph', firstName: 'Carolyn', lastName: 'Wong-Ranasinghe' }],
+      }),
+    });
+
+    const result = await findContactByName('Carolyn', 'Ranasinghe');
+    expect(result).toBe('contact-hyph');
+  });
+
+  test('prefers exact match over hyphenated match', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [
+          { id: 'contact-exact', firstName: 'Carolyn', lastName: 'Wong' },
+          { id: 'contact-hyph', firstName: 'Carolyn', lastName: 'Wong-Ranasinghe' },
+        ],
+      }),
+    });
+
+    const result = await findContactByName('Carolyn', 'Wong');
+    expect(result).toBe('contact-exact');
+  });
+
+  test('returns null on 2+ hyphenated matches (ambiguity)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [
+          { id: 'contact-1', firstName: 'Carolyn', lastName: 'Wong-Ranasinghe' },
+          { id: 'contact-2', firstName: 'Carolyn', lastName: 'Wong-Smith' },
+        ],
+      }),
+    });
+
+    const result = await findContactByName('Carolyn', 'Wong');
+    expect(result).toBeNull();
+  });
+
+  test('does not match non-hyphenated partial surnames', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        contacts: [{ id: 'contact-1', firstName: 'Terry', lastName: 'Smithson' }],
+      }),
+    });
+
+    const result = await findContactByName('Terry', 'Smith');
+    expect(result).toBeNull();
+  });
 });
 
 // ============================================================================

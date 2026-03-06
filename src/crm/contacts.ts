@@ -153,19 +153,40 @@ export async function findContactByName(
     return null;
   }
 
+  const firstLower = firstName.toLowerCase();
+  const lastLower = lastName.toLowerCase();
+
   // Exact-match filter (case-insensitive) — GHL may return fuzzy results
   const exactMatches = data.contacts.filter(
     (c) =>
-      c.firstName?.toLowerCase() === firstName.toLowerCase() &&
-      c.lastName?.toLowerCase() === lastName.toLowerCase(),
+      c.firstName?.toLowerCase() === firstLower &&
+      c.lastName?.toLowerCase() === lastLower,
   );
 
   // Ambiguity guard: 2+ exact matches → return null (manual review)
-  if (exactMatches.length !== 1) {
+  if (exactMatches.length === 1) {
+    return exactMatches[0].id;
+  }
+  if (exactMatches.length > 1) {
     return null;
   }
 
-  return exactMatches[0].id;
+  // Hyphenated surname fallback: "Wong" matches "Wong-Ranasinghe"
+  // Only triggers when zero exact matches found. Checks if the search
+  // lastName is one segment of a hyphenated contact lastName.
+  const hyphenMatches = data.contacts.filter((c) => {
+    if (c.firstName?.toLowerCase() !== firstLower) return false;
+    const contactLast = c.lastName?.toLowerCase();
+    if (!contactLast || !contactLast.includes('-')) return false;
+    const segments = contactLast.split('-');
+    return segments.includes(lastLower);
+  });
+
+  if (hyphenMatches.length === 1) {
+    return hyphenMatches[0].id;
+  }
+
+  return null;
 }
 
 /**

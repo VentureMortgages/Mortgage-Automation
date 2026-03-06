@@ -97,6 +97,7 @@ async function recordFilingResultSafe(
       docTypeLabel: docLabel,
       filed: result.filed,
       folderPath: result.driveFileId ? `Filed (${docLabel})` : null,
+      driveFileId: result.driveFileId ?? null,
       manualReview: result.manualReview,
       reason: result.error ?? (result.manualReview ? 'Low confidence' : null),
     }, {
