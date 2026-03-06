@@ -11,6 +11,10 @@
  * - Returns { contactId, driveFolderId } on success
  * - Returns null if no name available from classification
  * - Returns null on CRM/Drive errors (non-fatal)
+ * - Phase 25-02: Fuzzy folder search before auto-create
+ *   - Reuses existing folder when fuzzy match found
+ *   - Falls back to findOrCreateFolder when no match
+ *   - Falls back to findOrCreateFolder when fuzzy search throws
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -85,6 +89,14 @@ const mockClassificationConfig = vi.hoisted(() => ({
 
 vi.mock('../../classification/config.js', () => mockClassificationConfig);
 
+const mockFolderSearch = vi.hoisted(() => ({
+  searchExistingFolders: vi.fn(),
+  normalizeName: vi.fn(),
+  fuzzyNameMatch: vi.fn(),
+}));
+
+vi.mock('../folder-search.js', () => mockFolderSearch);
+
 // ---------------------------------------------------------------------------
 // Import SUT after mocks
 // ---------------------------------------------------------------------------
@@ -125,6 +137,8 @@ describe('autoCreateFromDoc', () => {
     mockFiler.findOrCreateFolder.mockResolvedValue('new-folder-1');
     mockOriginals.preCreateSubfolders.mockResolvedValue({});
     mockTasks.createReviewTask.mockResolvedValue('task-1');
+    // Phase 25-02: Default fuzzy search to null (no match) so existing tests pass unchanged
+    mockFolderSearch.searchExistingFolders.mockResolvedValue(null);
   });
 
   it('creates CRM contact with name from classification', async () => {
@@ -323,6 +337,100 @@ describe('autoCreateFromDoc', () => {
     expect(result).toEqual({
       contactId: 'new-contact-1',
       driveFolderId: 'new-folder-1',
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 25-02: Fuzzy folder search integration
+  // -------------------------------------------------------------------------
+
+  describe('fuzzy folder search (Phase 25-02)', () => {
+    it('reuses existing folder when fuzzy match found (no new folder created)', async () => {
+      mockFolderSearch.searchExistingFolders.mockResolvedValue({
+        folderId: 'existing-folder-xyz',
+        folderName: 'Wong-Ranasinghe, Carolyn/Srimal',
+      });
+
+      const result = await autoCreateFromDoc({
+        classificationResult: mockClassificationResult({
+          borrowerFirstName: 'Srimal',
+          borrowerLastName: 'Ranasinghe',
+        }),
+        senderEmail: 'srimal@example.com',
+        originalFilename: 'ID_Srimal.pdf',
+      });
+
+      // Should use the existing folder, NOT call findOrCreateFolder
+      expect(result).toEqual({
+        contactId: 'new-contact-1',
+        driveFolderId: 'existing-folder-xyz',
+      });
+      expect(mockFiler.findOrCreateFolder).not.toHaveBeenCalled();
+
+      // Should still store the folder ID on the CRM contact
+      expect(mockContacts.upsertContact).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          customFields: [{ id: 'field-drive-folder-id', field_value: 'existing-folder-xyz' }],
+        }),
+      );
+    });
+
+    it('falls back to findOrCreateFolder when no fuzzy match found', async () => {
+      mockFolderSearch.searchExistingFolders.mockResolvedValue(null);
+
+      const result = await autoCreateFromDoc({
+        classificationResult: mockClassificationResult(),
+        senderEmail: 'terry@example.com',
+        originalFilename: 'T4_2024.pdf',
+      });
+
+      expect(result).toEqual({
+        contactId: 'new-contact-1',
+        driveFolderId: 'new-folder-1',
+      });
+      expect(mockFiler.findOrCreateFolder).toHaveBeenCalledWith(
+        expect.anything(),
+        'Smith, Terry',
+        'root-folder-123',
+      );
+    });
+
+    it('falls back to findOrCreateFolder when fuzzy search throws (non-fatal)', async () => {
+      mockFolderSearch.searchExistingFolders.mockRejectedValue(
+        new Error('Drive API unavailable'),
+      );
+
+      const result = await autoCreateFromDoc({
+        classificationResult: mockClassificationResult(),
+        senderEmail: 'terry@example.com',
+        originalFilename: 'T4_2024.pdf',
+      });
+
+      // Should NOT fail — falls back to normal folder creation
+      expect(result).toEqual({
+        contactId: 'new-contact-1',
+        driveFolderId: 'new-folder-1',
+      });
+      expect(mockFiler.findOrCreateFolder).toHaveBeenCalled();
+    });
+
+    it('calls searchExistingFolders with correct folder name and root ID', async () => {
+      mockFolderSearch.searchExistingFolders.mockResolvedValue(null);
+
+      await autoCreateFromDoc({
+        classificationResult: mockClassificationResult({
+          borrowerFirstName: 'Carolyn',
+          borrowerLastName: 'Wong',
+        }),
+        senderEmail: 'carolyn@example.com',
+        originalFilename: 'ID_Carolyn.pdf',
+      });
+
+      expect(mockFolderSearch.searchExistingFolders).toHaveBeenCalledWith(
+        expect.anything(), // drive client
+        'Wong, Carolyn',   // folderName format
+        'root-folder-123', // DRIVE_ROOT_FOLDER_ID
+      );
     });
   });
 });
