@@ -8,7 +8,7 @@
 
 Forward client documents to **docs@venturemortgages.com**. The system does the rest.
 
-It classifies the document, figures out which client it belongs to, renames it using your naming convention, files it to the right folder in Google Drive, and updates the checklist in MyBrokerPro. The original file is always saved in the client's `Originals/` folder as a safety net.
+It classifies the document, figures out which client it belongs to, renames it using your naming convention, files it to the right folder in Google Drive, and updates the checklist in MyBrokerPro. The original file is always saved in the deal's `1. Originals/` folder as a safety net.
 
 The system checks docs@ every 2 minutes. Once processed, the email moves from Inbox to the **Processed** label in docs@.
 
@@ -30,15 +30,15 @@ When Cat forwards a document email to docs@:
 - Document classified (T4, pay stub, bank statement, LOE, etc.)
 - Matched to the correct client by reading the name on the document
 - Renamed (e.g., "Brenda - T4 2024.pdf")
-- Filed to the correct Drive subfolder (Income/, Property/, Down Payment/, etc.)
-- Original saved to client's `Originals/` folder
+- Filed to the correct Drive subfolder inside the deal folder (Income/, Property/, etc.)
+- Original saved to deal's `1. Originals/` folder
 - CRM checklist updated
 
 **Cat's action:** Forward the email. That's it.
 
 ### 3. Needs Review
 When the system isn't confident about a match or classification:
-- Document filed to **Needs Review/** folder (in Mortgage Clients root or inside the client's folder)
+- Document filed to **2. Needs Review/** folder (inside the deal folder, or Mortgage Clients root if no deal)
 - CRM task created: **"Match Review: [filename]"** or **"Manual Review: [filename]"**
 - Task includes best guess, confidence %, and a Drive link to the file
 
@@ -67,16 +67,23 @@ When all pre-approval documents are received:
 Each borrower gets their own doc list. If John & Jane are both employed, the email lists T4/pay stub/LOE under "John" and again under "Jane" — separate sections with first-name headers.
 
 ### Drive Filing
-Person-specific subfolders. The system reads the name off the actual document and files accordingly:
+All documents are filed inside the deal folder. Each borrower gets a named folder with ID, Income, and Tax subfolders:
 ```
-Brown, Trina/Trevor/
-  Trina/
-    Trina - T4 2024.pdf
-    Trina - Pay Stub.pdf
-  Trevor/
-    Trevor - T4 2024.pdf
-    Trevor - Pay Stub.pdf
-  Subject Property/
+Smith, John/                          ← client folder (linked in CRM)
+  BRXM-F051307/                       ← deal folder
+    1. Originals/                      ← safety net (timestamped copies)
+    2. Needs Review/                   ← low-confidence docs
+    Down Payment/
+    Property/
+    Signed Docs/
+    Smith, John/                       ← borrower folder
+      ID/
+      Income/
+      Tax/
+    Doe, Jane/                         ← co-borrower folder
+      ID/
+      Income/
+      Tax/
 ```
 
 ### Matching
@@ -95,14 +102,19 @@ PDF, images (JPG/PNG), Word docs, ZIP files (auto-extracted). Each attachment in
 
 ## Where Documents Get Filed
 
-| Document Type | Subfolder |
+All docs file inside the **deal folder** (e.g., `BRXM-F051307/`). Falls back to client folder if no deal exists yet.
+
+| Document Type | Subfolder (inside deal folder) |
 |---|---|
-| T4, T1, NOA, pay stub, LOE, bank statement, RRSP, TFSA, void cheque | `Income/` |
-| Purchase agreement, MLS listing, home insurance | `Property/` |
-| Gift letter, down payment proof | `Down Payment/` |
-| Photo ID, passport, PR card | Client root |
+| Pay stub, LOE, employment contract, commission, pension | `Smith, John/Income/` |
+| T4, T1, T4A, T5, NOA, T4RIF, T2, CRA statement | `Smith, John/Tax/` |
+| Photo ID, passport, PR card, work permit | `Smith, John/ID/` |
+| Articles of incorporation, financial statement, separation/divorce | `Smith, John/` (borrower root) |
+| Purchase agreement, MLS listing, home insurance, lease, mortgage stmt | `Property/` |
+| Bank statement, RRSP, TFSA, FHSA, gift letter | `Down Payment/` |
 | Signed docs | `Signed Docs/` |
-| Low confidence / unknown | `Needs Review/` |
+| Void cheque, unclassified | Deal folder root |
+| Low confidence / unknown | `2. Needs Review/` |
 
 ---
 
@@ -118,7 +130,7 @@ PDF, images (JPG/PNG), Word docs, ZIP files (auto-extracted). Each attachment in
 
 **Employer/bank sent docs directly to docs@?** Ignored — the system only processes emails from @venturemortgages.com. Have them send to Cat, then forward to docs@.
 
-**Wrong classification?** Original is always in `Originals/`. Rename and move manually.
+**Wrong classification?** Original is always in `1. Originals/`. Rename and move manually.
 
 **Client uploads docs to Finmo?** Being wired up now (Phase 17.1). Once live, Finmo doc uploads will be auto-detected and processed the same as email forwards. Until then, Cat downloads from Finmo and forwards to docs@ manually.
 
