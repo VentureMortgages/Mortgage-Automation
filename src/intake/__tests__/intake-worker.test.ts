@@ -150,6 +150,77 @@ vi.mock('../../classification/classification-worker.js', () => ({
   CLASSIFICATION_QUEUE_NAME: 'doc-classification',
 }));
 
+// ---------------------------------------------------------------------------
+// Phase 26: Filing reply mocks
+// ---------------------------------------------------------------------------
+
+const mockGetPendingChoice = vi.hoisted(() => vi.fn().mockResolvedValue(null));
+const mockDeletePendingChoice = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockSendFollowUpConfirmation = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockBuildFollowUpBody = vi.hoisted(() => vi.fn().mockReturnValue('Done -- filed.'));
+
+vi.mock('../../email/filing-confirmation.js', () => ({
+  getPendingChoice: mockGetPendingChoice,
+  deletePendingChoice: mockDeletePendingChoice,
+  sendFollowUpConfirmation: mockSendFollowUpConfirmation,
+  buildFollowUpBody: mockBuildFollowUpBody,
+}));
+
+const mockExtractReplyText = vi.hoisted(() => vi.fn().mockReturnValue('the first one'));
+const mockParseFilingReply = vi.hoisted(() => vi.fn().mockResolvedValue({
+  action: 'select' as const,
+  selectedIndex: 0,
+  selectedOption: 'Smith, John',
+  confidence: 0.95,
+}));
+
+vi.mock('../reply-parser.js', () => ({
+  extractReplyText: mockExtractReplyText,
+  parseFilingReply: mockParseFilingReply,
+}));
+
+const mockMoveFile = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const mockFilerFindOrCreateFolder = vi.hoisted(() => vi.fn().mockResolvedValue('new-folder-id'));
+
+vi.mock('../../classification/filer.js', () => ({
+  moveFile: mockMoveFile,
+  findOrCreateFolder: mockFilerFindOrCreateFolder,
+}));
+
+const mockGetDriveClient = vi.hoisted(() => vi.fn().mockReturnValue({ files: { update: vi.fn() } }));
+
+vi.mock('../../classification/drive-client.js', () => ({
+  getDriveClient: mockGetDriveClient,
+}));
+
+const mockUpsertContact = vi.hoisted(() => vi.fn().mockResolvedValue({ contactId: 'c-123', isNew: false }));
+
+vi.mock('../../crm/contacts.js', () => ({
+  upsertContact: mockUpsertContact,
+}));
+
+vi.mock('../../crm/config.js', () => ({
+  crmConfig: {
+    driveFolderIdFieldId: 'field-drive-id',
+  },
+}));
+
+vi.mock('../../classification/config.js', () => ({
+  classificationConfig: {
+    driveRootFolderId: 'root-folder-id',
+  },
+}));
+
+const mockBodyExtractor = vi.hoisted(() => ({
+  extractForwardingNotes: vi.fn().mockResolvedValue(null),
+  findPlainTextBody: vi.fn().mockReturnValue('the first one'),
+}));
+
+vi.mock('../body-extractor.js', () => ({
+  extractForwardingNotes: mockBodyExtractor.extractForwardingNotes,
+  findPlainTextBody: mockBodyExtractor.findPlainTextBody,
+}));
+
 const mockSentDetector = vi.hoisted(() => ({
   isBccCopy: vi.fn().mockReturnValue(false),
   handleSentDetection: vi.fn(),
@@ -669,6 +740,317 @@ describe('Intake Worker', () => {
       expect(result.documentIds).toEqual(['finmo-doc-mixed-1']);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0]).toContain('WORD_MANUAL_REVIEW');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 26: Filing reply detection
+  // -------------------------------------------------------------------------
+
+  describe('Filing reply detection (Phase 26)', () => {
+    const pendingChoice = {
+      options: [
+        { folderId: 'folder-1', folderName: 'Smith, John' },
+        { folderId: 'folder-2', folderName: 'Smith, Jonathan' },
+      ],
+      documentInfo: {
+        intakeDocumentId: 'gmail-msg-001-0',
+        originalFilename: 'T4_2024.pdf',
+        docTypeLabel: 'T4',
+        driveFileId: 'file-abc',
+        needsReviewFolderId: 'nr-folder-123',
+      },
+      contactId: 'contact-123',
+      threadContext: {
+        gmailThreadId: 'thread-reply-1',
+        gmailMessageRfc822Id: '<CABx+reply@mail.gmail.com>',
+        senderEmail: 'admin@venturemortgages.com',
+        emailSubject: 'Fwd: John Smith documents',
+      },
+      createdAt: '2026-03-06T12:00:00Z',
+    };
+
+    function setupReplyMessage(messageId: string, threadId: string) {
+      mockReader.getMessageDetails.mockResolvedValue({
+        messageId,
+        threadId,
+        from: 'admin@venturemortgages.com',
+        subject: 'Re: Fwd: John Smith documents',
+        date: '2026-03-06',
+        historyId: '99999',
+      });
+
+      // Full message with plain text body
+      mockGmailClient.client.users.messages.get.mockResolvedValue({
+        data: {
+          id: messageId,
+          payload: {
+            mimeType: 'text/plain',
+            body: {
+              data: Buffer.from('the first one').toString('base64url'),
+            },
+          },
+        },
+      });
+    }
+
+    it('routes reply to handleFilingReply when pending choice exists', async () => {
+      const messageId = 'msg-reply-1';
+      setupReplyMessage(messageId, 'thread-reply-1');
+      mockGetPendingChoice.mockResolvedValueOnce(pendingChoice);
+      mockParseFilingReply.mockResolvedValueOnce({
+        action: 'select',
+        selectedIndex: 0,
+        selectedOption: 'Smith, John',
+        confidence: 0.95,
+      });
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-03-06T12:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(0);
+      expect(result.errors).toHaveLength(0);
+      expect(mockGetPendingChoice).toHaveBeenCalledWith('thread-reply-1');
+      expect(mockMoveFile).toHaveBeenCalled();
+      // Should NOT extract attachments (short-circuits)
+      expect(mockExtractor.extractAttachments).not.toHaveBeenCalled();
+    });
+
+    it('continues normal processing when no pending choice for threadId', async () => {
+      const messageId = 'msg-normal-1';
+      setupGmailMessage(messageId);
+      mockGetPendingChoice.mockResolvedValueOnce(null);
+      mockExtractor.extractAttachments.mockReturnValue([]);
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-03-06T12:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      expect(result.documentsProcessed).toBe(0);
+      expect(mockGetPendingChoice).toHaveBeenCalledWith('thread-1');
+      // Normal processing continued: full message was fetched
+      expect(mockGmailClient.client.users.messages.get).toHaveBeenCalled();
+    });
+
+    it('handles select action: moves file, links CRM, sends confirmation, deletes choice', async () => {
+      const messageId = 'msg-select-1';
+      setupReplyMessage(messageId, 'thread-reply-1');
+      mockGetPendingChoice.mockResolvedValueOnce(pendingChoice);
+      mockParseFilingReply.mockResolvedValueOnce({
+        action: 'select',
+        selectedIndex: 0,
+        selectedOption: 'Smith, John',
+        confidence: 0.95,
+      });
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-03-06T12:00:00Z',
+      });
+
+      await processIntakeJob(job);
+
+      // File moved from Needs Review to selected folder
+      expect(mockMoveFile).toHaveBeenCalledWith(
+        expect.anything(),
+        'file-abc',
+        'nr-folder-123',
+        'folder-1',
+      );
+
+      // CRM contact linked
+      expect(mockUpsertContact).toHaveBeenCalledWith({
+        contactId: 'contact-123',
+        customFields: [{ id: 'field-drive-id', field_value: 'folder-1' }],
+      });
+
+      // Follow-up confirmation sent
+      expect(mockBuildFollowUpBody).toHaveBeenCalledWith('select', 'Smith, John');
+      expect(mockSendFollowUpConfirmation).toHaveBeenCalledWith(
+        pendingChoice.threadContext,
+        'Done -- filed.',
+      );
+
+      // Pending choice deleted
+      expect(mockDeletePendingChoice).toHaveBeenCalledWith('thread-reply-1');
+    });
+
+    it('handles skip action: sends acknowledgment, deletes choice', async () => {
+      const messageId = 'msg-skip-1';
+      setupReplyMessage(messageId, 'thread-reply-1');
+      mockGetPendingChoice.mockResolvedValueOnce(pendingChoice);
+      mockParseFilingReply.mockResolvedValueOnce({
+        action: 'skip',
+        selectedIndex: null,
+        selectedOption: null,
+        confidence: 0.9,
+      });
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-03-06T12:00:00Z',
+      });
+
+      await processIntakeJob(job);
+
+      // No file move
+      expect(mockMoveFile).not.toHaveBeenCalled();
+      expect(mockUpsertContact).not.toHaveBeenCalled();
+
+      // Confirmation sent
+      expect(mockBuildFollowUpBody).toHaveBeenCalledWith('skip');
+      expect(mockSendFollowUpConfirmation).toHaveBeenCalled();
+
+      // Pending choice deleted
+      expect(mockDeletePendingChoice).toHaveBeenCalledWith('thread-reply-1');
+    });
+
+    it('handles create_new action: creates folder, moves file, sends confirmation', async () => {
+      const messageId = 'msg-create-1';
+      setupReplyMessage(messageId, 'thread-reply-1');
+      mockGetPendingChoice.mockResolvedValueOnce(pendingChoice);
+      mockParseFilingReply.mockResolvedValueOnce({
+        action: 'create_new',
+        selectedIndex: null,
+        selectedOption: null,
+        confidence: 0.85,
+      });
+      mockFilerFindOrCreateFolder.mockResolvedValueOnce('brand-new-folder');
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-03-06T12:00:00Z',
+      });
+
+      await processIntakeJob(job);
+
+      // New folder created with filename (minus extension)
+      expect(mockFilerFindOrCreateFolder).toHaveBeenCalledWith(
+        expect.anything(),
+        'T4_2024',
+        'root-folder-id',
+      );
+
+      // File moved to new folder
+      expect(mockMoveFile).toHaveBeenCalledWith(
+        expect.anything(),
+        'file-abc',
+        'nr-folder-123',
+        'brand-new-folder',
+      );
+
+      // Confirmation sent
+      expect(mockBuildFollowUpBody).toHaveBeenCalledWith('create_new', 'T4_2024');
+      expect(mockSendFollowUpConfirmation).toHaveBeenCalled();
+
+      // Pending choice deleted
+      expect(mockDeletePendingChoice).toHaveBeenCalledWith('thread-reply-1');
+    });
+
+    it('handles unclear action: sends clarification, does NOT delete choice', async () => {
+      const messageId = 'msg-unclear-1';
+      setupReplyMessage(messageId, 'thread-reply-1');
+      mockGetPendingChoice.mockResolvedValueOnce(pendingChoice);
+      mockParseFilingReply.mockResolvedValueOnce({
+        action: 'unclear',
+        selectedIndex: null,
+        selectedOption: null,
+        confidence: 0.3,
+      });
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-03-06T12:00:00Z',
+      });
+
+      await processIntakeJob(job);
+
+      // No file move
+      expect(mockMoveFile).not.toHaveBeenCalled();
+
+      // Clarification sent
+      expect(mockBuildFollowUpBody).toHaveBeenCalledWith('unclear');
+      expect(mockSendFollowUpConfirmation).toHaveBeenCalled();
+
+      // Pending choice NOT deleted (Cat can try again)
+      expect(mockDeletePendingChoice).not.toHaveBeenCalled();
+    });
+
+    it('treats low-confidence select as unclear', async () => {
+      const messageId = 'msg-lowconf-1';
+      setupReplyMessage(messageId, 'thread-reply-1');
+      mockGetPendingChoice.mockResolvedValueOnce(pendingChoice);
+      mockParseFilingReply.mockResolvedValueOnce({
+        action: 'select',
+        selectedIndex: 0,
+        selectedOption: 'Smith, John',
+        confidence: 0.5, // Below 0.7 threshold
+      });
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-03-06T12:00:00Z',
+      });
+
+      await processIntakeJob(job);
+
+      // Treated as unclear: no file move
+      expect(mockMoveFile).not.toHaveBeenCalled();
+
+      // Clarification sent
+      expect(mockBuildFollowUpBody).toHaveBeenCalledWith('unclear');
+
+      // Pending choice NOT deleted
+      expect(mockDeletePendingChoice).not.toHaveBeenCalled();
+    });
+
+    it('BCC check runs before reply detection', async () => {
+      const messageId = 'msg-bcc-before-reply';
+      mockReader.getMessageDetails.mockResolvedValue({
+        messageId,
+        threadId: 'thread-reply-1',
+        from: 'admin@venturemortgages.com',
+        subject: 'Documents Needed — TestEmp',
+        date: '2026-03-06',
+        historyId: '99999',
+        ventureType: 'doc-request',
+        ventureContactId: 'contact-abc',
+      });
+
+      mockSentDetector.isBccCopy.mockReturnValue(true);
+      mockSentDetector.handleSentDetection.mockResolvedValue({
+        detected: true,
+        contactId: 'contact-abc',
+        sentDate: '2026-03-06',
+        errors: [],
+      });
+
+      const job = createMockJob({
+        source: 'gmail',
+        gmailMessageId: messageId,
+        receivedAt: '2026-03-06T12:00:00Z',
+      });
+
+      const result = await processIntakeJob(job);
+
+      // BCC handled; reply detection should NOT have been called
+      expect(result.documentsProcessed).toBe(0);
+      expect(mockSentDetector.handleSentDetection).toHaveBeenCalled();
+      expect(mockGetPendingChoice).not.toHaveBeenCalled();
     });
   });
 });

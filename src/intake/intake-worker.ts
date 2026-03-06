@@ -51,11 +51,19 @@ import { convertToPdf, ConversionError } from './pdf-converter.js';
 import { extractFromZip, isZipMimeType } from './zip-extractor.js';
 import { downloadFinmoDocument, isDocRequestProcessed, markDocRequestProcessed } from './finmo-downloader.js';
 import { isBccCopy, handleSentDetection } from './sent-detector.js';
-import { extractForwardingNotes } from './body-extractor.js';
+import { extractForwardingNotes, findPlainTextBody } from './body-extractor.js';
 import { getContactIdBySubject } from '../feedback/original-store.js';
 import { pollForNewMessages, getInitialHistoryId } from './gmail-reader.js';
 import { INTAKE_QUEUE_NAME, getIntakeQueue, getStoredHistoryId, storeHistoryId } from './gmail-monitor.js';
 import { CLASSIFICATION_QUEUE_NAME } from '../classification/classification-worker.js';
+import { getPendingChoice, deletePendingChoice, sendFollowUpConfirmation, buildFollowUpBody } from '../email/filing-confirmation.js';
+import type { PendingChoice } from '../email/filing-confirmation.js';
+import { extractReplyText, parseFilingReply } from './reply-parser.js';
+import { moveFile, findOrCreateFolder } from '../classification/filer.js';
+import { getDriveClient } from '../classification/drive-client.js';
+import { upsertContact } from '../crm/contacts.js';
+import { crmConfig } from '../crm/config.js';
+import { classificationConfig } from '../classification/config.js';
 import type { IntakeJobData, IntakeResult, IntakeDocument } from './types.js';
 import type { ClassificationJobData } from '../classification/types.js';
 
@@ -156,6 +164,18 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
       documentIds: [],
       errors: sentResult.errors,
     };
+  }
+
+  // Phase 26: Check if this is a reply to a pending filing choice
+  if (messageMeta.threadId) {
+    const pendingChoice = await getPendingChoice(messageMeta.threadId);
+    if (pendingChoice) {
+      console.log('[intake] Reply to pending filing choice detected', {
+        messageId,
+        threadId: messageMeta.threadId,
+      });
+      return handleFilingReply(gmailClient, messageId, messageMeta, pendingChoice);
+    }
   }
 
   // 2. Get full message for attachment extraction
@@ -387,6 +407,188 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
     documentIds,
     errors,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Filing Reply Handler (Phase 26)
+// ---------------------------------------------------------------------------
+
+/**
+ * Handles a reply to a pending filing choice question email.
+ *
+ * 1. Fetch the full message to extract reply text
+ * 2. Strip quoted content
+ * 3. Parse reply with AI (Gemini)
+ * 4. Execute the filing action (select/create_new/skip/unclear)
+ * 5. Send follow-up confirmation
+ * 6. Clean up Redis pending choice
+ *
+ * Non-fatal: errors are caught and logged. On failure, the pending
+ * choice remains in Redis (Cat can try replying again until TTL expires).
+ */
+async function handleFilingReply(
+  gmailClient: any,
+  messageId: string,
+  messageMeta: any,
+  pendingChoice: PendingChoice,
+): Promise<IntakeResult> {
+  try {
+    // 1. Fetch full message for body text
+    const fullMessage = await gmailClient.users.messages.get({
+      userId: 'me',
+      id: messageId,
+      format: 'full',
+    });
+
+    // 2. Extract plain text body and strip quoted content
+    const plainBody = findPlainTextBody(fullMessage.data.payload) ?? '';
+    const replyText = extractReplyText(plainBody);
+
+    if (!replyText) {
+      console.warn('[intake] Empty reply text in filing reply', { messageId });
+      return { documentsProcessed: 0, documentIds: [], errors: [] };
+    }
+
+    // 3. Parse reply with AI
+    const parseResult = await parseFilingReply(replyText, pendingChoice.options);
+    console.log('[intake] Filing reply parsed:', {
+      messageId,
+      action: parseResult.action,
+      selectedIndex: parseResult.selectedIndex,
+      confidence: parseResult.confidence,
+    });
+
+    // 4. Execute based on action
+    const { threadContext, documentInfo, options } = pendingChoice;
+
+    // Low confidence override: treat as unclear
+    const effectiveAction = parseResult.confidence < 0.7 && parseResult.action === 'select'
+      ? 'unclear' as const
+      : parseResult.action;
+
+    switch (effectiveAction) {
+      case 'select': {
+        const idx = parseResult.selectedIndex!;
+        const chosen = options[idx];
+        const drive = getDriveClient();
+
+        // Move file from Needs Review to chosen folder
+        await moveFile(
+          drive,
+          documentInfo.driveFileId,
+          documentInfo.needsReviewFolderId,
+          chosen.folderId,
+        );
+
+        // Link folder to CRM contact if we have a contactId
+        if (pendingChoice.contactId) {
+          try {
+            await upsertContact({
+              contactId: pendingChoice.contactId,
+              customFields: [{ id: crmConfig.driveFolderIdFieldId, field_value: chosen.folderId }],
+            });
+          } catch {
+            // CRM linking is non-fatal
+          }
+        }
+
+        // Send follow-up confirmation
+        const body = buildFollowUpBody('select', chosen.folderName);
+        await sendFollowUpConfirmation(threadContext, body);
+
+        // Clean up
+        await deletePendingChoice(messageMeta.threadId!);
+
+        console.log('[intake] Filing reply executed: selected', {
+          messageId,
+          folderName: chosen.folderName,
+          driveFileId: documentInfo.driveFileId,
+        });
+        break;
+      }
+
+      case 'create_new': {
+        const drive = getDriveClient();
+
+        // Create a new folder using the doc's borrower name from the original classification
+        // Fall back to a generic name derived from the original filename
+        const newFolderName = documentInfo.originalFilename.replace(/\.[^.]+$/, '');
+        const rootFolderId = classificationConfig.driveRootFolderId;
+        const newFolderId = await findOrCreateFolder(drive, newFolderName, rootFolderId);
+
+        // Move file from Needs Review to new folder
+        await moveFile(
+          drive,
+          documentInfo.driveFileId,
+          documentInfo.needsReviewFolderId,
+          newFolderId,
+        );
+
+        // Link folder to CRM contact if we have one
+        if (pendingChoice.contactId) {
+          try {
+            await upsertContact({
+              contactId: pendingChoice.contactId,
+              customFields: [{ id: crmConfig.driveFolderIdFieldId, field_value: newFolderId }],
+            });
+          } catch {
+            // CRM linking is non-fatal
+          }
+        }
+
+        // Send follow-up confirmation
+        const body = buildFollowUpBody('create_new', newFolderName);
+        await sendFollowUpConfirmation(threadContext, body);
+
+        // Clean up
+        await deletePendingChoice(messageMeta.threadId!);
+
+        console.log('[intake] Filing reply executed: create_new', {
+          messageId,
+          newFolderName,
+          driveFileId: documentInfo.driveFileId,
+        });
+        break;
+      }
+
+      case 'skip': {
+        // Acknowledge and leave in Needs Review
+        const body = buildFollowUpBody('skip');
+        await sendFollowUpConfirmation(threadContext, body);
+
+        // Clean up
+        await deletePendingChoice(messageMeta.threadId!);
+
+        console.log('[intake] Filing reply executed: skip', { messageId });
+        break;
+      }
+
+      case 'unclear': {
+        // Ask for clarification — do NOT delete pending choice (Cat can try again)
+        const body = buildFollowUpBody('unclear');
+        await sendFollowUpConfirmation(threadContext, body);
+
+        console.log('[intake] Filing reply unclear, asked for clarification', { messageId });
+        break;
+      }
+    }
+
+    // Mark the reply message as processed so we don't re-process it
+    await markMessageProcessed(intakeConfig.docsInbox, messageId);
+
+    return { documentsProcessed: 0, documentIds: [], errors: [] };
+  } catch (err) {
+    // Reply handling is non-fatal — pending choice stays in Redis, Cat can retry
+    console.error('[intake] Failed to handle filing reply (non-fatal):', {
+      messageId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return {
+      documentsProcessed: 0,
+      documentIds: [],
+      errors: [err instanceof Error ? err.message : String(err)],
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -171,7 +171,7 @@ const SEPARATOR_PATTERN = /\s+[-—–]\s+/;
  * Walk MIME parts to find the text/plain body (no attachment).
  * Returns the decoded text, or null if not found.
  */
-function findPlainTextBody(payload: gmail_v1.Schema$MessagePart): string | null {
+export function findPlainTextBody(payload: gmail_v1.Schema$MessagePart): string | null {
   // Direct body on this part
   if (
     payload.mimeType === 'text/plain' &&
