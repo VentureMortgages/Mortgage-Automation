@@ -377,6 +377,7 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | 22. Cat Handoff | v1.2 | 0/TBD | Not started | - |
 | 24. Checklist Bug Fixes + Audit | v1.2 | Complete    | 2026-03-04 | 2026-03-04 |
 | 25. Smart Forwarding + Filing Feedback | 3/3 | Complete    | 2026-03-06 | - |
+| 26. Conversational Filing Assistant | 0/3 | Not started | - | - |
 
 ### Action Items (Non-Code)
 | Item | Owner | Status |
@@ -418,6 +419,18 @@ Plans:
 - [x] 25-02-PLAN.md -- Drive folder fuzzy matching before auto-create
 - [x] 25-03-PLAN.md -- Filing confirmation email to sender (in-thread reply)
 
+### Phase 26: Conversational Filing Assistant
+
+**Goal:** Make the doc filing system feel like a real assistant Cat can talk to. When ambiguous matches arise, ask Cat naturally in the confirmation email and understand her natural language reply to complete filing.
+**Requirements**: CONV-01 (pass multiple match options through to confirmation email), CONV-02 (detect replies to confirmation threads in docs@ inbox), CONV-03 (AI-parse Cat's natural language reply to select correct option), CONV-04 (execute deferred filing and send follow-up confirmation)
+**Depends on:** Phase 25
+**Plans:** 3 plans
+
+Plans:
+- [ ] 26-01-PLAN.md -- Surface multiple match options in confirmation email + store pending choices in Redis
+- [ ] 26-02-PLAN.md -- AI reply parser module (Gemini structured output for natural language reply interpretation)
+- [ ] 26-03-PLAN.md -- Wire reply detection into intake worker + execute deferred filing + follow-up confirmation
+
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-03-06 (Phase 25 complete -- all 3 plans executed)*
+*Last updated: 2026-03-06 (Phase 26 planned -- 3 plans in 2 waves)*
