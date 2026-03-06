@@ -195,8 +195,17 @@ vi.mock('../../classification/drive-client.js', () => ({
 
 const mockUpsertContact = vi.hoisted(() => vi.fn().mockResolvedValue({ contactId: 'c-123', isNew: false }));
 
+const mockGetContact = vi.fn().mockResolvedValue({
+  id: 'contact-123',
+  email: 'test@example.com',
+  firstName: 'John',
+  lastName: 'Smith',
+  customFields: [],
+});
+
 vi.mock('../../crm/contacts.js', () => ({
   upsertContact: mockUpsertContact,
+  getContact: (...args: unknown[]) => mockGetContact(...args),
 }));
 
 vi.mock('../../crm/config.js', () => ({
@@ -869,8 +878,11 @@ describe('Intake Worker', () => {
       );
 
       // CRM contact linked
+      expect(mockGetContact).toHaveBeenCalledWith('contact-123');
       expect(mockUpsertContact).toHaveBeenCalledWith({
-        contactId: 'contact-123',
+        email: 'test@example.com',
+        firstName: 'John',
+        lastName: 'Smith',
         customFields: [{ id: 'field-drive-id', field_value: 'folder-1' }],
       });
 

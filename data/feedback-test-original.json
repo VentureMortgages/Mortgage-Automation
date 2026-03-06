@@ -1,0 +1,16 @@
+{
+  "html": "<div style=\"font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#333;max-width:600px;\">\n<p>Hey Megan!</p>\n<p>Thanks for filling out the application. As Taylor mentioned, I'll just collect some supporting documents. We like to do the majority of document collection up front to ensure the accuracy of your pre-approval budget and it will also make the process easier down the line.</p>\n<p style=\"margin-bottom:4px;\"><u>Megan</u></p>\n<ul style=\"margin-top:0;padding-left:20px;\">\n  <li><strong>Two pieces of government-issued ID</strong> (e.g., driver's license, passport, PR card, credit card, SIN card, birth certificate, or firearms license)</li>\n  <li><strong>Recent pay stub</strong> (must show YTD earnings)</li>\n  <li><strong>Letter of Employment</strong> (dated within the last 30 days) — must include: position, start date, salary, full-time/part-time, guaranteed hours</li>\n  <li><strong>2024 T4</strong></li>\n  <li><strong>2025 T4</strong> (if not yet available, provide last pay stub of the previous year showing year-end earnings)</li>\n</ul>\n<p style=\"margin-bottom:4px;\"><u>Down Payment</u></p>\n<ul style=\"margin-top:0;padding-left:20px;\">\n  <li><strong>90-day bank statement history for the account(s) currently holding your down payment funds</strong> (must show account ownership — name and account number)</li>\n  <li><strong>Explanation for any deposits over $5k that aren't from your payroll</strong> (if transfer from other account, we will need 90-day statement showing the transfer)</li>\n  <li><strong>Gift donor contact information</strong> (full name, relationship to borrower, address, phone, email)</li>\n  <li><strong>Confirmed amount of the gift</strong></li>\n</ul>\n<p style=\"margin-bottom:4px;\"><u>Property</u></p>\n<ul style=\"margin-top:0;padding-left:20px;\">\n  <li><strong>Accepted Offer / Agreement of Purchase and Sale</strong> (signed)</li>\n  <li><strong>MLS listing</strong></li>\n</ul>\n<p style=\"margin-bottom:4px;\"><u>Other</u></p>\n<ul style=\"margin-top:0;padding-left:20px;\">\n  <li><strong>Void cheque or direct deposit form</strong></li>\n</ul>\n<p>You can send these documents directly to <a href=\"mailto:dev@venturemortgages.com\">dev@venturemortgages.com</a> and if you have any questions let me know!</p>\n<p>Thanks!</p>\n</div>",
+  "context": {
+    "goal": "purchase",
+    "incomeTypes": [
+      "employed/hourly_non_guaranted",
+      "employed/hourly_guaranted"
+    ],
+    "propertyTypes": [
+      "owner_occupied"
+    ],
+    "borrowerCount": 1,
+    "hasGiftDP": true,
+    "hasRentalIncome": false
+  }
+}

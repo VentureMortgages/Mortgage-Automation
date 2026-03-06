@@ -92,6 +92,7 @@ const replyParseSchema: ResponseSchema = {
     },
     action: {
       type: SchemaType.STRING,
+      format: 'enum',
       enum: ['select', 'create_new', 'skip', 'unclear'],
       description: 'What the user wants to do',
     },

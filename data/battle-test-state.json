@@ -1,0 +1,242 @@
+{
+  "setupAt": "2026-03-04T03:14:51.735Z",
+  "contacts": {
+    "brenda": {
+      "contactId": "WOBQ8P16ZnFlVdn91raA",
+      "email": "brenda.bt@test.venturemortgages.com"
+    },
+    "marcus": {
+      "contactId": "H8W8CYcg5FbgK2bjRWGG",
+      "email": "marcus.bt@test.venturemortgages.com"
+    }
+  },
+  "driveFolders": {
+    "brendaRoot": "1dsQUbMlz8yls_ixNSJiR19TZRUxr7CIw",
+    "subfolders": {
+      "Income": "1xGpQN4Z3BBHkmnwnMdxSBjWg1PddOIlb",
+      "Property": "1FJuinDEmmaIGXt1jycPr8R5LRf-s9KhD",
+      "Down Payment": "1rO-bECR7u4fA-nNPJj8Z1aZPwoOa84r7",
+      "Originals": "1ygrtywRba-SNG-BrTZiCUXoLgyzwzBp3",
+      "Needs Review": "1sOuVFDEICHqsSqV5ShZ04M4Sv1GpgYSO",
+      "Signed Docs": "18JszzdfoeAaXtQjnbPNVNzSWCvGV_qXE"
+    }
+  },
+  "threadId": "19cb6d7574fc88c5",
+  "sentEmails": [
+    {
+      "scenario": "BTEST-01/02/03/04",
+      "messageId": "19cb6d775e24f4ce",
+      "threadId": "19cb6d775e24f4ce",
+      "subject": "[BT] FWD: T4 for Brenda Testworth"
+    },
+    {
+      "scenario": "BTEST-05",
+      "messageId": "19cb6d77915ab6fb",
+      "threadId": "19cb6d77915ab6fb",
+      "subject": "[BT] FWD: Tax return for Brenda"
+    },
+    {
+      "scenario": "BTEST-03-bank",
+      "messageId": "19cb6d77cbd29af3",
+      "threadId": "19cb6d77cbd29af3",
+      "subject": "[BT] FWD: Bank statement"
+    },
+    {
+      "scenario": "EDGE-01",
+      "messageId": "19cb6d7830f2bf8c",
+      "threadId": "19cb6d7830f2bf8c",
+      "subject": "[BT] FWD: Kenji Yamamoto documents"
+    },
+    {
+      "scenario": "EDGE-02",
+      "messageId": "19cb6d7860c0a8f5",
+      "threadId": "19cb6d7860c0a8f5",
+      "subject": "[BT] FWD: Doc for B Testworth"
+    },
+    {
+      "scenario": "EDGE-03",
+      "messageId": "19cb6d78c8e408d1",
+      "threadId": "19cb6d78c8e408d1",
+      "subject": "[BT] FWD: Multiple docs for Brenda"
+    },
+    {
+      "scenario": "EDGE-04",
+      "messageId": "19cb6d7919cd8765",
+      "threadId": "19cb6d7919cd8765",
+      "subject": "[BT] FWD: Miscellaneous document"
+    },
+    {
+      "scenario": "TIER1-thread",
+      "messageId": "19cb6d79570a85ea",
+      "threadId": "19cb6d79570a85ea",
+      "subject": "Re: [BT] Documents Needed — Brenda Testworth"
+    }
+  ],
+  "verifyResults": [
+    {
+      "scenario": "BTEST-01/02/03/04",
+      "assertions": [
+        {
+          "check": "Classified as T4",
+          "passed": true,
+          "detail": "type=t4"
+        },
+        {
+          "check": "Borrower name = Brenda",
+          "passed": true,
+          "detail": "name=Brenda"
+        },
+        {
+          "check": "Tax year = 2024",
+          "passed": true,
+          "detail": "year=2024"
+        },
+        {
+          "check": "Confidence >= 0.7",
+          "passed": true,
+          "detail": "confidence=0.95"
+        },
+        {
+          "check": "Matched to Brenda contact",
+          "passed": false,
+          "detail": "contactId=HyZQGsAJD4VzGXrlhuLn"
+        },
+        {
+          "check": "Outcome = auto_filed",
+          "passed": true,
+          "detail": "outcome=auto_filed"
+        },
+        {
+          "check": "Would file to Brenda folder",
+          "passed": false,
+          "detail": "folder=1g6UIKA5hk1oNSotiTA89z2m65yNIBTn0"
+        },
+        {
+          "check": "CC signal detected (Tier 3)",
+          "passed": false,
+          "detail": "signals=sender_email(1)"
+        },
+        {
+          "check": "Subject signal detected (Tier 3)",
+          "passed": false,
+          "detail": "(see above)"
+        }
+      ]
+    },
+    {
+      "scenario": "BTEST-05",
+      "assertions": [
+        {
+          "check": "Classified as T1",
+          "passed": true,
+          "detail": "type=t1"
+        },
+        {
+          "check": "Filename = \"Brenda - T1 2024.pdf\" (no institution/amount)",
+          "passed": true,
+          "detail": "filename=Brenda - T1 2024.pdf"
+        }
+      ]
+    },
+    {
+      "scenario": "BTEST-03-bank",
+      "assertions": [
+        {
+          "check": "Classified as bank_statement",
+          "passed": true,
+          "detail": "type=bank_statement"
+        },
+        {
+          "check": "Institution = TD",
+          "passed": true,
+          "detail": "institution=TD Canada Trust"
+        },
+        {
+          "check": "CRM would update",
+          "passed": true,
+          "detail": "wouldUpdate=true"
+        }
+      ]
+    },
+    {
+      "scenario": "EDGE-01",
+      "assertions": [
+        {
+          "check": "Classified as LOE",
+          "passed": true,
+          "detail": "type=loe"
+        },
+        {
+          "check": "Borrower name = Kenji",
+          "passed": true,
+          "detail": "name=Kenji"
+        },
+        {
+          "check": "Outcome = auto_created or needs_review (no existing contact)",
+          "passed": false,
+          "detail": "outcome=auto_filed"
+        }
+      ]
+    },
+    {
+      "scenario": "EDGE-02",
+      "assertions": [
+        {
+          "check": "Outcome = needs_review or low confidence (ambiguous \"B. Testworth\")",
+          "passed": false,
+          "detail": "outcome=auto_filed, confidence=0.9"
+        }
+      ]
+    },
+    {
+      "scenario": "EDGE-03",
+      "assertions": [
+        {
+          "check": "Two attachments processed",
+          "passed": true,
+          "detail": "total=2"
+        },
+        {
+          "check": "Both classified independently",
+          "passed": true,
+          "detail": "classified=2"
+        },
+        {
+          "check": "Different document types",
+          "passed": true,
+          "detail": "types=t4, noa"
+        }
+      ]
+    },
+    {
+      "scenario": "EDGE-04",
+      "assertions": [
+        {
+          "check": "Low confidence or type=other",
+          "passed": true,
+          "detail": "type=other, confidence=0.9"
+        }
+      ]
+    },
+    {
+      "scenario": "TIER1-thread",
+      "assertions": [
+        {
+          "check": "Classified as pay_stub",
+          "passed": false,
+          "detail": "Message not in inbox"
+        },
+        {
+          "check": "Thread in same threadId as seed email",
+          "passed": false,
+          "detail": "Message not in inbox"
+        },
+        {
+          "check": "Matched to Brenda",
+          "passed": false,
+          "detail": "Message not in inbox"
+        }
+      ]
+    }
+  ]
+}

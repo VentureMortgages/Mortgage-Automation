@@ -61,7 +61,7 @@ import type { PendingChoice } from '../email/filing-confirmation.js';
 import { extractReplyText, parseFilingReply } from './reply-parser.js';
 import { moveFile, findOrCreateFolder } from '../classification/filer.js';
 import { getDriveClient } from '../classification/drive-client.js';
-import { upsertContact } from '../crm/contacts.js';
+import { upsertContact, getContact } from '../crm/contacts.js';
 import { crmConfig } from '../crm/config.js';
 import { classificationConfig } from '../classification/config.js';
 import type { IntakeJobData, IntakeResult, IntakeDocument } from './types.js';
@@ -483,8 +483,11 @@ async function handleFilingReply(
         // Link folder to CRM contact if we have a contactId
         if (pendingChoice.contactId) {
           try {
+            const c = await getContact(pendingChoice.contactId);
             await upsertContact({
-              contactId: pendingChoice.contactId,
+              email: c.email,
+              firstName: c.firstName,
+              lastName: c.lastName,
               customFields: [{ id: crmConfig.driveFolderIdFieldId, field_value: chosen.folderId }],
             });
           } catch {
@@ -527,8 +530,11 @@ async function handleFilingReply(
         // Link folder to CRM contact if we have one
         if (pendingChoice.contactId) {
           try {
+            const c = await getContact(pendingChoice.contactId);
             await upsertContact({
-              contactId: pendingChoice.contactId,
+              email: c.email,
+              firstName: c.firstName,
+              lastName: c.lastName,
               customFields: [{ id: crmConfig.driveFolderIdFieldId, field_value: newFolderId }],
             });
           } catch {
