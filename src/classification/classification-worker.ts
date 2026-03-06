@@ -40,7 +40,7 @@ import { routeToSubfolder, getPersonSubfolderName } from './router.js';
 import { getDriveClient } from './drive-client.js';
 import { resolveTargetFolder, uploadFile, findExistingFile, updateFileContent, findOrCreateFolder } from './filer.js';
 import { storeOriginal } from '../drive/originals.js';
-import { resolveContactId, getContact, getContactDriveFolderId, extractDriveFolderId } from '../crm/contacts.js';
+import { resolveContactId, getContact, getContactDriveFolderId, extractDriveFolderId, upsertContact } from '../crm/contacts.js';
 import { crmConfig } from '../crm/config.js';
 import { findOpportunityByFinmoId, getOpportunityFieldValue } from '../crm/opportunities.js';
 import { PIPELINE_IDS } from '../crm/types/index.js';
@@ -50,6 +50,7 @@ import { createCrmNote } from '../crm/notes.js';
 import { updateDocTracking } from '../crm/tracking-sync.js';
 import { matchDocument } from '../matching/agent.js';
 import { autoCreateFromDoc } from '../matching/auto-create.js';
+import { searchExistingFolders } from '../matching/folder-search.js';
 import { DOC_TYPE_LABELS } from './types.js';
 import type { ClassificationJobData, ClassificationJobResult, ClassificationResult } from './types.js';
 import { recordFilingResult, storePendingChoice, sendQuestionEmail, buildQuestionBody } from '../email/filing-confirmation.js';
@@ -512,6 +513,46 @@ export async function processClassificationJob(
         contact = await getContact(contactId);
       } catch {
         // non-fatal
+      }
+    }
+
+    // Phase 26: When contact exists but has no folder, try fuzzy search before creating new
+    if (!clientFolderId && contactId && contact && classificationConfig.driveRootFolderId) {
+      try {
+        const contactName = [contact.lastName, contact.firstName].filter(Boolean).join(', ');
+        if (contactName) {
+          const drive = getDriveClient();
+          const searchResult = await searchExistingFolders(drive, contactName, classificationConfig.driveRootFolderId);
+          if (searchResult.match) {
+            clientFolderId = searchResult.match.folderId;
+            console.log('[classification] Found existing folder via fuzzy search for matched contact:', {
+              contactName,
+              foundFolder: searchResult.match.folderName,
+              folderId: searchResult.match.folderId,
+            });
+            // Link the folder to the CRM contact for future lookups
+            try {
+              await upsertContact({
+                email: contact.email,
+                firstName: contact.firstName,
+                lastName: contact.lastName,
+                customFields: [{ id: crmConfig.driveFolderIdFieldId, field_value: clientFolderId }],
+              });
+            } catch {
+              // non-fatal
+            }
+          } else if (searchResult.allMatches.length >= 2) {
+            console.log('[classification] Multiple fuzzy folder matches for matched contact:', {
+              contactName,
+              matchCount: searchResult.allMatches.length,
+            });
+            // Don't pick one — fall through to root fallback, question email handled elsewhere
+          }
+        }
+      } catch (err) {
+        console.error('[classification] Fuzzy folder search for matched contact failed (non-fatal):', {
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
