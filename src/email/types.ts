@@ -45,6 +45,13 @@ export interface MimeMessageInput {
   bcc?: string;
   /** Custom X- headers for tracking (e.g., X-Venture-Contact-Id) */
   customHeaders?: Record<string, string>;
+  // Phase 25: Threading support for reply messages
+  /** RFC 2822 Message-ID of message being replied to */
+  inReplyTo?: string;
+  /** RFC 2822 References chain */
+  references?: string;
+  /** Override content type (default: text/html) */
+  contentType?: 'text/html' | 'text/plain';
 }
 
 // ---------------------------------------------------------------------------

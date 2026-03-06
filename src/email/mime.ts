@@ -36,10 +36,21 @@ export function encodeMimeMessage(input: MimeMessageInput): string {
       headerLines.push(`${key}: ${value}`);
     }
   }
+  // Phase 25: Threading headers for in-thread replies
+  if (input.inReplyTo) {
+    headerLines.push(`In-Reply-To: ${input.inReplyTo}`);
+  }
+  if (input.references) {
+    headerLines.push(`References: ${input.references}`);
+  }
+  // Phase 25: Configurable content type (default: text/html)
+  const contentType = input.contentType === 'text/plain'
+    ? 'text/plain; charset=utf-8'
+    : 'text/html; charset=utf-8';
   headerLines.push(
     `Subject: ${encodedSubject}`,
     'MIME-Version: 1.0',
-    'Content-Type: text/html; charset=utf-8',
+    `Content-Type: ${contentType}`,
     'Content-Transfer-Encoding: base64',
   );
   const headers = headerLines.join('\r\n');

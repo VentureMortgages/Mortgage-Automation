@@ -175,6 +175,25 @@ export function getGmailClient(): GmailClient {
 }
 
 /**
+ * Returns an authenticated Gmail API client with compose scope for a specified identity.
+ * Used for sending emails from an address other than admin@ (e.g., docs@).
+ * Phase 25: Filing confirmation emails are sent from docs@ to appear in the same thread.
+ *
+ * @param impersonateAs - Email address to send from (e.g., docs@venturemortgages.co)
+ */
+export function getGmailComposeClient(impersonateAs: string): GmailClient {
+  const scope = 'https://www.googleapis.com/auth/gmail.compose';
+  const key = getCacheKey(scope, impersonateAs);
+
+  const cached = clientCache.get(key);
+  if (cached) return cached;
+
+  const client = createGmailClientForScope([scope], impersonateAs);
+  clientCache.set(key, client);
+  return client;
+}
+
+/**
  * Returns an authenticated Gmail API client with readonly scope.
  * Used for monitoring inboxes (e.g., docs@venturemortgages.co) in Phase 6.
  *
