@@ -229,6 +229,33 @@ export async function updateFileContent(
 }
 
 // ---------------------------------------------------------------------------
+// File Move Operations
+// ---------------------------------------------------------------------------
+
+/**
+ * Moves a file from one Drive folder to another.
+ * Uses files.update with addParents/removeParents (no data transfer).
+ *
+ * @param drive - Google Drive API client
+ * @param fileId - The file to move
+ * @param fromFolderId - Current parent folder ID
+ * @param toFolderId - Destination parent folder ID
+ */
+export async function moveFile(
+  drive: DriveClient,
+  fileId: string,
+  fromFolderId: string,
+  toFolderId: string,
+): Promise<void> {
+  await drive.files.update({
+    fileId,
+    addParents: toFolderId,
+    removeParents: fromFolderId,
+    fields: 'id, parents',
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Target Folder Resolution
 // ---------------------------------------------------------------------------
 

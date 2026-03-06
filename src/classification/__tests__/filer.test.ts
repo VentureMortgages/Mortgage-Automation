@@ -26,6 +26,7 @@ import {
   updateFileContent,
   resolveTargetFolder,
   escapeDriveQuery,
+  moveFile,
 } from '../filer.js';
 
 import type { DriveClient } from '../drive-client.js';
@@ -454,6 +455,31 @@ describe('Filer', () => {
           requestBody: expect.objectContaining({ name: 'Signed Docs' }),
         }),
       );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // moveFile
+  // -------------------------------------------------------------------------
+
+  describe('moveFile', () => {
+    it('calls drive.files.update with addParents and removeParents', async () => {
+      files.update.mockResolvedValueOnce({ data: { id: 'file-123', parents: ['to-folder'] } });
+
+      await moveFile(drive, 'file-123', 'from-folder', 'to-folder');
+
+      expect(files.update).toHaveBeenCalledWith({
+        fileId: 'file-123',
+        addParents: 'to-folder',
+        removeParents: 'from-folder',
+        fields: 'id, parents',
+      });
+    });
+
+    it('does not throw on success', async () => {
+      files.update.mockResolvedValueOnce({ data: { id: 'file-456', parents: ['dest'] } });
+
+      await expect(moveFile(drive, 'file-456', 'src-folder', 'dest')).resolves.toBeUndefined();
     });
   });
 

@@ -85,6 +85,8 @@ import {
   getPendingChoice,
   deletePendingChoice,
   sendQuestionEmail,
+  buildFollowUpBody,
+  sendFollowUpConfirmation,
 } from '../filing-confirmation.js';
 import { encodeMimeMessage } from '../mime.js';
 import type { MimeMessageInput } from '../types.js';
@@ -531,5 +533,90 @@ describe('sendQuestionEmail', () => {
     const decoded = decodeBase64url(sendCall.requestBody.raw);
     expect(decoded).not.toContain('In-Reply-To:');
     expect(decoded).not.toContain('References:');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: buildFollowUpBody (Phase 26 Plan 03)
+// ---------------------------------------------------------------------------
+
+describe('buildFollowUpBody', () => {
+  test('select action returns "Done -- filed to {folderName}."', () => {
+    const body = buildFollowUpBody('select', 'Wong-Ranasinghe, Carolyn/Srimal');
+    expect(body).toBe('Done -- filed to Wong-Ranasinghe, Carolyn/Srimal.');
+  });
+
+  test('skip action returns "Got it, leaving in Needs Review."', () => {
+    const body = buildFollowUpBody('skip');
+    expect(body).toBe('Got it, leaving in Needs Review.');
+  });
+
+  test('create_new action returns "Done -- created new folder \'{folderName}\' and filed there."', () => {
+    const body = buildFollowUpBody('create_new', 'Smith, John');
+    expect(body).toBe("Done -- created new folder 'Smith, John' and filed there.");
+  });
+
+  test('unclear action returns clarification message', () => {
+    const body = buildFollowUpBody('unclear');
+    expect(body).toBe("Sorry, I wasn't sure which one you meant. Could you clarify?");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: sendFollowUpConfirmation (Phase 26 Plan 03)
+// ---------------------------------------------------------------------------
+
+describe('sendFollowUpConfirmation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('sends MIME message in same thread with correct body', async () => {
+    const threadContext = {
+      gmailThreadId: 'thread-reply-1',
+      gmailMessageRfc822Id: '<CABx+reply1@mail.gmail.com>',
+      senderEmail: 'admin@venturemortgages.com',
+      emailSubject: 'Re: Fwd: John Smith documents',
+    };
+
+    await sendFollowUpConfirmation(threadContext, 'Done -- filed to Smith, John.');
+
+    expect(mockGmailSend).toHaveBeenCalledTimes(1);
+
+    const sendCall = mockGmailSend.mock.calls[0][0];
+    expect(sendCall.requestBody.threadId).toBe('thread-reply-1');
+
+    const decoded = decodeBase64url(sendCall.requestBody.raw);
+    expect(decoded).toContain('In-Reply-To: <CABx+reply1@mail.gmail.com>');
+    expect(decoded).toContain('References: <CABx+reply1@mail.gmail.com>');
+    expect(decoded).toContain('From: docs@venturemortgages.co');
+    expect(decoded).toContain('To: admin@venturemortgages.com');
+    expect(decoded).toContain('Content-Type: text/plain; charset=utf-8');
+    // Body is base64-encoded in MIME; decode the body part
+    const bodyBase64 = decoded.split('\r\n\r\n')[1]?.trim();
+    const bodyDecoded = Buffer.from(bodyBase64, 'base64').toString('utf-8');
+    expect(bodyDecoded).toBe('Done -- filed to Smith, John.');
+  });
+
+  test('sends without threading headers when gmailMessageRfc822Id is null', async () => {
+    const threadContext = {
+      gmailThreadId: 'thread-reply-2',
+      gmailMessageRfc822Id: null,
+      senderEmail: 'admin@venturemortgages.com',
+      emailSubject: 'Re: Fwd: documents',
+    };
+
+    await sendFollowUpConfirmation(threadContext, 'Got it, leaving in Needs Review.');
+
+    expect(mockGmailSend).toHaveBeenCalledTimes(1);
+
+    const sendCall = mockGmailSend.mock.calls[0][0];
+    const decoded = decodeBase64url(sendCall.requestBody.raw);
+    expect(decoded).not.toContain('In-Reply-To:');
+    expect(decoded).not.toContain('References:');
+    // Body is base64-encoded in MIME; decode the body part
+    const bodyBase64 = decoded.split('\r\n\r\n')[1]?.trim();
+    const bodyDecoded = Buffer.from(bodyBase64, 'base64').toString('utf-8');
+    expect(bodyDecoded).toBe('Got it, leaving in Needs Review.');
   });
 });

@@ -353,6 +353,78 @@ export async function deletePendingChoice(threadId: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// buildFollowUpBody
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the plain-text body for a follow-up confirmation email after
+ * the filing action has been executed.
+ *
+ * @param action - The filing action that was executed
+ * @param folderName - The folder name (used for select and create_new actions)
+ * @returns Plain text body for the follow-up email
+ */
+export function buildFollowUpBody(
+  action: 'select' | 'create_new' | 'skip' | 'unclear',
+  folderName?: string,
+): string {
+  switch (action) {
+    case 'select':
+      return `Done -- filed to ${folderName}.`;
+    case 'create_new':
+      return `Done -- created new folder '${folderName}' and filed there.`;
+    case 'skip':
+      return `Got it, leaving in Needs Review.`;
+    case 'unclear':
+      return `Sorry, I wasn't sure which one you meant. Could you clarify?`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// sendFollowUpConfirmation
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends a follow-up confirmation email as an in-thread reply after a filing
+ * action has been executed (or a clarification is needed).
+ *
+ * Same MIME threading pattern as sendQuestionEmail and maybeSendConfirmation.
+ *
+ * @param threadContext - Thread context from the pending choice
+ * @param body - Plain text body (from buildFollowUpBody)
+ */
+export async function sendFollowUpConfirmation(
+  threadContext: PendingChoice['threadContext'],
+  body: string,
+): Promise<void> {
+  const raw = encodeMimeMessage({
+    from: intakeConfig.docsInbox,
+    to: threadContext.senderEmail,
+    subject: `Re: ${threadContext.emailSubject}`,
+    body,
+    contentType: 'text/plain',
+    ...(threadContext.gmailMessageRfc822Id ? {
+      inReplyTo: threadContext.gmailMessageRfc822Id,
+      references: threadContext.gmailMessageRfc822Id,
+    } : {}),
+  });
+
+  const gmail = getGmailComposeClient(intakeConfig.docsInbox);
+  await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: {
+      raw,
+      threadId: threadContext.gmailThreadId,
+    },
+  });
+
+  console.log('[filing-confirmation] Follow-up confirmation sent:', {
+    threadId: threadContext.gmailThreadId,
+    senderEmail: threadContext.senderEmail,
+  });
+}
+
+// ---------------------------------------------------------------------------
 // sendQuestionEmail
 // ---------------------------------------------------------------------------
 
