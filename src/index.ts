@@ -38,7 +38,7 @@ async function main() {
   // Start Express server
   const app = createApp();
   const server = app.listen(appConfig.server.port, () => {
-    console.log(`[startup] Server listening on port ${appConfig.server.port}`);
+    console.log(`[startup] Server listening on port ${appConfig.server.port} (build: 2026-03-06-v3)`);
   });
 
   // Start BullMQ workers
