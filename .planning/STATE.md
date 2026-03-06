@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Go-Live
 status: executing
-stopped_at: Completed 26-02-PLAN.md
-last_updated: "2026-03-06T19:35:40.002Z"
+stopped_at: Completed 26-01-PLAN.md
+last_updated: "2026-03-06T19:38:49.684Z"
 last_activity: 2026-03-06 -- Phase 26-02 complete (reply parser module)
 progress:
   total_phases: 27
   completed_phases: 18
   total_plans: 57
-  completed_plans: 55
+  completed_plans: 56
   percent: 96
 ---
 
@@ -71,6 +71,10 @@ Recent decisions affecting current work:
 - [Phase 25]: Filing confirmation uses plain text with ASCII indicators (OK/!!/XX) for cross-client reliability
 - [Phase 25]: Confirmation sent from docs@ via getGmailComposeClient to appear in forwarding thread
 - [Phase 25]: recordFilingResultSafe called at all 6 classification worker exit points (not single-exit refactor)
+- [Phase 26]: FolderSearchResult returns {match, allMatches} -- match is null for 0 or 2+ matches, allMatches always populated
+- [Phase 26]: AutoCreateAmbiguousResult includes contactId for CRM contact association in pending choices
+- [Phase 26]: Question email is non-fatal in both needs_review/conflict and auto_created ambiguous paths
+- [Phase 26]: Pending choice keyed by threadId (not gmailMessageId) so reply detection can match on thread
 - [Phase 26]: Same Gemini 2.0 Flash lazy singleton pattern for reply parsing as body-extractor.ts
 - [Phase 26]: Bounds-check selectedIndex and override to 'unclear' when out of range (defensive against hallucinated indices)
 - [Phase 26]: extractReplyText stops at first marker (quote, >, signature) rather than stripping independently
@@ -95,8 +99,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T19:35:39.999Z
-Stopped at: Completed 26-02-PLAN.md
+Last session: 2026-03-06T19:38:49.681Z
+Stopped at: Completed 26-01-PLAN.md
 Resume file: None
 Next: Phase 26-03 (pending choice state + reply detection + deferred filing execution).
 
