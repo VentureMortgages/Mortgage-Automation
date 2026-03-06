@@ -127,10 +127,10 @@ describe('searchExistingFolders', () => {
       folderName: 'Wong-Ranasinghe, Carolyn/Srimal',
     });
 
-    // Verify Drive API was called with name contains last name
+    // Verify Drive API was called with name contains last name (lowercase)
     expect(mockDriveFilesList).toHaveBeenCalledWith(
       expect.objectContaining({
-        q: expect.stringContaining('Ranasinghe'),
+        q: expect.stringContaining('ranasinghe'),
       }),
     );
   });
