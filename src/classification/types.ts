@@ -232,6 +232,8 @@ export interface ClassificationJobData {
   forwardingNoteClientEmail?: string;
   /** Cat's forwarding note: doc type hint (Phase 23) */
   forwardingNoteDocTypeHint?: string;
+  /** Gmail API message ID (Phase 25 — for filing confirmation batch tracking key) */
+  gmailMessageId?: string;
   /** RFC 2822 Message-ID header from original Gmail message (Phase 25 — for filing confirmation threading) */
   gmailMessageRfc822Id?: string;
   /** Total number of attachments being processed from this Gmail message (Phase 25 — for batch tracking) */

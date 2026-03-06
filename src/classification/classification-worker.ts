@@ -51,13 +51,67 @@ import { updateDocTracking } from '../crm/tracking-sync.js';
 import { matchDocument } from '../matching/agent.js';
 import { autoCreateFromDoc } from '../matching/auto-create.js';
 import { DOC_TYPE_LABELS } from './types.js';
-import type { ClassificationJobData, ClassificationJobResult } from './types.js';
+import type { ClassificationJobData, ClassificationJobResult, ClassificationResult } from './types.js';
+import { recordFilingResult } from '../email/filing-confirmation.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 export const CLASSIFICATION_QUEUE_NAME = 'doc-classification';
+
+// ---------------------------------------------------------------------------
+// Phase 25: Filing Confirmation Helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Records a filing result for the confirmation email system.
+ * Non-fatal: catches all errors and logs them. Only triggers for Gmail source
+ * with batch tracking enabled.
+ */
+async function recordFilingResultSafe(
+  job: Job<ClassificationJobData>,
+  result: ClassificationJobResult,
+  classification: ClassificationResult | null,
+): Promise<void> {
+  const { source, senderEmail, originalFilename, intakeDocumentId } = job.data;
+
+  if (source !== 'gmail' || !job.data.gmailMessageId || !job.data.totalAttachmentCount) {
+    return;
+  }
+
+  try {
+    const docLabel = classification
+      ? (DOC_TYPE_LABELS[classification.documentType] ?? classification.documentType)
+      : 'Unknown';
+    const borrowerName = classification
+      ? [classification.borrowerFirstName, classification.borrowerLastName].filter(Boolean).join(' ')
+      : null;
+
+    await recordFilingResult({
+      intakeDocumentId,
+      originalFilename,
+      borrowerName: borrowerName || null,
+      docTypeLabel: docLabel,
+      filed: result.filed,
+      folderPath: result.driveFileId ? `Filed (${docLabel})` : null,
+      manualReview: result.manualReview,
+      reason: result.error ?? (result.manualReview ? 'Low confidence' : null),
+    }, {
+      gmailMessageId: job.data.gmailMessageId!,
+      gmailThreadId: job.data.threadId ?? job.data.gmailMessageId!,
+      gmailMessageRfc822Id: job.data.gmailMessageRfc822Id ?? null,
+      senderEmail: senderEmail ?? '',
+      emailSubject: job.data.emailSubject ?? '',
+      totalExpected: job.data.totalAttachmentCount,
+    });
+  } catch (err) {
+    // Filing confirmation is NON-FATAL -- never fail the pipeline for it
+    console.error('[classification] Failed to record filing result for confirmation (non-fatal):', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Pipeline Processor
@@ -158,7 +212,7 @@ export async function processClassificationJob(
         // Clean up temp file
         await unlink(tempFilePath).catch(() => {});
 
-        return {
+        const needsReviewResult: ClassificationJobResult = {
           intakeDocumentId,
           classification,
           filed: false,
@@ -166,6 +220,8 @@ export async function processClassificationJob(
           manualReview: true,
           error: null,
         };
+        await recordFilingResultSafe(job, needsReviewResult, classification);
+        return needsReviewResult;
       }
 
       case 'auto_created': {
@@ -186,7 +242,7 @@ export async function processClassificationJob(
           );
           const fileId = await uploadFile(drive, pdfBuffer, originalFilename, globalNrId);
           await unlink(tempFilePath).catch(() => {});
-          return {
+          const autoCreateFailResult: ClassificationJobResult = {
             intakeDocumentId,
             classification,
             filed: false,
@@ -194,6 +250,8 @@ export async function processClassificationJob(
             manualReview: true,
             error: null,
           };
+          await recordFilingResultSafe(job, autoCreateFailResult, classification);
+          return autoCreateFailResult;
         }
         break;
       }
@@ -286,7 +344,7 @@ export async function processClassificationJob(
       // Clean up temp file
       await unlink(tempFilePath).catch(() => {});
 
-      return {
+      const lowConfResult: ClassificationJobResult = {
         intakeDocumentId,
         classification,
         filed: false,
@@ -294,6 +352,8 @@ export async function processClassificationJob(
         manualReview: true,
         error: null,
       };
+      await recordFilingResultSafe(job, lowConfResult, classification);
+      return lowConfResult;
     }
 
     // f. Resolve client Drive folder from CRM contact (DRIVE-02)
@@ -347,7 +407,7 @@ export async function processClassificationJob(
         // CRM task creation failure is non-fatal
       }
       await unlink(tempFilePath).catch(() => {});
-      return {
+      const noFolderResult: ClassificationJobResult = {
         intakeDocumentId,
         classification,
         filed: false,
@@ -355,6 +415,8 @@ export async function processClassificationJob(
         manualReview: true,
         error: null,
       };
+      await recordFilingResultSafe(job, noFolderResult, classification);
+      return noFolderResult;
     }
 
     // Resolve deal subfolder from opportunity for ALL doc types
@@ -497,7 +559,7 @@ export async function processClassificationJob(
     await unlink(tempFilePath).catch(() => {});
 
     // o. Return result
-    return {
+    const successResult: ClassificationJobResult = {
       intakeDocumentId,
       classification,
       filed: true,
@@ -505,6 +567,8 @@ export async function processClassificationJob(
       manualReview: false,
       error: null,
     };
+    await recordFilingResultSafe(job, successResult, classification);
+    return successResult;
   } catch (err) {
     // Top-level catch: log error metadata (no PII), clean up temp file
     console.error('[classification] Pipeline error:', {
@@ -516,7 +580,7 @@ export async function processClassificationJob(
     // Clean up temp file even on error
     await unlink(tempFilePath).catch(() => {});
 
-    return {
+    const errorResult: ClassificationJobResult = {
       intakeDocumentId,
       classification: null,
       filed: false,
@@ -524,6 +588,8 @@ export async function processClassificationJob(
       manualReview: false,
       error: err instanceof Error ? err.message : String(err),
     };
+    await recordFilingResultSafe(job, errorResult, null);
+    return errorResult;
   }
 }
 

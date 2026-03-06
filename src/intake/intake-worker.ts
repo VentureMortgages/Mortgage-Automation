@@ -344,6 +344,7 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
         ...(perAttachClientEmail && { forwardingNoteClientEmail: perAttachClientEmail }),
         ...(perAttachDocTypeHint && { forwardingNoteDocTypeHint: perAttachDocTypeHint }),
         // Phase 25: Message-ID + batch tracking for filing confirmation
+        gmailMessageId: messageId,
         ...(rfc822MessageId && { gmailMessageRfc822Id: rfc822MessageId }),
         totalAttachmentCount: filesToProcess.length,
       };
