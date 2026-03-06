@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Go-Live
-status: completed
-stopped_at: Completed 25-03-PLAN.md
-last_updated: "2026-03-06T02:15:18.296Z"
-last_activity: 2026-03-06 -- Phase 25-03 complete (filing confirmation email to sender)
+status: executing
+stopped_at: Completed 26-02-PLAN.md
+last_updated: "2026-03-06T19:35:40.002Z"
+last_activity: 2026-03-06 -- Phase 26-02 complete (reply parser module)
 progress:
-  total_phases: 26
+  total_phases: 27
   completed_phases: 18
-  total_plans: 54
-  completed_plans: 54
-  percent: 100
+  total_plans: 57
+  completed_plans: 55
+  percent: 96
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
-**Current focus:** Phase 25 complete -- Smart Forwarding Notes & Filing Feedback. All 3 plans complete (AI parser + fuzzy folder matching + filing confirmation).
+**Current focus:** Phase 26 in progress -- Conversational Filing Assistant. Plan 02 complete (reply parser module).
 
 ## Current Position
 
-Phase: 25 of 25 (Smart Forwarding & Filing Feedback)
-Plan: 25-03 complete (3/3)
-Status: Phase Complete
-Last activity: 2026-03-06 -- Phase 25-03 complete (filing confirmation email to sender)
+Phase: 26 of 26 (Conversational Filing Assistant)
+Plan: 26-02 complete (1/3 plans)
+Status: In Progress
+Last activity: 2026-03-06 -- Phase 26-02 complete (reply parser module)
 
-Progress: [██████████] 100% (v1.0 + v1.1 + v1.2 complete, Phase 25 complete)
+Progress: [██████████] 96% (v1.0 + v1.1 + v1.2 complete, Phase 26 in progress)
 
 ## Performance Metrics
 
@@ -71,6 +71,9 @@ Recent decisions affecting current work:
 - [Phase 25]: Filing confirmation uses plain text with ASCII indicators (OK/!!/XX) for cross-client reliability
 - [Phase 25]: Confirmation sent from docs@ via getGmailComposeClient to appear in forwarding thread
 - [Phase 25]: recordFilingResultSafe called at all 6 classification worker exit points (not single-exit refactor)
+- [Phase 26]: Same Gemini 2.0 Flash lazy singleton pattern for reply parsing as body-extractor.ts
+- [Phase 26]: Bounds-check selectedIndex and override to 'unclear' when out of range (defensive against hallucinated indices)
+- [Phase 26]: extractReplyText stops at first marker (quote, >, signature) rather than stripping independently
 
 ### Pending Todos
 
@@ -80,6 +83,8 @@ None yet.
 
 - Phase 23 added: Forwarding notes parsing and backfill script fix
 - Phase 24 added: Fix checklist engine bugs and comprehensive rule coverage
+- Phase 25 added: Smart Forwarding Notes & Filing Feedback
+- Phase 26 added: Conversational Filing Assistant
 
 ### Blockers/Concerns
 
@@ -90,11 +95,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T02:08:31Z
-Stopped at: Completed 25-03-PLAN.md
+Last session: 2026-03-06T19:35:39.999Z
+Stopped at: Completed 26-02-PLAN.md
 Resume file: None
-Next: Phase 25 complete. Deploy to Railway. Review next priorities.
+Next: Phase 26-03 (pending choice state + reply detection + deferred filing execution).
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-06 (Phase 25-03 complete -- filing confirmation email)*
+*Last updated: 2026-03-06 (Phase 26-02 complete -- reply parser module)*
