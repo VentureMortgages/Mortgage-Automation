@@ -76,10 +76,19 @@ vi.mock('../../intake/config.js', () => ({
 // Import after mocks
 // ---------------------------------------------------------------------------
 
-import { buildConfirmationBody, recordFilingResult, maybeSendConfirmation } from '../filing-confirmation.js';
+import {
+  buildConfirmationBody,
+  recordFilingResult,
+  maybeSendConfirmation,
+  buildQuestionBody,
+  storePendingChoice,
+  getPendingChoice,
+  deletePendingChoice,
+  sendQuestionEmail,
+} from '../filing-confirmation.js';
 import { encodeMimeMessage } from '../mime.js';
 import type { MimeMessageInput } from '../types.js';
-import type { FilingResult, MessageContext } from '../filing-confirmation.js';
+import type { FilingResult, MessageContext, PendingChoice } from '../filing-confirmation.js';
 
 // ---------------------------------------------------------------------------
 // Helper: decode base64url back to string
@@ -357,5 +366,170 @@ describe('maybeSendConfirmation', () => {
     // Should clean up both Redis keys
     expect(mockRedisDel).toHaveBeenCalledWith('filing-results:msg-abc-123');
     expect(mockRedisDel).toHaveBeenCalledWith('filing-context:msg-abc-123');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: buildQuestionBody (Phase 26)
+// ---------------------------------------------------------------------------
+
+describe('buildQuestionBody', () => {
+  test('lists 2 folder options with numbered list', () => {
+    const body = buildQuestionBody('T4_2024.pdf', 'T4', [
+      { folderName: 'Wong-Ranasinghe, Carolyn/Srimal' },
+      { folderName: 'Ranasinghe, Srimal' },
+    ]);
+
+    expect(body).toContain('T4_2024.pdf');
+    expect(body).toContain('T4');
+    expect(body).toContain('not sure where to file it');
+    expect(body).toContain('1. Wong-Ranasinghe, Carolyn/Srimal');
+    expect(body).toContain('2. Ranasinghe, Srimal');
+    expect(body).toContain('reply with the number');
+  });
+
+  test('lists 3 folder options', () => {
+    const body = buildQuestionBody('pay_stub.pdf', 'Pay Stub', [
+      { folderName: 'Smith, John' },
+      { folderName: 'Smith, Jonathan' },
+      { folderName: 'Smith-Jones, John' },
+    ]);
+
+    expect(body).toContain('1. Smith, John');
+    expect(body).toContain('2. Smith, Jonathan');
+    expect(body).toContain('3. Smith-Jones, John');
+  });
+
+  test('includes "skip" and "create new folder" in footer', () => {
+    const body = buildQuestionBody('doc.pdf', 'Document', [
+      { folderName: 'Folder A' },
+      { folderName: 'Folder B' },
+    ]);
+
+    expect(body).toContain('create new folder');
+    expect(body).toContain('skip');
+    expect(body).toContain('Needs Review');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: storePendingChoice / getPendingChoice / deletePendingChoice (Phase 26)
+// ---------------------------------------------------------------------------
+
+describe('storePendingChoice', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const pendingChoice: PendingChoice = {
+    options: [
+      { folderId: 'folder-1', folderName: 'Wong-Ranasinghe, Carolyn/Srimal' },
+      { folderId: 'folder-2', folderName: 'Ranasinghe, Srimal' },
+    ],
+    documentInfo: {
+      intakeDocumentId: 'gmail-msg-001-0',
+      originalFilename: 'T4_2024.pdf',
+      docTypeLabel: 'T4',
+      driveFileId: 'file-abc',
+      needsReviewFolderId: 'nr-folder-123',
+    },
+    contactId: 'contact-123',
+    threadContext: {
+      gmailThreadId: 'thread-abc-123',
+      gmailMessageRfc822Id: '<CABx+XJ2abc@mail.gmail.com>',
+      senderEmail: 'admin@venturemortgages.com',
+      emailSubject: 'Fwd: John Smith documents',
+    },
+    createdAt: '2026-03-06T12:00:00Z',
+  };
+
+  test('stores pending choice in Redis with 24h TTL keyed by threadId', async () => {
+    await storePendingChoice('thread-abc-123', pendingChoice);
+
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      'pending-choice:thread-abc-123',
+      JSON.stringify(pendingChoice),
+      'EX',
+      86400,
+    );
+  });
+
+  test('getPendingChoice retrieves stored pending choice', async () => {
+    mockRedisGet.mockResolvedValueOnce(JSON.stringify(pendingChoice));
+
+    const result = await getPendingChoice('thread-abc-123');
+
+    expect(result).toEqual(pendingChoice);
+    expect(mockRedisGet).toHaveBeenCalledWith('pending-choice:thread-abc-123');
+  });
+
+  test('getPendingChoice returns null for unknown threadId', async () => {
+    mockRedisGet.mockResolvedValueOnce(null);
+
+    const result = await getPendingChoice('unknown-thread');
+
+    expect(result).toBeNull();
+  });
+
+  test('deletePendingChoice removes the Redis key', async () => {
+    await deletePendingChoice('thread-abc-123');
+
+    expect(mockRedisDel).toHaveBeenCalledWith('pending-choice:thread-abc-123');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: sendQuestionEmail (Phase 26)
+// ---------------------------------------------------------------------------
+
+describe('sendQuestionEmail', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('sends MIME message with In-Reply-To, References, and threadId', async () => {
+    const context: MessageContext = {
+      gmailMessageId: 'msg-abc-123',
+      gmailThreadId: 'thread-abc-123',
+      gmailMessageRfc822Id: '<CABx+XJ2abc@mail.gmail.com>',
+      senderEmail: 'admin@venturemortgages.com',
+      emailSubject: 'Fwd: John Smith documents',
+      totalExpected: 1,
+    };
+
+    await sendQuestionEmail(context, 'Which folder should I use?');
+
+    expect(mockGmailSend).toHaveBeenCalledTimes(1);
+
+    const sendCall = mockGmailSend.mock.calls[0][0];
+    expect(sendCall.requestBody.threadId).toBe('thread-abc-123');
+
+    const decoded = decodeBase64url(sendCall.requestBody.raw);
+    expect(decoded).toContain('In-Reply-To: <CABx+XJ2abc@mail.gmail.com>');
+    expect(decoded).toContain('References: <CABx+XJ2abc@mail.gmail.com>');
+    expect(decoded).toContain('From: docs@venturemortgages.co');
+    expect(decoded).toContain('To: admin@venturemortgages.com');
+    expect(decoded).toContain('Subject: Re: Fwd: John Smith documents');
+    expect(decoded).toContain('Content-Type: text/plain; charset=utf-8');
+  });
+
+  test('sends without threading headers when gmailMessageRfc822Id is null', async () => {
+    const context: MessageContext = {
+      gmailMessageId: 'msg-abc-123',
+      gmailThreadId: 'thread-abc-123',
+      gmailMessageRfc822Id: null,
+      senderEmail: 'admin@venturemortgages.com',
+      emailSubject: 'Fwd: documents',
+      totalExpected: 1,
+    };
+
+    await sendQuestionEmail(context, 'Question body');
+
+    expect(mockGmailSend).toHaveBeenCalledTimes(1);
+
+    const sendCall = mockGmailSend.mock.calls[0][0];
+    const decoded = decodeBase64url(sendCall.requestBody.raw);
+    expect(decoded).not.toContain('In-Reply-To:');
+    expect(decoded).not.toContain('References:');
   });
 });

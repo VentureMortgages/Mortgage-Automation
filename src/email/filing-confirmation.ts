@@ -237,3 +237,159 @@ export function buildConfirmationBody(results: FilingResult[]): string {
 
   return lines.join('\n');
 }
+
+// ---------------------------------------------------------------------------
+// Phase 26: Pending Choice Types & Storage
+// ---------------------------------------------------------------------------
+
+/**
+ * Represents a pending filing choice awaiting Cat's reply.
+ * Stored in Redis keyed by threadId so a reply to the thread resolves it.
+ */
+export interface PendingChoice {
+  options: Array<{ folderId: string; folderName: string }>;
+  documentInfo: {
+    intakeDocumentId: string;
+    originalFilename: string;
+    docTypeLabel: string;
+    driveFileId: string;
+    needsReviewFolderId: string;
+  };
+  contactId: string | null;
+  threadContext: {
+    gmailThreadId: string;
+    gmailMessageRfc822Id: string | null;
+    senderEmail: string;
+    emailSubject: string;
+  };
+  createdAt: string;
+}
+
+const PENDING_CHOICE_PREFIX = 'pending-choice:';
+const PENDING_CHOICE_TTL = 86400; // 24 hours
+
+// ---------------------------------------------------------------------------
+// buildQuestionBody
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a conversational plain-text email body asking Cat which folder to
+ * file a document into. Lists options as a numbered list.
+ *
+ * @param originalFilename - The original filename of the document
+ * @param docTypeLabel - Human-readable doc type label (e.g., "T4", "Pay Stub")
+ * @param options - Array of folder name options to present
+ * @returns Plain text body for the question email
+ */
+export function buildQuestionBody(
+  originalFilename: string,
+  docTypeLabel: string,
+  options: Array<{ folderName: string }>,
+): string {
+  const lines: string[] = [];
+
+  lines.push(`I received "${originalFilename}" (${docTypeLabel}) but I'm not sure where to file it.`);
+  lines.push('');
+  lines.push('I found a few possible folders:');
+  lines.push('');
+
+  for (let i = 0; i < options.length; i++) {
+    lines.push(`  ${i + 1}. ${options[i].folderName}`);
+  }
+
+  lines.push('');
+  lines.push('Which one should I use? You can reply with the number, the folder name, "create new folder", or "skip" to leave it in Needs Review.');
+
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// storePendingChoice / getPendingChoice / deletePendingChoice
+// ---------------------------------------------------------------------------
+
+/**
+ * Stores a pending filing choice in Redis, keyed by threadId.
+ * Expires after 24 hours.
+ *
+ * @param threadId - Gmail thread ID to key the choice by
+ * @param choice - The pending choice data
+ */
+export async function storePendingChoice(
+  threadId: string,
+  choice: PendingChoice,
+): Promise<void> {
+  const redis = getRedis();
+  await redis.set(
+    `${PENDING_CHOICE_PREFIX}${threadId}`,
+    JSON.stringify(choice),
+    'EX',
+    PENDING_CHOICE_TTL,
+  );
+}
+
+/**
+ * Retrieves a pending filing choice from Redis by threadId.
+ *
+ * @param threadId - Gmail thread ID
+ * @returns The pending choice, or null if not found / expired
+ */
+export async function getPendingChoice(
+  threadId: string,
+): Promise<PendingChoice | null> {
+  const redis = getRedis();
+  const raw = await redis.get(`${PENDING_CHOICE_PREFIX}${threadId}`);
+  if (!raw) return null;
+  return JSON.parse(raw) as PendingChoice;
+}
+
+/**
+ * Deletes a pending filing choice from Redis.
+ *
+ * @param threadId - Gmail thread ID
+ */
+export async function deletePendingChoice(threadId: string): Promise<void> {
+  const redis = getRedis();
+  await redis.del(`${PENDING_CHOICE_PREFIX}${threadId}`);
+}
+
+// ---------------------------------------------------------------------------
+// sendQuestionEmail
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends a question email as an in-thread reply to the original forwarding thread.
+ * Same MIME threading pattern as maybeSendConfirmation.
+ *
+ * @param context - Gmail message context for threading
+ * @param body - Plain text body (from buildQuestionBody)
+ */
+export async function sendQuestionEmail(
+  context: MessageContext,
+  body: string,
+): Promise<void> {
+  const raw = encodeMimeMessage({
+    from: intakeConfig.docsInbox,
+    to: context.senderEmail,
+    subject: `Re: ${context.emailSubject}`,
+    body,
+    contentType: 'text/plain',
+    ...(context.gmailMessageRfc822Id ? {
+      inReplyTo: context.gmailMessageRfc822Id,
+      references: context.gmailMessageRfc822Id,
+    } : {}),
+  });
+
+  const gmail = getGmailComposeClient(intakeConfig.docsInbox);
+  await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: {
+      raw,
+      threadId: context.gmailThreadId,
+    },
+  });
+
+  console.log('[filing-confirmation] Question email sent:', {
+    threadId: context.gmailThreadId,
+    senderEmail: context.senderEmail,
+  });
+}

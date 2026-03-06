@@ -52,7 +52,8 @@ import { matchDocument } from '../matching/agent.js';
 import { autoCreateFromDoc } from '../matching/auto-create.js';
 import { DOC_TYPE_LABELS } from './types.js';
 import type { ClassificationJobData, ClassificationJobResult, ClassificationResult } from './types.js';
-import { recordFilingResult } from '../email/filing-confirmation.js';
+import { recordFilingResult, storePendingChoice, sendQuestionEmail, buildQuestionBody } from '../email/filing-confirmation.js';
+import type { PendingChoice } from '../email/filing-confirmation.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -209,6 +210,64 @@ export async function processClassificationJob(
           } catch { /* non-fatal */ }
         }
 
+        // Phase 26: Send question email when 2+ candidates have Drive folders
+        const threadId = job.data.threadId ?? job.data.gmailMessageId;
+        if (
+          matchDecision.candidates.length >= 2 &&
+          threadId &&
+          job.data.gmailMessageId &&
+          job.data.senderEmail
+        ) {
+          const folderOptions = matchDecision.candidates
+            .filter((c) => c.driveFolderId)
+            .map((c) => ({ folderId: c.driveFolderId!, folderName: c.contactName }));
+
+          if (folderOptions.length >= 2) {
+            try {
+              const docLabel = DOC_TYPE_LABELS[classification.documentType] ?? classification.documentType;
+              const questionBody = buildQuestionBody(originalFilename, docLabel, folderOptions);
+
+              await storePendingChoice(threadId, {
+                options: folderOptions,
+                documentInfo: {
+                  intakeDocumentId,
+                  originalFilename,
+                  docTypeLabel: docLabel,
+                  driveFileId: fileId,
+                  needsReviewFolderId: globalNeedsReviewId,
+                },
+                contactId: matchDecision.candidates[0]?.contactId ?? null,
+                threadContext: {
+                  gmailThreadId: threadId,
+                  gmailMessageRfc822Id: job.data.gmailMessageRfc822Id ?? null,
+                  senderEmail: job.data.senderEmail!,
+                  emailSubject: job.data.emailSubject ?? '',
+                },
+                createdAt: new Date().toISOString(),
+              });
+
+              await sendQuestionEmail({
+                gmailMessageId: job.data.gmailMessageId!,
+                gmailThreadId: threadId,
+                gmailMessageRfc822Id: job.data.gmailMessageRfc822Id ?? null,
+                senderEmail: job.data.senderEmail!,
+                emailSubject: job.data.emailSubject ?? '',
+                totalExpected: 1,
+              }, questionBody);
+
+              console.log('[classification] Question email sent for needs_review/conflict:', {
+                threadId,
+                optionCount: folderOptions.length,
+              });
+            } catch (err) {
+              // Question email is NON-FATAL — doc is already in Needs Review
+              console.error('[classification] Failed to send question email (non-fatal):', {
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
+        }
+
         // Clean up temp file
         await unlink(tempFilePath).catch(() => {});
 
@@ -231,7 +290,78 @@ export async function processClassificationJob(
           senderEmail,
           originalFilename,
         });
-        if (created) {
+        if (created && 'ambiguous' in created) {
+          // Phase 26: Multiple fuzzy folder matches — route to Needs Review + send question email
+          const drive = getDriveClient();
+          const globalNrId = await findOrCreateFolder(
+            drive, 'Needs Review', classificationConfig.driveRootFolderId,
+          );
+          const fileId = await uploadFile(drive, pdfBuffer, originalFilename, globalNrId);
+
+          // Send question email with folder options
+          const acThreadId = job.data.threadId ?? job.data.gmailMessageId;
+          if (
+            acThreadId &&
+            job.data.gmailMessageId &&
+            job.data.senderEmail &&
+            created.folderOptions.length >= 2
+          ) {
+            try {
+              const docLabel = DOC_TYPE_LABELS[classification.documentType] ?? classification.documentType;
+              const questionBody = buildQuestionBody(originalFilename, docLabel, created.folderOptions);
+
+              await storePendingChoice(acThreadId, {
+                options: created.folderOptions,
+                documentInfo: {
+                  intakeDocumentId,
+                  originalFilename,
+                  docTypeLabel: docLabel,
+                  driveFileId: fileId,
+                  needsReviewFolderId: globalNrId,
+                },
+                contactId: created.contactId,
+                threadContext: {
+                  gmailThreadId: acThreadId,
+                  gmailMessageRfc822Id: job.data.gmailMessageRfc822Id ?? null,
+                  senderEmail: job.data.senderEmail!,
+                  emailSubject: job.data.emailSubject ?? '',
+                },
+                createdAt: new Date().toISOString(),
+              });
+
+              await sendQuestionEmail({
+                gmailMessageId: job.data.gmailMessageId!,
+                gmailThreadId: acThreadId,
+                gmailMessageRfc822Id: job.data.gmailMessageRfc822Id ?? null,
+                senderEmail: job.data.senderEmail!,
+                emailSubject: job.data.emailSubject ?? '',
+                totalExpected: 1,
+              }, questionBody);
+
+              console.log('[classification] Question email sent for ambiguous auto-create:', {
+                threadId: acThreadId,
+                optionCount: created.folderOptions.length,
+              });
+            } catch (err) {
+              // Question email is NON-FATAL — doc is already in Needs Review
+              console.error('[classification] Failed to send question email for auto-create (non-fatal):', {
+                error: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
+
+          await unlink(tempFilePath).catch(() => {});
+          const ambiguousResult: ClassificationJobResult = {
+            intakeDocumentId,
+            classification,
+            filed: false,
+            driveFileId: fileId,
+            manualReview: true,
+            error: null,
+          };
+          await recordFilingResultSafe(job, ambiguousResult, classification);
+          return ambiguousResult;
+        } else if (created) {
           contactId = created.contactId;
           clientFolderId = created.driveFolderId;
         } else {
