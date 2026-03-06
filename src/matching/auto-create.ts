@@ -20,6 +20,7 @@ import { crmConfig } from '../crm/config.js';
 import { createReviewTask } from '../crm/tasks.js';
 import { getDriveClient } from '../classification/drive-client.js';
 import { findOrCreateFolder } from '../classification/filer.js';
+import { searchExistingFolders } from './folder-search.js';
 import { preCreateSubfolders } from '../drive/originals.js';
 import { classificationConfig } from '../classification/config.js';
 import type { ClassificationResult } from '../classification/types.js';
@@ -77,10 +78,30 @@ export async function autoCreateFromDoc(input: {
     const contactId = contactResult.contactId;
 
     // 3. Create client folder in Drive under root: "LastName, FirstName"
+    //    Phase 25-02: First search for existing folders via fuzzy match to prevent duplicates
     const drive = getDriveClient();
     const folderName = `${lastName}, ${firstName}`;
     const rootFolderId = classificationConfig.driveRootFolderId;
-    const driveFolderId = await findOrCreateFolder(drive, folderName, rootFolderId);
+
+    let driveFolderId: string;
+    try {
+      const existingFolder = await searchExistingFolders(drive, folderName, rootFolderId);
+      if (existingFolder) {
+        console.log('[auto-create] Found existing folder via fuzzy match:', {
+          searchedFor: folderName,
+          foundFolder: existingFolder.folderName,
+          folderId: existingFolder.folderId,
+        });
+        driveFolderId = existingFolder.folderId;
+      } else {
+        driveFolderId = await findOrCreateFolder(drive, folderName, rootFolderId);
+      }
+    } catch (err) {
+      console.error('[auto-create] Fuzzy search failed, falling back to findOrCreate (non-fatal):', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      driveFolderId = await findOrCreateFolder(drive, folderName, rootFolderId);
+    }
 
     // 4. Store folder ID on the contact
     try {
