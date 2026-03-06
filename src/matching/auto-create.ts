@@ -21,6 +21,7 @@ import { createReviewTask } from '../crm/tasks.js';
 import { getDriveClient } from '../classification/drive-client.js';
 import { findOrCreateFolder } from '../classification/filer.js';
 import { searchExistingFolders } from './folder-search.js';
+import type { FolderSearchResult } from './folder-search.js';
 import { preCreateSubfolders } from '../drive/originals.js';
 import { classificationConfig } from '../classification/config.js';
 import type { ClassificationResult } from '../classification/types.js';
@@ -32,6 +33,16 @@ import type { ClassificationResult } from '../classification/types.js';
 export interface AutoCreateResult {
   contactId: string;
   driveFolderId: string;
+}
+
+/**
+ * Returned when folder search finds 2+ fuzzy matches — ambiguous.
+ * The caller should present options to Cat via a question email.
+ */
+export interface AutoCreateAmbiguousResult {
+  ambiguous: true;
+  contactId: string;
+  folderOptions: Array<{ folderId: string; folderName: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,7 +59,7 @@ export async function autoCreateFromDoc(input: {
   classificationResult: ClassificationResult;
   senderEmail: string | null;
   originalFilename: string;
-}): Promise<AutoCreateResult | null> {
+}): Promise<AutoCreateResult | AutoCreateAmbiguousResult | null> {
   const { classificationResult, senderEmail, originalFilename } = input;
 
   // 1. Extract name from classification — can't create contact without a name
@@ -85,14 +96,25 @@ export async function autoCreateFromDoc(input: {
 
     let driveFolderId: string;
     try {
-      const existingFolder = await searchExistingFolders(drive, folderName, rootFolderId);
-      if (existingFolder) {
+      const searchResult: FolderSearchResult = await searchExistingFolders(drive, folderName, rootFolderId);
+      if (searchResult.match) {
         console.log('[auto-create] Found existing folder via fuzzy match:', {
           searchedFor: folderName,
-          foundFolder: existingFolder.folderName,
-          folderId: existingFolder.folderId,
+          foundFolder: searchResult.match.folderName,
+          folderId: searchResult.match.folderId,
         });
-        driveFolderId = existingFolder.folderId;
+        driveFolderId = searchResult.match.folderId;
+      } else if (searchResult.allMatches.length >= 2) {
+        // Multiple fuzzy matches — ambiguous. Return options for question email.
+        console.log('[auto-create] Multiple fuzzy folder matches found, returning ambiguous:', {
+          searchedFor: folderName,
+          matchCount: searchResult.allMatches.length,
+        });
+        return {
+          ambiguous: true,
+          contactId,
+          folderOptions: searchResult.allMatches,
+        };
       } else {
         driveFolderId = await findOrCreateFolder(drive, folderName, rootFolderId);
       }

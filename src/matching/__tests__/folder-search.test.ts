@@ -24,6 +24,7 @@ const mockDriveFilesList = vi.fn();
 // ---------------------------------------------------------------------------
 
 import { normalizeName, fuzzyNameMatch, searchExistingFolders } from '../folder-search.js';
+import type { FolderSearchResult } from '../folder-search.js';
 
 // ---------------------------------------------------------------------------
 // normalizeName tests
@@ -111,7 +112,7 @@ describe('searchExistingFolders', () => {
     vi.clearAllMocks();
   });
 
-  it('returns matching folder when fuzzy match exists', async () => {
+  it('returns FolderSearchResult with match when single fuzzy match exists', async () => {
     mockDriveFilesList.mockResolvedValue({
       data: {
         files: [
@@ -123,9 +124,14 @@ describe('searchExistingFolders', () => {
     const result = await searchExistingFolders(mockDrive, 'Ranasinghe, Srimal', 'root-123');
 
     expect(result).toEqual({
-      folderId: 'folder-abc',
-      folderName: 'Wong-Ranasinghe, Carolyn/Srimal',
-    });
+      match: {
+        folderId: 'folder-abc',
+        folderName: 'Wong-Ranasinghe, Carolyn/Srimal',
+      },
+      allMatches: [
+        { folderId: 'folder-abc', folderName: 'Wong-Ranasinghe, Carolyn/Srimal' },
+      ],
+    } satisfies FolderSearchResult);
 
     // Verify Drive API was called with name contains last name (lowercase)
     expect(mockDriveFilesList).toHaveBeenCalledWith(
@@ -135,7 +141,7 @@ describe('searchExistingFolders', () => {
     );
   });
 
-  it('returns null when no folders match', async () => {
+  it('returns { match: null, allMatches: [] } when no folders match', async () => {
     mockDriveFilesList.mockResolvedValue({
       data: {
         files: [],
@@ -144,10 +150,13 @@ describe('searchExistingFolders', () => {
 
     const result = await searchExistingFolders(mockDrive, 'Nonexistent, Person', 'root-123');
 
-    expect(result).toBeNull();
+    expect(result).toEqual({
+      match: null,
+      allMatches: [],
+    } satisfies FolderSearchResult);
   });
 
-  it('returns null when Drive returns folders but none fuzzy match', async () => {
+  it('returns { match: null, allMatches: [] } when Drive returns folders but none fuzzy match', async () => {
     mockDriveFilesList.mockResolvedValue({
       data: {
         files: [
@@ -159,10 +168,13 @@ describe('searchExistingFolders', () => {
     // Searching for "Smith, John" but Drive returned a Ranasinghe folder (name contains matched something)
     const result = await searchExistingFolders(mockDrive, 'Smith, John', 'root-123');
 
-    expect(result).toBeNull();
+    expect(result).toEqual({
+      match: null,
+      allMatches: [],
+    } satisfies FolderSearchResult);
   });
 
-  it('returns null for multiple fuzzy matches (ambiguous) with logged warning', async () => {
+  it('returns { match: null, allMatches: [...] } for 2+ fuzzy matches with logged warning', async () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     mockDriveFilesList.mockResolvedValue({
@@ -176,7 +188,14 @@ describe('searchExistingFolders', () => {
 
     const result = await searchExistingFolders(mockDrive, 'Ranasinghe, Srimal', 'root-123');
 
-    expect(result).toBeNull();
+    expect(result).toEqual({
+      match: null,
+      allMatches: [
+        { folderId: 'folder-1', folderName: 'Ranasinghe, Srimal' },
+        { folderId: 'folder-2', folderName: 'Wong-Ranasinghe, Carolyn/Srimal' },
+      ],
+    } satisfies FolderSearchResult);
+
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[folder-search]'),
       expect.objectContaining({
@@ -187,14 +206,18 @@ describe('searchExistingFolders', () => {
     consoleSpy.mockRestore();
   });
 
-  it('handles Drive API errors gracefully (returns null)', async () => {
+  it('returns { match: null, allMatches: [] } on Drive API error', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     mockDriveFilesList.mockRejectedValue(new Error('Drive API unavailable'));
 
     const result = await searchExistingFolders(mockDrive, 'Smith, John', 'root-123');
 
-    expect(result).toBeNull();
+    expect(result).toEqual({
+      match: null,
+      allMatches: [],
+    } satisfies FolderSearchResult);
+
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[folder-search]'),
       expect.anything(),

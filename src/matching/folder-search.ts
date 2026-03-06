@@ -60,6 +60,21 @@ export function fuzzyNameMatch(searchName: string, folderName: string): boolean 
 }
 
 // ---------------------------------------------------------------------------
+// Return Type
+// ---------------------------------------------------------------------------
+
+/**
+ * Result from searching existing Drive folders.
+ *
+ * - `match`: the single unambiguous folder match, or null if 0 or 2+ matches
+ * - `allMatches`: every folder that fuzzy-matched (used to present options when ambiguous)
+ */
+export interface FolderSearchResult {
+  match: { folderId: string; folderName: string } | null;
+  allMatches: Array<{ folderId: string; folderName: string }>;
+}
+
+// ---------------------------------------------------------------------------
 // Drive API Search
 // ---------------------------------------------------------------------------
 
@@ -70,22 +85,22 @@ export function fuzzyNameMatch(searchName: string, folderName: string): boolean 
  * 1. Extract the last name (first token) from the client name
  * 2. Query Drive API with `name contains '{lastName}'` for broad candidate retrieval
  * 3. Apply fuzzyNameMatch() on each candidate for precise filtering
- * 4. Return the single match, or null if 0 or 2+ matches (ambiguous)
+ * 4. Return FolderSearchResult with match (if exactly 1) and allMatches (all candidates)
  *
  * @param drive - Google Drive API client
  * @param clientName - Client name in "LastName, FirstName" format
  * @param rootFolderId - Drive root folder ID to search within
- * @returns Matching folder info, or null if no match / ambiguous / error
+ * @returns FolderSearchResult with match and allMatches
  */
 export async function searchExistingFolders(
   drive: DriveClient,
   clientName: string,
   rootFolderId: string,
-): Promise<{ folderId: string; folderName: string } | null> {
+): Promise<FolderSearchResult> {
   try {
     // Extract last name (first token of the normalized name, since format is "LastName, FirstName")
     const tokens = normalizeName(clientName);
-    if (tokens.length === 0) return null;
+    if (tokens.length === 0) return { match: null, allMatches: [] };
 
     // Use the first token (last name) for the broad Drive API search
     const lastName = tokens[0];
@@ -109,28 +124,33 @@ export async function searchExistingFolders(
       (f) => f.id && f.name && fuzzyNameMatch(clientName, f.name),
     );
 
+    const allMatches = matches.map((m) => ({
+      folderId: m.id!,
+      folderName: m.name!,
+    }));
+
     if (matches.length === 0) {
-      return null;
+      return { match: null, allMatches: [] };
     }
 
     if (matches.length === 1) {
       return {
-        folderId: matches[0].id!,
-        folderName: matches[0].name!,
+        match: { folderId: matches[0].id!, folderName: matches[0].name! },
+        allMatches,
       };
     }
 
-    // Multiple matches — ambiguous, route to Needs Review downstream
+    // Multiple matches — ambiguous, return all matches but no single match
     console.warn('[folder-search] Multiple fuzzy matches found, returning null (ambiguous)', {
       searchName: clientName,
       matches: matches.map((m) => ({ id: m.id, name: m.name })),
     });
-    return null;
+    return { match: null, allMatches };
   } catch (err) {
     console.error('[folder-search] Drive search failed (non-fatal):', {
       error: err instanceof Error ? err.message : String(err),
       clientName,
     });
-    return null;
+    return { match: null, allMatches: [] };
   }
 }

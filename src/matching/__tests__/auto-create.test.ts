@@ -102,6 +102,7 @@ vi.mock('../folder-search.js', () => mockFolderSearch);
 // ---------------------------------------------------------------------------
 
 import { autoCreateFromDoc } from '../auto-create.js';
+import type { AutoCreateAmbiguousResult } from '../auto-create.js';
 import type { ClassificationResult } from '../../classification/types.js';
 
 // ---------------------------------------------------------------------------
@@ -137,8 +138,8 @@ describe('autoCreateFromDoc', () => {
     mockFiler.findOrCreateFolder.mockResolvedValue('new-folder-1');
     mockOriginals.preCreateSubfolders.mockResolvedValue({});
     mockTasks.createReviewTask.mockResolvedValue('task-1');
-    // Phase 25-02: Default fuzzy search to null (no match) so existing tests pass unchanged
-    mockFolderSearch.searchExistingFolders.mockResolvedValue(null);
+    // Phase 25-02: Default fuzzy search to { match: null, allMatches: [] } (no match) so existing tests pass
+    mockFolderSearch.searchExistingFolders.mockResolvedValue({ match: null, allMatches: [] });
   });
 
   it('creates CRM contact with name from classification', async () => {
@@ -347,8 +348,8 @@ describe('autoCreateFromDoc', () => {
   describe('fuzzy folder search (Phase 25-02)', () => {
     it('reuses existing folder when fuzzy match found (no new folder created)', async () => {
       mockFolderSearch.searchExistingFolders.mockResolvedValue({
-        folderId: 'existing-folder-xyz',
-        folderName: 'Wong-Ranasinghe, Carolyn/Srimal',
+        match: { folderId: 'existing-folder-xyz', folderName: 'Wong-Ranasinghe, Carolyn/Srimal' },
+        allMatches: [{ folderId: 'existing-folder-xyz', folderName: 'Wong-Ranasinghe, Carolyn/Srimal' }],
       });
 
       const result = await autoCreateFromDoc({
@@ -376,7 +377,7 @@ describe('autoCreateFromDoc', () => {
     });
 
     it('falls back to findOrCreateFolder when no fuzzy match found', async () => {
-      mockFolderSearch.searchExistingFolders.mockResolvedValue(null);
+      mockFolderSearch.searchExistingFolders.mockResolvedValue({ match: null, allMatches: [] });
 
       const result = await autoCreateFromDoc({
         classificationResult: mockClassificationResult(),
@@ -414,8 +415,39 @@ describe('autoCreateFromDoc', () => {
       expect(mockFiler.findOrCreateFolder).toHaveBeenCalled();
     });
 
+    it('returns ambiguous result when 2+ fuzzy matches found', async () => {
+      mockFolderSearch.searchExistingFolders.mockResolvedValue({
+        match: null,
+        allMatches: [
+          { folderId: 'folder-1', folderName: 'Ranasinghe, Srimal' },
+          { folderId: 'folder-2', folderName: 'Wong-Ranasinghe, Carolyn/Srimal' },
+        ],
+      });
+
+      const result = await autoCreateFromDoc({
+        classificationResult: mockClassificationResult({
+          borrowerFirstName: 'Srimal',
+          borrowerLastName: 'Ranasinghe',
+        }),
+        senderEmail: 'srimal@example.com',
+        originalFilename: 'ID_Srimal.pdf',
+      });
+
+      expect(result).toEqual({
+        ambiguous: true,
+        contactId: 'new-contact-1',
+        folderOptions: [
+          { folderId: 'folder-1', folderName: 'Ranasinghe, Srimal' },
+          { folderId: 'folder-2', folderName: 'Wong-Ranasinghe, Carolyn/Srimal' },
+        ],
+      });
+
+      // Should NOT create a new folder
+      expect(mockFiler.findOrCreateFolder).not.toHaveBeenCalled();
+    });
+
     it('calls searchExistingFolders with correct folder name and root ID', async () => {
-      mockFolderSearch.searchExistingFolders.mockResolvedValue(null);
+      mockFolderSearch.searchExistingFolders.mockResolvedValue({ match: null, allMatches: [] });
 
       await autoCreateFromDoc({
         classificationResult: mockClassificationResult({
