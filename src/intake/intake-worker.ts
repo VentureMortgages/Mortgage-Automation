@@ -165,16 +165,22 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
     format: 'full',
   });
 
-  // 2b. Extract forwarding notes from email body (Phase 23)
-  const forwardingNotes = extractForwardingNotes(fullMessage.data.payload ?? undefined);
+  // 2b. Extract forwarding notes from email body (Phase 23, Phase 25: now async with AI)
+  const forwardingNotes = await extractForwardingNotes(fullMessage.data.payload ?? undefined);
   if (forwardingNotes) {
     console.log('[intake] Forwarding notes detected:', {
       messageId,
       hasClientName: !!forwardingNotes.clientName,
       hasClientEmail: !!forwardingNotes.clientEmail,
       hasDocTypeHint: !!forwardingNotes.docTypeHint,
+      clientCount: forwardingNotes.clients?.length ?? 0,
+      docAssignments: forwardingNotes.docs?.length ?? 0,
     });
   }
+
+  // 2c. Extract RFC 2822 Message-ID header (Phase 25 — for filing confirmation threading)
+  const messageHeaders = fullMessage.data.payload?.headers ?? [];
+  const rfc822MessageId = messageHeaders.find(h => h.name?.toLowerCase() === 'message-id')?.value ?? undefined;
 
   // 3. Extract attachments from MIME parts
   const parts = fullMessage.data.payload?.parts ?? [];
@@ -279,6 +285,49 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
 
       // Enqueue for classification (Phase 7)
       // Include Gmail metadata for Phase 14 smart matching
+      // Phase 25: Per-attachment client assignment from AI-parsed forwarding notes
+      let perAttachClientName: string | undefined;
+      let perAttachClientEmail: string | undefined;
+      let perAttachDocTypeHint: string | undefined;
+
+      if (forwardingNotes?.docs && forwardingNotes.docs.length > 0) {
+        // Try to match this file to a doc assignment by type substring match
+        const filenameLower = file.filename.toLowerCase();
+        const matchedDoc = forwardingNotes.docs.find(d =>
+          filenameLower.includes(d.type.toLowerCase()),
+        );
+        if (matchedDoc) {
+          // Check if the matched client is an email
+          const emailMatch = matchedDoc.client.match(/(\S+@\S+\.\S+)/);
+          if (emailMatch) {
+            perAttachClientEmail = emailMatch[1];
+          } else {
+            perAttachClientName = matchedDoc.client;
+          }
+          perAttachDocTypeHint = matchedDoc.type;
+          console.log('[intake] Per-attachment client assignment:', {
+            filename: file.filename,
+            assignedClient: matchedDoc.client,
+            docType: matchedDoc.type,
+          });
+        } else if (forwardingNotes.clients && forwardingNotes.clients.length === 1) {
+          // Single client in AI result, no doc match — use that client for all
+          const singleClient = forwardingNotes.clients[0];
+          const emailMatch = singleClient.match(/(\S+@\S+\.\S+)/);
+          if (emailMatch) {
+            perAttachClientEmail = emailMatch[1];
+          } else {
+            perAttachClientName = singleClient;
+          }
+        }
+        // Multiple clients and no doc-to-file mapping: leave undefined (matching agent handles it)
+      } else {
+        // No AI docs[] — fall back to legacy single-client fields
+        perAttachClientName = forwardingNotes?.clientName;
+        perAttachClientEmail = forwardingNotes?.clientEmail;
+        perAttachDocTypeHint = forwardingNotes?.docTypeHint;
+      }
+
       const classificationJob: ClassificationJobData = {
         intakeDocumentId: doc.id,
         tempFilePath,
@@ -290,10 +339,13 @@ async function processGmailSource(job: Job<IntakeJobData>): Promise<IntakeResult
         threadId: messageMeta.threadId ?? undefined,
         emailSubject: messageMeta.subject,
         ccAddresses: messageMeta.cc,
-        // Phase 23: Cat's forwarding notes
-        ...(forwardingNotes?.clientName && { forwardingNoteClientName: forwardingNotes.clientName }),
-        ...(forwardingNotes?.clientEmail && { forwardingNoteClientEmail: forwardingNotes.clientEmail }),
-        ...(forwardingNotes?.docTypeHint && { forwardingNoteDocTypeHint: forwardingNotes.docTypeHint }),
+        // Phase 23/25: Cat's forwarding notes (per-attachment in Phase 25)
+        ...(perAttachClientName && { forwardingNoteClientName: perAttachClientName }),
+        ...(perAttachClientEmail && { forwardingNoteClientEmail: perAttachClientEmail }),
+        ...(perAttachDocTypeHint && { forwardingNoteDocTypeHint: perAttachDocTypeHint }),
+        // Phase 25: Message-ID + batch tracking for filing confirmation
+        ...(rfc822MessageId && { gmailMessageRfc822Id: rfc822MessageId }),
+        totalAttachmentCount: filesToProcess.length,
       };
 
       await getClassificationQueue().add(
