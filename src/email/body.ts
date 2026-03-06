@@ -116,7 +116,12 @@ export function generateEmailBody(
       parts.push(formatItemSection('Down Payment', dpItems));
     }
     if (propItems.length > 0) {
-      parts.push(formatItemSection('Property', propItems));
+      const propHeader = checklist.applicationGoal === 'refinance'
+        ? 'Property Being Refinanced'
+        : checklist.applicationGoal === 'renew'
+          ? 'Property Being Renewed'
+          : 'Property';
+      parts.push(formatItemSection(propHeader, propItems));
     }
     if (otherItems.length > 0) {
       parts.push(formatItemSection('Other', otherItems));

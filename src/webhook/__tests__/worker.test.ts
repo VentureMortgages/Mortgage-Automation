@@ -269,6 +269,7 @@ function createMockFinmoApp(): FinmoApplicationResponse {
 function createMockChecklist(): GeneratedChecklist {
   return {
     applicationId: 'app-123',
+    applicationGoal: 'purchase',
     generatedAt: '2026-01-16T00:00:00Z',
     borrowerChecklists: [
       {

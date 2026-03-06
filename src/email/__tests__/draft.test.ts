@@ -54,6 +54,7 @@ function makeItem(overrides: Partial<ChecklistItem> & { displayName: string }): 
 function makeMinimalChecklist(): GeneratedChecklist {
   return {
     applicationId: 'app-test-001',
+    applicationGoal: 'purchase',
     generatedAt: '2026-02-14T00:00:00Z',
     borrowerChecklists: [
       {

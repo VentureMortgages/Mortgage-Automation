@@ -38,6 +38,7 @@ function makeChecklist(
   ];
   return {
     applicationId: 'test-app',
+    applicationGoal: 'purchase',
     generatedAt: '2026-02-17T00:00:00Z',
     borrowerChecklists,
     propertyChecklists: [],

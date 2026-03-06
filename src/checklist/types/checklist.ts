@@ -133,6 +133,8 @@ export interface RuleContext {
 export interface GeneratedChecklist {
   /** Finmo application ID this checklist was generated for */
   applicationId: string;
+  /** Application goal (purchase, refinance, renew) — used for email section headers */
+  applicationGoal: string | null;
   /** ISO timestamp of when the checklist was generated */
   generatedAt: string;
   /** Per-borrower document checklists */

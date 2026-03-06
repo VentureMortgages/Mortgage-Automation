@@ -85,6 +85,7 @@ import { mapChecklistToFields, buildChecklistSummary } from '../checklist-mapper
 
 const mockChecklist: GeneratedChecklist = {
   applicationId: 'app-123',
+  applicationGoal: 'purchase',
   generatedAt: '2026-02-14T12:00:00Z',
   borrowerChecklists: [],
   propertyChecklists: [],

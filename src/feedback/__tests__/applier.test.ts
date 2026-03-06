@@ -40,6 +40,7 @@ function makeItem(displayName: string, doc?: string): ChecklistItem {
 function makeChecklist(items: ChecklistItem[]): GeneratedChecklist {
   return {
     applicationId: 'app-test',
+    applicationGoal: 'purchase',
     generatedAt: '2026-02-20T00:00:00Z',
     borrowerChecklists: [
       {

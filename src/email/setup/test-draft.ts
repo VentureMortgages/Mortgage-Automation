@@ -15,6 +15,7 @@ import type { GeneratedChecklist } from '../../checklist/types/index.js';
 
 // Build a realistic test checklist
 const testChecklist: GeneratedChecklist = {
+  applicationGoal: 'purchase',
   borrowerChecklists: [
     {
       borrowerName: 'Test Borrower',

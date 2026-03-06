@@ -102,6 +102,7 @@ function makeTwoBorrowerChecklist(): GeneratedChecklist {
 
   return {
     applicationId: 'test-app-001',
+    applicationGoal: 'purchase',
     generatedAt: '2026-02-13T00:00:00Z',
     borrowerChecklists,
     propertyChecklists,

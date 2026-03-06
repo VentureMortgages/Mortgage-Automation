@@ -422,6 +422,7 @@ export function generateChecklist(
   // 8. Return GeneratedChecklist
   return {
     applicationId: response.application.id,
+    applicationGoal: response.application.goal ?? null,
     generatedAt: currentDate.toISOString(),
     borrowerChecklists,
     propertyChecklists,
