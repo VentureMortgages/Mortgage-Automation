@@ -376,6 +376,7 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | 21. Reminders Verification | v1.2 | 0/TBD | Not started | - |
 | 22. Cat Handoff | v1.2 | 0/TBD | Not started | - |
 | 24. Checklist Bug Fixes + Audit | v1.2 | Complete    | 2026-03-04 | 2026-03-04 |
+| 25. Smart Forwarding + Filing Feedback | v1.2 | 0/3 | Not started | - |
 
 ### Action Items (Non-Code)
 | Item | Owner | Status |
@@ -405,6 +406,18 @@ Plans:
 - [x] 24-02-PLAN.md -- Fix CRM bugs 8-9 (borrower contact type, professional sync)
 - [x] 24-03-PLAN.md -- Comprehensive field audit and BUG 6 documentation
 
+### Phase 25: Smart Forwarding Notes & Filing Feedback
+
+**Goal:** Fix the three cascading failures exposed by Cat's Wong-Ranasinghe forwarded email: replace the regex forwarding note parser with AI, add Drive folder fuzzy matching before auto-creating new folders, and send a filing confirmation email back to the sender (Cat or dev@) so they know what happened.
+**Requirements**: FWD-01 (AI note parsing), FWD-02 (Drive folder matching), FWD-03 (confirmation email), FWD-04 (link existing folders to CRM contacts)
+**Depends on:** Phase 24
+**Plans:** 3 plans
+
+Plans:
+- [ ] 25-01-PLAN.md -- AI forwarding note parser + intake worker per-attachment assignment + Wong-Ranasinghe data fix
+- [ ] 25-02-PLAN.md -- Drive folder fuzzy matching before auto-create
+- [ ] 25-03-PLAN.md -- Filing confirmation email to sender (in-thread reply)
+
 ---
 *Roadmap created: 2026-02-09*
-*Last updated: 2026-03-04 (Phase 24 complete -- all 9 bugs fixed, comprehensive audit)*
+*Last updated: 2026-03-06 (Phase 25 planned -- 3 plans in 2 waves)*
