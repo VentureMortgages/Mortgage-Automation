@@ -377,7 +377,7 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | 22. Cat Handoff | v1.2 | 0/TBD | Not started | - |
 | 24. Checklist Bug Fixes + Audit | v1.2 | Complete    | 2026-03-04 | 2026-03-04 |
 | 25. Smart Forwarding + Filing Feedback | 3/3 | Complete    | 2026-03-06 | - |
-| 26. Conversational Filing Assistant | 2/3 | In Progress|  | - |
+| 26. Conversational Filing Assistant | 3/3 | Complete   | 2026-03-06 | - |
 
 ### Action Items (Non-Code)
 | Item | Owner | Status |
@@ -424,7 +424,7 @@ Plans:
 **Goal:** Make the doc filing system feel like a real assistant Cat can talk to. When ambiguous matches arise, ask Cat naturally in the confirmation email and understand her natural language reply to complete filing.
 **Requirements**: CONV-01 (pass multiple match options through to confirmation email), CONV-02 (detect replies to confirmation threads in docs@ inbox), CONV-03 (AI-parse Cat's natural language reply to select correct option), CONV-04 (execute deferred filing and send follow-up confirmation)
 **Depends on:** Phase 25
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [ ] 26-01-PLAN.md -- Surface multiple match options in confirmation email + store pending choices in Redis

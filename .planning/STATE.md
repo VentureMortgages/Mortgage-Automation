@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Go-Live
 status: executing
-stopped_at: Completed 26-01-PLAN.md
-last_updated: "2026-03-06T19:38:49.684Z"
-last_activity: 2026-03-06 -- Phase 26-02 complete (reply parser module)
+stopped_at: Completed 26-03-PLAN.md
+last_updated: "2026-03-06T19:45:52Z"
+last_activity: 2026-03-06 -- Phase 26-03 complete (reply detection + deferred filing)
 progress:
   total_phases: 27
-  completed_phases: 18
+  completed_phases: 19
   total_plans: 57
-  completed_plans: 56
-  percent: 96
+  completed_plans: 57
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
-**Current focus:** Phase 26 in progress -- Conversational Filing Assistant. Plan 02 complete (reply parser module).
+**Current focus:** Phase 26 complete -- Conversational Filing Assistant fully implemented.
 
 ## Current Position
 
 Phase: 26 of 26 (Conversational Filing Assistant)
-Plan: 26-02 complete (1/3 plans)
-Status: In Progress
-Last activity: 2026-03-06 -- Phase 26-02 complete (reply parser module)
+Plan: 26-03 complete (3/3 plans)
+Status: Complete
+Last activity: 2026-03-06 -- Phase 26-03 complete (reply detection + deferred filing)
 
-Progress: [██████████] 96% (v1.0 + v1.1 + v1.2 complete, Phase 26 in progress)
+Progress: [██████████] 100% (v1.0 + v1.1 + v1.2 complete, Phase 26 complete)
 
 ## Performance Metrics
 
@@ -78,6 +78,11 @@ Recent decisions affecting current work:
 - [Phase 26]: Same Gemini 2.0 Flash lazy singleton pattern for reply parsing as body-extractor.ts
 - [Phase 26]: Bounds-check selectedIndex and override to 'unclear' when out of range (defensive against hallucinated indices)
 - [Phase 26]: extractReplyText stops at first marker (quote, >, signature) rather than stripping independently
+- [Phase 26]: Reply detection positioned after BCC check, before full message fetch in processGmailSource
+- [Phase 26]: Low-confidence select (< 0.7) treated as unclear with clarification reply
+- [Phase 26]: Pending choice preserved for 'unclear' action (Cat can retry)
+- [Phase 26]: CRM folder linking is non-fatal in handleFilingReply
+- [Phase 26]: create_new action uses original filename minus extension as folder name
 
 ### Pending Todos
 
@@ -99,11 +104,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-06T19:38:49.681Z
-Stopped at: Completed 26-01-PLAN.md
+Last session: 2026-03-06T19:45:52Z
+Stopped at: Completed 26-03-PLAN.md
 Resume file: None
-Next: Phase 26-03 (pending choice state + reply detection + deferred filing execution).
+Next: Phase 26 complete. All plans (01, 02, 03) implemented. Ready for production testing.
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-06 (Phase 26-02 complete -- reply parser module)*
+*Last updated: 2026-03-06 (Phase 26-03 complete -- reply detection + deferred filing)*
