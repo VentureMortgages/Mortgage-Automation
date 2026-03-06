@@ -516,7 +516,7 @@ export async function processClassificationJob(
       }
     }
 
-    // Phase 26: When contact exists but has no folder, try fuzzy search before creating new
+    // Phase 26: When contact exists but has no folder, try fuzzy search before creating new (v2)
     if (!clientFolderId && contactId && contact && classificationConfig.driveRootFolderId) {
       try {
         const contactName = [contact.lastName, contact.firstName].filter(Boolean).join(', ');
