@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Production Go-Live
 status: executing
-stopped_at: Completed 17.1-03-PLAN.md
-last_updated: "2026-03-04T21:33:49.665Z"
-last_activity: 2026-03-04 -- Phase 17.1-03 complete (Finmo doc webhook verified as already shipped)
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-03-06T01:56:36.262Z"
+last_activity: 2026-03-06 -- Phase 25-01 complete (AI forwarding note parser with multi-client support)
 progress:
-  total_phases: 25
+  total_phases: 26
   completed_phases: 17
-  total_plans: 51
-  completed_plans: 51
-  percent: 100
+  total_plans: 54
+  completed_plans: 52
+  percent: 96
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-04)
 
 **Core value:** When a Finmo application comes in, the right documents get requested, tracked, filed, and followed up on -- with minimal human effort and zero missed items.
-**Current focus:** Phase 17.1 complete -- all production gaps closed. Phase 20 next (Data Preparation).
+**Current focus:** Phase 25 in progress -- Smart Forwarding Notes & Filing Feedback. Plan 01 complete (AI parser), Plans 02-03 pending.
 
 ## Current Position
 
-Phase: 17.1 of 25 (Close Production Gaps) -- COMPLETE (all 3 plans)
-Plan: 17.1-03 complete (3/3)
+Phase: 25 of 25 (Smart Forwarding & Filing Feedback)
+Plan: 25-01 complete (1/3)
 Status: Executing
-Last activity: 2026-03-04 -- Phase 17.1-03 complete (Finmo doc webhook verified as already shipped)
+Last activity: 2026-03-06 -- Phase 25-01 complete (AI forwarding note parser with multi-client support)
 
-Progress: [██████████] 100% (v1.0 + v1.1 complete, v1.2 production gaps closed)
+Progress: [█████████░] 96% (v1.0 + v1.1 + v1.2 complete, Phase 25 in progress)
 
 ## Performance Metrics
 
@@ -61,6 +61,10 @@ Recent decisions affecting current work:
 - [Phase 17.1]: Co-borrower upsert failures are non-fatal (logged, don't fail the job)
 - [Phase 17.1]: Spreadsheet-first approach for Drive folder backfill -- no CRM writes, Taylor reviews matches manually
 - [Phase 17.1]: Lazy queue access pattern for Finmo doc webhook to avoid eager Redis in tests
+- [Phase 25]: AI parser uses same Gemini 2.0 Flash model as classifier.ts with responseSchema enforcement
+- [Phase 25]: extractForwardingNotes changed from sync to async (only intake-worker.ts needed updating)
+- [Phase 25]: Per-attachment client assignment uses filename-to-doctype substring matching from AI docs[]
+- [Phase 25]: Wong-Ranasinghe script uses direct GHL API call (contacts already exist, no email for dedup)
 
 ### Pending Todos
 
@@ -80,11 +84,11 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-04T21:29:18.031Z
-Stopped at: Completed 17.1-03-PLAN.md
+Last session: 2026-03-06T01:56:36.258Z
+Stopped at: Completed 25-01-PLAN.md
 Resume file: None
-Next: Phase 20 (Data Preparation -- backfill Drive folder links, clean test data)
+Next: Phase 25-02 (Drive folder fuzzy matching before auto-create)
 
 ---
 *State initialized: 2026-02-09*
-*Last updated: 2026-03-04 (Phase 24 complete -- all 3 plans)*
+*Last updated: 2026-03-06 (Phase 25-01 complete -- AI forwarding note parser)*

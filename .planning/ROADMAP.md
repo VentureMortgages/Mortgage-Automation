@@ -376,7 +376,7 @@ Phases execute in numeric order: 17 -> 18 -> 19 -> 20 -> 21 -> 22
 | 21. Reminders Verification | v1.2 | 0/TBD | Not started | - |
 | 22. Cat Handoff | v1.2 | 0/TBD | Not started | - |
 | 24. Checklist Bug Fixes + Audit | v1.2 | Complete    | 2026-03-04 | 2026-03-04 |
-| 25. Smart Forwarding + Filing Feedback | v1.2 | 0/3 | Not started | - |
+| 25. Smart Forwarding + Filing Feedback | 1/3 | In Progress|  | - |
 
 ### Action Items (Non-Code)
 | Item | Owner | Status |
@@ -411,7 +411,7 @@ Plans:
 **Goal:** Fix the three cascading failures exposed by Cat's Wong-Ranasinghe forwarded email: replace the regex forwarding note parser with AI, add Drive folder fuzzy matching before auto-creating new folders, and send a filing confirmation email back to the sender (Cat or dev@) so they know what happened.
 **Requirements**: FWD-01 (AI note parsing), FWD-02 (Drive folder matching), FWD-03 (confirmation email), FWD-04 (link existing folders to CRM contacts)
 **Depends on:** Phase 24
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 25-01-PLAN.md -- AI forwarding note parser + intake worker per-attachment assignment + Wong-Ranasinghe data fix
