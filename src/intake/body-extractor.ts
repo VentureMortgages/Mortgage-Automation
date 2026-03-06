@@ -8,22 +8,149 @@
  *   "john@example.com"      → clientEmail
  *   "john@example.com - T4" → clientEmail + docTypeHint
  *
- * This module extracts and parses those notes from the Gmail MIME payload.
+ * Phase 25: AI-powered parser handles multi-client notes:
+ *   "Srimal and Carolyn Wong-Ranasinghe ID's and Srimal's Statement of Account"
+ *   → clients: [Srimal, Carolyn], docs: [{Srimal, ID}, {Carolyn, ID}, {Srimal, SOA}]
  *
- * Consumers: intake-worker.ts (Phase 23)
+ * Falls back to regex parser if AI call fails.
+ *
+ * Consumers: intake-worker.ts (Phase 23, Phase 25)
  */
 
 import type { gmail_v1 } from 'googleapis';
+import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from '@google/generative-ai';
+import { classificationConfig } from '../classification/config.js';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+export interface ForwardingNoteDoc {
+  client: string;
+  type: string;
+}
+
 export interface ForwardingNotes {
+  // Legacy single-client fields (backward-compatible)
   clientName?: string;
   clientEmail?: string;
   docTypeHint?: string;
   rawNote: string;
+  // New multi-client fields (Phase 25)
+  clients?: string[];
+  docs?: ForwardingNoteDoc[];
+}
+
+// ---------------------------------------------------------------------------
+// AI Parser — Gemini Structured Output (Phase 25)
+// ---------------------------------------------------------------------------
+
+const EMAIL_PATTERN = /(\S+@\S+\.\S+)/;
+
+/** Gemini response schema for forwarding note parsing */
+const forwardingNoteSchema: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    clients: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+      description: 'Client names or email addresses mentioned in the note',
+    },
+    docs: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          client: {
+            type: SchemaType.STRING,
+            description: 'The client this document belongs to',
+          },
+          type: {
+            type: SchemaType.STRING,
+            description: 'The document type (e.g., ID, paystub, T4, Statement of Account)',
+          },
+        },
+        required: ['client', 'type'],
+      },
+      description: 'Per-client document type assignments',
+    },
+    rawNote: {
+      type: SchemaType.STRING,
+      description: 'The original forwarding note text',
+    },
+  },
+  required: ['clients', 'docs', 'rawNote'],
+};
+
+let _genAI: GoogleGenerativeAI | null = null;
+
+function getGenAI(): GoogleGenerativeAI {
+  if (_genAI) return _genAI;
+  _genAI = new GoogleGenerativeAI(classificationConfig.geminiApiKey);
+  return _genAI;
+}
+
+/**
+ * Parse a forwarding note using Gemini Flash structured output.
+ *
+ * Extracts client names and per-document type assignments from natural
+ * language notes like "Srimal and Carolyn's IDs and Srimal's SOA".
+ *
+ * @param noteText - The forwarding note text (above the forward delimiter)
+ * @returns Parsed ForwardingNotes with multi-client support, or null on failure
+ */
+export async function parseForwardingNoteAI(noteText: string): Promise<ForwardingNotes | null> {
+  try {
+    const model = getGenAI().getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: forwardingNoteSchema,
+      },
+    });
+
+    const result = await model.generateContent([
+      {
+        text: `Parse this forwarding note from a mortgage broker's assistant. Extract client names and document type assignments. If a doc type is mentioned for a specific client, assign it to that client. If docs are mentioned generally (e.g., "IDs"), assign to all clients mentioned. Return the original note text as rawNote.
+
+Note text: "${noteText}"`,
+      },
+    ]);
+
+    const responseText = result.response.text();
+    const parsed = JSON.parse(responseText) as {
+      clients: string[];
+      docs: Array<{ client: string; type: string }>;
+      rawNote: string;
+    };
+
+    // Build the expanded ForwardingNotes
+    const notes: ForwardingNotes = {
+      rawNote: noteText,
+      clients: parsed.clients,
+      docs: parsed.docs,
+    };
+
+    // Populate legacy fields for backward compatibility
+    if (parsed.clients.length > 0) {
+      const firstClient = parsed.clients[0];
+      const emailMatch = firstClient.match(EMAIL_PATTERN);
+      if (emailMatch) {
+        notes.clientEmail = emailMatch[1];
+      } else {
+        notes.clientName = firstClient;
+      }
+    }
+
+    if (parsed.docs.length > 0) {
+      notes.docTypeHint = parsed.docs[0].type;
+    }
+
+    return notes;
+  } catch (err) {
+    console.warn('[body-extractor] AI parser failed, will fall back to regex:', err instanceof Error ? err.message : String(err));
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -38,7 +165,6 @@ const FORWARD_DELIMITERS = [
   '-------- Original Message --------',
 ];
 
-const EMAIL_PATTERN = /(\S+@\S+\.\S+)/;
 const SEPARATOR_PATTERN = /\s+[-—–]\s+/;
 
 /**
@@ -69,12 +195,14 @@ function findPlainTextBody(payload: gmail_v1.Schema$MessagePart): string | null 
 /**
  * Extract and parse forwarding notes from a Gmail message payload.
  *
+ * Phase 25: Now async — calls AI parser first, falls back to regex.
+ *
  * @param payload - The Gmail message payload (from format: 'full')
  * @returns Parsed forwarding notes, or null if no forward delimiter found
  */
-export function extractForwardingNotes(
+export async function extractForwardingNotes(
   payload: gmail_v1.Schema$MessagePart | undefined,
-): ForwardingNotes | null {
+): Promise<ForwardingNotes | null> {
   if (!payload) return null;
 
   const bodyText = findPlainTextBody(payload);
@@ -100,11 +228,17 @@ export function extractForwardingNotes(
   // Use the first non-empty line as the note (Cat's annotation)
   const note = lines[0];
 
+  // Phase 25: Try AI parser first, fall back to regex on failure
+  const aiResult = await parseForwardingNoteAI(note);
+  if (aiResult) return aiResult;
+
+  // Fallback: regex parser (Phase 23 — unchanged)
   return parseForwardingNote(note);
 }
 
 /**
  * Parse a single-line forwarding note into structured fields.
+ * This is the regex-based fallback parser (Phase 23).
  *
  * Patterns:
  *   "john@example.com"          → { clientEmail }

@@ -32,16 +32,18 @@ const mockGetGenerativeModel = vi.fn(() => ({
   generateContent: mockGenerateContent,
 }));
 
-vi.mock('@google/generative-ai', () => ({
-  GoogleGenerativeAI: vi.fn(() => ({
-    getGenerativeModel: mockGetGenerativeModel,
-  })),
-  SchemaType: {
-    OBJECT: 'OBJECT',
-    ARRAY: 'ARRAY',
-    STRING: 'STRING',
-  },
-}));
+vi.mock('@google/generative-ai', () => {
+  return {
+    GoogleGenerativeAI: class MockGoogleGenerativeAI {
+      getGenerativeModel = mockGetGenerativeModel;
+    },
+    SchemaType: {
+      OBJECT: 'OBJECT',
+      ARRAY: 'ARRAY',
+      STRING: 'STRING',
+    },
+  };
+});
 
 // Mock classification config so Gemini API key doesn't throw
 vi.mock('../../classification/config.js', () => ({
