@@ -23,6 +23,16 @@ function hasCommission(ctx: RuleContext): boolean {
   return ctx.borrowerIncomes.some((inc) => inc.payType === 'commission');
 }
 
+/** Check if borrower ALSO has salary/hourly employment income (for T4 dedup) */
+function hasEmploymentT4s(ctx: RuleContext): boolean {
+  return ctx.borrowerIncomes.some(
+    (inc) =>
+      inc.active !== false &&
+      inc.source === 'employed' &&
+      (inc.payType === 'salaried' || inc.payType?.startsWith('hourly'))
+  );
+}
+
 /** Check if borrower has bonus income */
 function hasBonus(ctx: RuleContext): boolean {
   return ctx.borrowerIncomes.some((inc) => inc.bonuses === true);
@@ -87,6 +97,10 @@ function commissionRules(): ChecklistRule[] {
       stage: 'PRE',
       scope: 'per_borrower',
       condition: hasCommission,
+      // Cat feedback: suppress separate commission T4 request when borrower already
+      // has salary/hourly T4s (s1_t4_previous + s1_t4_current). Employers issue
+      // one T4 covering all employment income including commission.
+      excludeWhen: hasEmploymentT4s,
     },
     {
       id: 's10_commission_statements',

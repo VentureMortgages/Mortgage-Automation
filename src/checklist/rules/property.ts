@@ -90,6 +90,16 @@ function isMultiUnit(ctx: RuleContext): boolean {
  */
 const RENTAL_USE_TYPES = ['rental', 'investment', 'rental_investment', 'owner_occupied_rental'];
 
+/**
+ * Check if the subject property has rental income.
+ * Used to suppress shared property rules that would duplicate per-property rental rules.
+ */
+function subjectPropertyIsRental(ctx: RuleContext): boolean {
+  if (!ctx.subjectProperty) return false;
+  return ctx.subjectProperty.rentalIncome > 0 ||
+    RENTAL_USE_TYPES.includes(ctx.subjectProperty.use);
+}
+
 function isInvestment(ctx: RuleContext): boolean {
   return ctx.application.use !== null &&
     ctx.application.use !== undefined &&
@@ -120,6 +130,9 @@ function refinanceRules(): ChecklistRule[] {
       stage: 'PRE',
       scope: 'shared',
       condition: isExistingPropertyDeal,
+      // Cat feedback: suppress when subject property has rental income — per-property
+      // rental rules already request mortgage statement under the address header
+      excludeWhen: subjectPropertyIsRental,
     },
     {
       id: 's15_refi_tax',
@@ -129,6 +142,9 @@ function refinanceRules(): ChecklistRule[] {
       stage: 'PRE',
       scope: 'shared',
       condition: isExistingPropertyDeal,
+      // Cat feedback: suppress when subject property has rental income — per-property
+      // rental rules already request property tax under the address header
+      excludeWhen: subjectPropertyIsRental,
     },
     // Home insurance: per Cat — "only needed for switches, not refinances"
     {
@@ -178,6 +194,9 @@ function multiUnitRules(): ChecklistRule[] {
       stage: 'PRE',
       scope: 'shared',
       condition: isMultiUnit,
+      // Cat feedback: suppress when subject property has rental income — per-property
+      // rental rules already request lease agreements under each address header
+      excludeWhen: subjectPropertyIsRental,
     },
     {
       id: 's15_multiunit_appraisal',

@@ -555,3 +555,196 @@ describe('BUG 7: Owner-occupied/rental property use type', () => {
     expect(allRuleIds).not.toContain('s15_investment_appraisal');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Cat Feedback: Commission T4 duplication (Steffie)
+// ---------------------------------------------------------------------------
+
+describe('Cat feedback: Commission T4 duplication', () => {
+  test('borrower with salaried + commission income does NOT get s10_commission_t4s', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(employedPurchase));
+    // Add a commission income entry alongside the salaried one
+    fixture.incomes.push({
+      ...fixture.incomes[0],
+      id: 'income-commission',
+      payType: 'commission',
+      income: 20000,
+      incomePeriodAmount: 20000,
+    });
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    // Should have salary T4s but NOT commission T4s
+    expect(ruleIds).toContain('s1_t4_previous');
+    expect(ruleIds).toContain('s1_t4_current');
+    expect(ruleIds).not.toContain('s10_commission_t4s');
+    // Commission statements + employer letter should still appear
+    expect(ruleIds).toContain('s10_commission_statements');
+  });
+
+  test('borrower with commission ONLY (no salary) DOES get s10_commission_t4s', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(employedPurchase));
+    fixture.incomes = [{
+      ...fixture.incomes[0],
+      payType: 'commission',
+    }];
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    expect(ruleIds).toContain('s10_commission_t4s');
+    expect(ruleIds).not.toContain('s1_t4_previous');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cat Feedback: Property section duplication (Steffie, Andrea & Robert, Erin)
+// ---------------------------------------------------------------------------
+
+describe('Cat feedback: Property section duplication', () => {
+  test('multi-unit rental subject property does NOT get s15_multiunit_leases in shared', () => {
+    // Refinance with subject property that is multi-unit AND rental
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(selfEmployedRefi));
+    fixture.properties[0].numberOfUnits = 3;
+    fixture.properties[0].use = 'owner_occupied_rental';
+    fixture.properties[0].rentalIncome = 2500;
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    // Per-property rental rules should cover leases
+    expect(sharedRuleIds).not.toContain('s15_multiunit_leases');
+    // Per-property section should have the rental lease
+    const propChecklist = result.propertyChecklists.find(
+      (pc) => pc.propertyId === fixture.properties[0].id
+    );
+    expect(propChecklist).toBeDefined();
+    expect(propChecklist!.items.map(i => i.ruleId)).toContain('s10_rental_lease');
+  });
+
+  test('multi-unit NON-rental subject property still gets s15_multiunit_leases', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(selfEmployedRefi));
+    fixture.properties[0].numberOfUnits = 3;
+    fixture.properties[0].use = 'owner_occupied';
+    fixture.properties[0].rentalIncome = 0;
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).toContain('s15_multiunit_leases');
+  });
+
+  test('refinance with rental subject property suppresses shared mortgage/tax (per-property covers it)', () => {
+    // Subject property IS a rental — per-property rules already request mortgage + tax
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(selfEmployedRefi));
+    fixture.properties[0].use = 'owner_occupied_rental';
+    fixture.properties[0].rentalIncome = 1800;
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).not.toContain('s15_refi_mortgage');
+    expect(sharedRuleIds).not.toContain('s15_refi_tax');
+  });
+
+  test('refinance with NON-rental subject property still has shared mortgage/tax', () => {
+    // Existing behavior: non-rental refinance keeps these
+    const result = generateChecklist(selfEmployedRefi, undefined, TEST_DATE);
+    const sharedRuleIds = result.sharedItems.map((i) => i.ruleId);
+    expect(sharedRuleIds).toContain('s15_refi_mortgage');
+    expect(sharedRuleIds).toContain('s15_refi_tax');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cat Feedback: Self-employed getting employed docs (Paul)
+// ---------------------------------------------------------------------------
+
+describe('Cat feedback: Self-employed with inactive employed income', () => {
+  test('inactive employed income does NOT trigger employed rules', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(selfEmployedRefi));
+    // Add an inactive employed income entry (stale data from Finmo)
+    fixture.incomes.push({
+      ...fixture.incomes[0],
+      id: 'income-old-employed',
+      source: 'employed',
+      payType: 'salaried',
+      income: 50000,
+      active: false,
+      business: 'Old Job Inc',
+    });
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    // Should NOT have employed docs
+    expect(ruleIds).not.toContain('s1_paystub');
+    expect(ruleIds).not.toContain('s1_loe');
+    expect(ruleIds).not.toContain('s1_t4_previous');
+    // Should still have self-employed docs
+    expect(ruleIds).toContain('s3_t1_current');
+    expect(ruleIds).toContain('s3_t1_previous');
+  });
+
+  test('active employed income alongside self-employed DOES trigger employed rules', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(selfEmployedRefi));
+    // Add an ACTIVE employed income entry (legit part-time job)
+    fixture.incomes.push({
+      ...fixture.incomes[0],
+      id: 'income-parttime',
+      source: 'employed',
+      payType: 'salaried',
+      income: 30000,
+      active: true,
+      business: 'Part Time Co',
+    });
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const ruleIds = result.borrowerChecklists[0].items.map((i) => i.ruleId);
+    // Should have BOTH employed and self-employed docs
+    expect(ruleIds).toContain('s1_paystub');
+    expect(ruleIds).toContain('s3_t1_current');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cat Feedback: Property addresses not populated
+// ---------------------------------------------------------------------------
+
+describe('Cat feedback: Property address resolution fallback', () => {
+  test('property with null addressId but address with matching propertyId resolves address', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(rentalMixedUse));
+    // Set addressId to null (simulating missing link)
+    fixture.properties[1].addressId = null;
+    // Add propertyId to the address (fallback lookup)
+    fixture.addresses[1] = {
+      ...fixture.addresses[1],
+      propertyId: fixture.properties[1].id,
+    };
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    // Should resolve the address via propertyId fallback
+    const rentalProp = result.propertyChecklists.find(
+      (pc) => pc.propertyId === fixture.properties[1].id
+    );
+    expect(rentalProp).toBeDefined();
+    expect(rentalProp!.propertyDescription).toContain('Pine');
+  });
+
+  test('property with null addressId and no propertyId fallback shows generic name', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(rentalMixedUse));
+    fixture.properties[1].addressId = null;
+    // No propertyId on addresses
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const rentalProp = result.propertyChecklists.find(
+      (pc) => pc.propertyId === fixture.properties[1].id
+    );
+    expect(rentalProp).toBeDefined();
+    expect(rentalProp!.propertyDescription).toBe('Additional Property');
+  });
+
+  test('address with line1 but no structured fields uses line1', () => {
+    const fixture: FinmoApplicationResponse = JSON.parse(JSON.stringify(rentalMixedUse));
+    // Replace structured fields with line1
+    fixture.addresses[1] = {
+      ...fixture.addresses[1],
+      streetNumber: null,
+      streetName: null,
+      streetType: null,
+      line1: '450 Pine Crescent',
+    };
+    const result = generateChecklist(fixture, undefined, TEST_DATE);
+    const rentalProp = result.propertyChecklists.find(
+      (pc) => pc.propertyId === fixture.properties[1].id
+    );
+    expect(rentalProp).toBeDefined();
+    expect(rentalProp!.propertyDescription).toContain('450 Pine Crescent');
+  });
+});

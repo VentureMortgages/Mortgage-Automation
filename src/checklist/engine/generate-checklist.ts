@@ -34,11 +34,42 @@ import { deduplicateItems } from './deduplicate.js';
 // ---------------------------------------------------------------------------
 
 /**
+ * Format a FinmoAddress into a readable string.
+ * Tries structured fields first (streetNumber + streetName + streetType, city),
+ * then falls back to line1.
+ */
+function formatAddress(addr: FinmoAddress): string | null {
+  const parts: string[] = [];
+  if (addr.streetNumber) parts.push(addr.streetNumber);
+  if (addr.streetName) parts.push(addr.streetName);
+  if (addr.streetType) parts.push(addr.streetType);
+
+  if (parts.length > 0 && addr.city) {
+    return `${parts.join(' ')}, ${addr.city}`;
+  }
+  if (parts.length > 0) {
+    return parts.join(' ');
+  }
+  // Fallback: try line1 (some Finmo responses use line1 instead of structured fields)
+  if (addr.line1 && addr.city) {
+    return `${addr.line1}, ${addr.city}`;
+  }
+  if (addr.line1) {
+    return addr.line1;
+  }
+  if (addr.city) {
+    return addr.city;
+  }
+  return null;
+}
+
+/**
  * Build a human-readable property description from address data.
  *
- * Looks up the property's addressId in the response addresses array and
- * formats as "{streetNumber} {streetName} {streetType}, {city}".
- * Falls back to "Subject Property" or "Property {index}" if no address found.
+ * Lookup chain:
+ * 1. addressId match (property.addressId → addresses[].id)
+ * 2. propertyId match (addresses[].propertyId → property.id)
+ * 3. Falls back to "Subject Property" or "Additional Property N"
  */
 function buildPropertyDescription(
   propertyId: string,
@@ -48,24 +79,20 @@ function buildPropertyDescription(
   nonSubjectIndex: number,
   nonSubjectCount: number
 ): string {
+  // 1. Try direct addressId lookup
   if (addressId) {
     const addr = addresses.find((a) => a.id === addressId);
     if (addr) {
-      const parts: string[] = [];
-      if (addr.streetNumber) parts.push(addr.streetNumber);
-      if (addr.streetName) parts.push(addr.streetName);
-      if (addr.streetType) parts.push(addr.streetType);
-
-      if (parts.length > 0 && addr.city) {
-        return `${parts.join(' ')}, ${addr.city}`;
-      }
-      if (parts.length > 0) {
-        return parts.join(' ');
-      }
-      if (addr.city) {
-        return addr.city;
-      }
+      const formatted = formatAddress(addr);
+      if (formatted) return formatted;
     }
+  }
+
+  // 2. Fallback: find address by propertyId field on the address
+  const addrByProperty = addresses.find((a) => a.propertyId === propertyId);
+  if (addrByProperty) {
+    const formatted = formatAddress(addrByProperty);
+    if (formatted) return formatted;
   }
 
   if (isSubjectProperty) return 'Subject Property';

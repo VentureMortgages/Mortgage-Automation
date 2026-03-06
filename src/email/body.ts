@@ -66,9 +66,11 @@ export function generateEmailBody(
   const HNW_THRESHOLD = 250_000;
   if (context.totalLiquidAssets != null && context.totalLiquidAssets >= HNW_THRESHOLD) {
     const formatted = new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(context.totalLiquidAssets);
+    // Use <span> for background so deleting text in Gmail removes the yellow styling too
+    // (Gmail keeps empty <div> containers with their background color)
     parts.push(
-      `<div style="background:#FFF3CD;border:1px solid #FFD700;border-radius:4px;padding:8px 12px;margin-bottom:12px;font-weight:bold;">` +
-      `&#9888; HIGH NET WORTH — Liquid assets: ${esc(formatted)} (remove this note before sending)</div>`
+      `<p><span style="background:#FFF3CD;border:1px solid #FFD700;border-radius:4px;padding:4px 8px;font-weight:bold;">` +
+      `&#9888; HIGH NET WORTH — Liquid assets: ${esc(formatted)} (select this entire line and delete before sending)</span></p>`
     );
   }
 
