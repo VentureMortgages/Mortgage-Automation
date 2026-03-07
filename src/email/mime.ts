@@ -33,7 +33,9 @@ export function encodeMimeMessage(input: MimeMessageInput): string {
   // Custom X- headers for tracking (e.g., X-Venture-Contact-Id)
   if (input.customHeaders) {
     for (const [key, value] of Object.entries(input.customHeaders)) {
-      headerLines.push(`${key}: ${value}`);
+      // Strip CR/LF to prevent MIME header injection
+      const safeValue = value.replace(/[\r\n]/g, '');
+      headerLines.push(`${key}: ${safeValue}`);
     }
   }
   // Phase 25: Threading headers for in-thread replies

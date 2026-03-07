@@ -189,6 +189,15 @@ export async function maybeSendConfirmation(gmailMessageId: string): Promise<voi
  * @param results - Array of filing results for all docs in the message
  * @returns Plain text body
  */
+/** Escapes HTML special chars to prevent XSS in email body */
+function esc(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function buildConfirmationBody(results: FilingResult[]): string {
   const filed = results.filter(r => r.filed);
   const needsReview = results.filter(r => r.manualReview);
@@ -212,25 +221,25 @@ export function buildConfirmationBody(results: FilingResult[]): string {
 
   // Filed docs
   for (const r of filed) {
-    const name = r.borrowerName ?? 'Unknown client';
+    const name = esc(r.borrowerName ?? 'Unknown client');
     if (r.driveFileId) {
-      const url = `https://drive.google.com/file/d/${r.driveFileId}/view`;
-      lines.push(`&nbsp;&nbsp;Filed: ${name} &mdash; <a href="${url}">${r.docTypeLabel}</a>`);
+      const url = `https://drive.google.com/file/d/${encodeURIComponent(r.driveFileId)}/view`;
+      lines.push(`&nbsp;&nbsp;Filed: ${name} &mdash; <a href="${url}">${esc(r.docTypeLabel)}</a>`);
     } else {
-      lines.push(`&nbsp;&nbsp;Filed: ${name} &mdash; ${r.docTypeLabel}`);
+      lines.push(`&nbsp;&nbsp;Filed: ${name} &mdash; ${esc(r.docTypeLabel)}`);
     }
   }
 
   // Needs review
   for (const r of needsReview) {
-    const name = r.borrowerName ?? 'Unknown client';
-    const reason = r.reason ? ` &mdash; ${r.reason}` : '';
-    lines.push(`&nbsp;&nbsp;Needs review: ${name} &mdash; ${r.docTypeLabel}${reason}`);
+    const name = esc(r.borrowerName ?? 'Unknown client');
+    const reason = r.reason ? ` &mdash; ${esc(r.reason)}` : '';
+    lines.push(`&nbsp;&nbsp;Needs review: ${name} &mdash; ${esc(r.docTypeLabel)}${reason}`);
   }
 
   // Errors
   for (const r of errors) {
-    lines.push(`&nbsp;&nbsp;Could not process: ${r.originalFilename}`);
+    lines.push(`&nbsp;&nbsp;Could not process: ${esc(r.originalFilename)}`);
   }
 
   // Footer note if anything needs attention
